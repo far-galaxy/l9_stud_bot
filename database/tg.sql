@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS `tg_users` (
 
 	`posTag`	varchar(30)	DEFAULT		'not_started',
 	-- Позиция пользователя в диалоге с ботом:
-	-- (default) not_started - только что в диалог
+	-- (default) not_started - только что вступил в диалог
 	-- add - добавляет группу
 
 	PRIMARY KEY				(`l9Id`),

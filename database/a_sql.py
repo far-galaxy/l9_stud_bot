@@ -25,6 +25,7 @@ class Database:
             query.lower().find("drop") == -1
             and query.lower().find("truncate") == -1
         ):
+            print(query)
             self.cursor.execute(query)
             if commit:
                 self.database.commit()
@@ -42,7 +43,7 @@ class Database:
 
         with open(f'database/{filename}.sql', encoding='utf-8') as f:
             query = f.read()
-            return self.execute(query, commit)
+            return self.execute(query, commit).fetchall()
 
     def initDatabase(self, name: str):
         """Создать базу данных, если таковая отсутствует,
@@ -51,8 +52,8 @@ class Database:
             :name: название базы данных
         """
 
-        self.execute(f"CREATE DATABASE IF NOT EXISTS {name}")
-        self.execute(f"USE {name}")
+        self.execute(f"CREATE DATABASE IF NOT EXISTS {name};")
+        self.execute(f"USE {name};")
 
     def initTable(self, name: str, head: str):
         """Создать таблицу, если таковая отсутствует
