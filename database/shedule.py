@@ -1,5 +1,7 @@
 from .l9 import L9_DB
 from .a_ssau_parser import *
+import telegram
+from configparser import ConfigParser
 
 
 class Shedule_DB:
@@ -23,7 +25,7 @@ class Shedule_DB:
 
         groupIdInDB = self.l9lk.db.get(
             'groups',
-            f'groupName LIKE "%{groupName}%"',
+            f'groupName LIKE "{groupName}%"',
             ['groupId', 'groupName', 'specName'],
         )
 
@@ -58,3 +60,15 @@ class Shedule_DB:
 
             else:
                 return 'Empty'
+
+    def uploadShedule(
+        self, query: telegram.CallbackQuery, groupId: str, loc: ConfigParser
+    ):
+        if query.data == 'yes':
+            query.edit_message_text(loc['group']['loading'])
+
+        else:
+            query.edit_message_text(loc['group']['nogroup'])
+            query.edit_message_reply_markup(Keyboard.cancel())
+
+        return query.data == 'yes'

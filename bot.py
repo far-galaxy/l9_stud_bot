@@ -49,15 +49,37 @@ class Bot:
         self.udpate_id = None
         self.isWork = True
 
+    def answer(self, query: telegram.CallbackQuery, text=None, alert=False):
+        try:
+            query.answer(text, alert)
+        except telegram.error.BadRequest:
+            pass
+
     def checkMessages(self):
         """Проверка и обработка входящих сообщений"""
 
         updates = self.tg.get_updates(offset=self.udpate_id, timeout=5)
         for update in updates:
             self.udpate_id = update.update_id + 1
+
+            if update.callback_query:
+                query = update.callback_query
+                tag, l9Id, log = self.tg_db.getTagC(query)
+                logger.info(log)
+                tgId = query.from_user.id
+
+                if 'conf' in tag:
+                    success = self.shedule.uploadShedule(query, tag[5:], loc)
+                    self.answer(query)
+                    if success:
+                        # Код с загрузкой расписания
+                        self.tg_db.changeTag(tgId, 'ready')
+                    else:
+                        self.tg_db.changeTag(tgId, 'add')
+
             if update.message:
                 query = update.message
-                tag, l9Id, log = self.tg_db.getTag(query)
+                tag, l9Id, log = self.tg_db.getTagM(query)
                 logger.info(log)
                 tgId = query.from_user.id
 
@@ -66,6 +88,15 @@ class Bot:
 
                 if tag == 'add':
                     self.addGroup(l9Id, query)
+
+                if query.text == 'Отмена':
+                    # TODO: прописать отмену при отсутствующих группах
+                    self.tg_db.changeTag(tgId, 'ready')
+                    self.tg.sendMessage(
+                        tgId,
+                        loc['etc']['cancel'],
+                        reply_markup=Keyboard.menu(),
+                    )
 
                 else:
                     self.tg.sendMessage(
@@ -77,7 +108,6 @@ class Bot:
     def start(self, query: telegram.Message):
         """Обработка нового пользователя"""
 
-        global _
         # Проверка лимита пользователей и обработка лишних
         count = self.l9lk.countUsers()
         tgId = query.from_user.id
@@ -98,7 +128,6 @@ class Bot:
     def addGroup(self, l9Id: int, query: telegram.Message):
         """Процесс добавления группы"""
 
-        global _
         groupName = query.text
         tgId = query.from_user.id
 
@@ -130,7 +159,7 @@ class Bot:
             self.tg_db.changeTag(tgId, f'conf_{result[21:]}')
             self.tg.sendMessage(
                 tgId,
-                loc['group']['checkSedule'] % (result),
+                loc['group']['checkShedule'] % (result),
                 reply_markup=Keyboard.confirm(),
             )
 

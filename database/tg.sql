@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS `tg_users` (
 	-- Позиция пользователя в диалоге с ботом:
 	-- (default) not_started - только что вступил в диалог
 	-- add - добавляет группу
+	-- conf_{groupId} - пользователь на стадии подтверждения выбранной группы
+	-- ready - готов к работе
 
 	PRIMARY KEY				(`l9Id`),
 	CONSTRAINT	`l9_tg`		FOREIGN KEY	(`l9Id`)		REFERENCES	`users`		(`l9Id`)	ON DELETE CASCADE	ON UPDATE CASCADE
