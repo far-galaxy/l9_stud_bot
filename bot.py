@@ -6,6 +6,7 @@ import telegram
 from tg.keyboards import Keyboard
 import logging
 from logging.handlers import TimedRotatingFileHandler as TRFL
+import configparser
 
 logger = logging.getLogger('bot')
 
@@ -69,13 +70,14 @@ class Bot:
                 else:
                     self.tg.sendMessage(
                         tgId,
-                        "Ой!",
+                        loc['etc']['oops'],
                         reply_markup=Keyboard.menu(),
                     )
 
     def start(self, query: telegram.Message):
         """Обработка нового пользователя"""
 
+        global _
         # Проверка лимита пользователей и обработка лишних
         count = self.l9lk.countUsers()
         tgId = query.from_user.id
@@ -83,27 +85,20 @@ class Bot:
         if count >= self.limit:
             self.tg.sendMessage(
                 tgId,
-                (
-                    'Бот работает в тестовом режиме, поэтому количество пользователей временно ограничено.\n'
-                    'К сожалению, в данный момент лимит превышен, поэтому доступ для вас закрыт 😢'
-                    'Попробуйте зайти на следующей неделе, когда лимит будет повышен'
-                ),
+                loc['etc']['overlimit'],
             )
 
         else:
             self.tg_db.changeTag(tgId, 'add')
             self.tg.sendMessage(
                 tgId,
-                (
-                    'Привет! Я твой новый помощник, который подскажет тебе, какая сейчас пара, '
-                    'и будет напоминать о занятиях, чтобы ты ничего не упустил 🤗\n'
-                    'Давай знакомиться! Введи свой номер группы (например, 2305 или 2305-240502D)'
-                ),
+                loc['etc']['hello'],
             )
 
     def addGroup(self, l9Id: int, query: telegram.Message):
         """Процесс добавления группы"""
 
+        global _
         groupName = query.text
         tgId = query.from_user.id
 
@@ -113,21 +108,21 @@ class Bot:
             self.tg_db.changeTag(tgId, 'ready')
             self.tg.sendMessage(
                 tgId,
-                f'Поздравляем, твоя группа {groupName}, направление "{specName}", подключена!',
+                loc['group']['connected'] % (groupName, specName),
                 reply_markup=Keyboard.menu(),
             )
 
         elif result == 'Exists':
             self.tg.sendMessage(
                 tgId,
-                '❗️Эта группа у тебя уже подключена',
+                loc['group']['exists'],
                 reply_markup=Keyboard.cancel(),
             )
 
         elif result == 'Error':
             self.tg.sendMessage(
                 tgId,
-                '❗У меня этой группы пока нет, а сайте возникла какая-то ошибка.\nПопробуйте позже',
+                loc['group']['error'],
                 reply_markup=Keyboard.cancel(),
             )
 
@@ -135,18 +130,14 @@ class Bot:
             self.tg_db.changeTag(tgId, f'conf_{result[21:]}')
             self.tg.sendMessage(
                 tgId,
-                (
-                    'Такой группы у меня пока нет в базе, но она есть на сайте\n'
-                    f'{result}\n'
-                    'Проверь, пожалуйста, что это твоя группа и нажми кнопку\n'
-                ),
+                loc['group']['checkSedule'] % (result),
                 reply_markup=Keyboard.confirm(),
             )
 
         else:
             self.tg.sendMessage(
                 tgId,
-                'К сожалению, такой группы нет ни в моей базе, ни на сайте университета :(',
+                loc['group']['empty'],
                 reply_markup=Keyboard.cancel(),
             )
 
@@ -154,6 +145,9 @@ class Bot:
 if __name__ == "__main__":
     initLogger()
     logger.info("Start bot")
+
+    loc = configparser.ConfigParser()
+    loc.read('./locale/ru.ini', encoding='utf-8')
 
     config = loadJSON("config")
     l9lk = L9_DB(**config['sql'])
