@@ -2,6 +2,7 @@ from .l9 import L9_DB
 from .a_ssau_parser import *
 import telegram
 from configparser import ConfigParser
+import datetime
 
 
 class Shedule_DB:
@@ -61,14 +62,22 @@ class Shedule_DB:
             else:
                 return 'Empty'
 
-    def uploadShedule(
-        self, query: telegram.CallbackQuery, groupId: str, loc: ConfigParser
-    ):
-        if query.data == 'yes':
-            query.edit_message_text(loc['group']['loading'])
+    def loadShedule(self, groupId, date, first_week):
+        week = date.isocalendar()[1] - first_week
 
-        else:
-            query.edit_message_text(loc['group']['nogroup'])
-            query.edit_message_reply_markup(Keyboard.cancel())
+        self.db.execute(
+            f'DELETE FROM `lessons` WHERE WEEK(`begin`, 1) = {date.isocalendar()[1]} AND groupId = {groupId};'
+        )
 
-        return query.data == 'yes'
+        t_info = self.db.get('teachers', None, teacher_columns)
+        t_info = [dict(zip(teacher_columns, i)) for i in t_info]
+        lessons, teachers = parseWeek(groupId, week, t_info)
+
+        g = getGroupInfo(groupId)
+        self.db.insert('groups', g)
+
+        for t in teachers:
+            self.l9lk.db.insert('teachers', t)
+
+        for l in lessons:
+            self.l9lk.db.insert('lessons', l)

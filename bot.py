@@ -55,6 +55,19 @@ class Bot:
         except telegram.error.BadRequest:
             pass
 
+    def edit(self, query: telegram.CallbackQuery, text=None, markup=None):
+        if isinstance(text, str):
+            try:
+                query.edit_message_text(text)
+            except telegram.error.BadRequest:
+                pass
+
+        if isinstance(markup, telegram.ReplyKeyboardMarkup):
+            try:
+                query.edit_message_reply_markup(text)
+            except telegram.error.BadRequest:
+                pass
+
     def checkMessages(self):
         """Проверка и обработка входящих сообщений"""
 
@@ -69,13 +82,7 @@ class Bot:
                 tgId = query.from_user.id
 
                 if 'conf' in tag:
-                    success = self.shedule.uploadShedule(query, tag[5:], loc)
-                    self.answer(query)
-                    if success:
-                        # Код с загрузкой расписания
-                        self.tg_db.changeTag(tgId, 'ready')
-                    else:
-                        self.tg_db.changeTag(tgId, 'add')
+                    self.confirmGroup(query, tag)
 
             if update.message:
                 query = update.message
@@ -86,10 +93,10 @@ class Bot:
                 if tag == 'not_started':
                     self.start(query)
 
-                if tag == 'add':
+                elif tag == 'add':
                     self.addGroup(l9Id, query)
 
-                if query.text == 'Отмена':
+                elif query.text == 'Отмена':
                     # TODO: прописать отмену при отсутствующих группах
                     self.tg_db.changeTag(tgId, 'ready')
                     self.tg.sendMessage(
@@ -169,6 +176,21 @@ class Bot:
                 loc['group']['empty'],
                 reply_markup=Keyboard.cancel(),
             )
+
+    def confirmGroup(self, query: telegram.CallbackQuery, tag: str):
+        """Процесс подтверждения группы и загрузка расписания"""
+        tgId = query.from_user.id
+        self.answer(query)
+        if query.data == 'yes':
+            self.edit(query, loc['group']['loading'])
+            self.shedule.loadShedule(
+                tag[5:], query.message.date, config['first_week']
+            )
+            self.edit(query, loc['group']['loaded'], Keyboard.menu())
+            self.tg_db.changeTag(tgId, 'ready')
+        else:
+            self.edit(query, loc['group']['nogroup'], Keyboard.cancel())
+            self.tg_db.changeTag(tgId, 'add')
 
 
 if __name__ == "__main__":
