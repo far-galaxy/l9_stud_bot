@@ -82,7 +82,7 @@ class Bot:
                 tgId = query.from_user.id
 
                 if 'conf' in tag:
-                    self.confirmGroup(query, tag)
+                    self.confirmGroup(query, tag, l9Id)
 
             if update.message:
                 query = update.message
@@ -95,6 +95,16 @@ class Bot:
 
                 elif tag == 'add':
                     self.addGroup(l9Id, query)
+
+                elif query.text == 'Главное меню':
+                    near = self.shedule.nearLesson(query.date, l9Id)
+                    if near != None:
+                        # TODO: прописать другие случаи
+                        self.tg.sendMessage(
+                            tgId,
+                            f"{loc['shedule']['near']}:\n{near}",
+                            reply_markup=Keyboard.menu(),
+                        )
 
                 elif query.text == 'Отмена':
                     # TODO: прописать отмену при отсутствующих группах
@@ -177,14 +187,18 @@ class Bot:
                 reply_markup=Keyboard.cancel(),
             )
 
-    def confirmGroup(self, query: telegram.CallbackQuery, tag: str):
+    def confirmGroup(
+        self, query: telegram.CallbackQuery, tag: str, l9Id: str
+    ):
         """Процесс подтверждения группы и загрузка расписания"""
         tgId = query.from_user.id
         self.answer(query)
         if query.data == 'yes':
             self.edit(query, loc['group']['loading'])
-            self.shedule.loadShedule(
-                tag[5:], query.message.date, config['first_week']
+            self.shedule.loadShedule(tag[5:], query.message.date)
+            self.shedule.db.insert(
+                'groups_users',
+                {'l9Id': l9Id, 'groupId': tag[5:]},
             )
             self.edit(query, loc['group']['loaded'], Keyboard.menu())
             self.tg_db.changeTag(tgId, 'ready')
@@ -203,7 +217,7 @@ if __name__ == "__main__":
     config = loadJSON("config")
     l9lk = L9_DB(**config['sql'])
     tg_db = TG_DB(l9lk)
-    shedule = Shedule_DB(l9lk)
+    shedule = Shedule_DB(l9lk, config['first_week'])
     bot = Bot(
         config['tg']['token'], l9lk, tg_db, shedule, config['tg']['limit']
     )

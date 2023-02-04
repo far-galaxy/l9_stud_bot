@@ -43,7 +43,8 @@ CREATE TABLE IF NOT EXISTS `groups_users` (
 	CONSTRAINT	`gr_gu`		FOREIGN KEY	(`groupId`)		REFERENCES	`groups`	(`groupId`)	ON DELETE CASCADE	ON UPDATE CASCADE,
 	CONSTRAINT	`l9_gu`		FOREIGN KEY	(`l9Id`)		REFERENCES	`users`		(`l9Id`)	ON DELETE CASCADE	ON UPDATE CASCADE
 	);
-	
+
+
 -- Преподаватели
 CREATE TABLE IF NOT EXISTS `teachers` (
 	`teacherId`	bigint		NOT NULL,
@@ -56,6 +57,7 @@ CREATE TABLE IF NOT EXISTS `teachers` (
 
 	PRIMARY KEY				(`teacherId`)
 	);
+
 
 -- Занятия
 CREATE TABLE IF NOT EXISTS `lessons` (
@@ -73,10 +75,15 @@ CREATE TABLE IF NOT EXISTS `lessons` (
 	-- '0' - занятие НЕ отменено
 	-- '`l9Id`' - занятие отменено пользователем
 	
-	`migrated`	bigint		DEFAULT		'0',
-	-- Отметка, является ли занятие перенесённым
+	`migratedTo`	bigint		DEFAULT		'0',
+	-- Отметка, является ли занятие перенесённым КУДА-ТО
 	-- '0' - занятие НЕ перенесено
 	-- '`lessonId`' - занятие перенесено на другое время
+	
+	`migratedFrom`	bigint		DEFAULT		'0',
+	-- Отметка, является ли занятие перенесённым ОТКУДА-ТО
+	-- '0' - занятие НЕ перенесено
+	-- '`lessonId`' - занятие перенесено c другой пары
 
 	`numInDay`	int 		DEFAULT		'1',
 	-- Порядковый номер занятия в текущем дне

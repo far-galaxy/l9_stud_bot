@@ -42,8 +42,8 @@ class Database:
         """
 
         with open(f'database/{filename}.sql', encoding='utf-8') as f:
-            query = f.read()
-            return self.execute(query, commit).fetchall()
+            query = f.read().split('\n\n\n')
+            return [self.execute(i, commit) for i in query]
 
     def initDatabase(self, name: str):
         """Создать базу данных, если таковая отсутствует,

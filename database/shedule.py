@@ -8,9 +8,10 @@ import datetime
 class Shedule_DB:
     """Класс взаимодействия с базой расписания"""
 
-    def __init__(self, l9lk: L9_DB):
+    def __init__(self, l9lk: L9_DB, first_week):
         self.l9lk = l9lk
         self.db = l9lk.db
+        self.first_week = first_week
         self.db.executeFile('shedule')
 
     def checkGroupExists(self, groupName: str, l9Id: str) -> str:
@@ -62,8 +63,9 @@ class Shedule_DB:
             else:
                 return 'Empty'
 
-    def loadShedule(self, groupId, date, first_week):
-        week = date.isocalendar()[1] - first_week
+    def loadShedule(self, groupId: str, date: datetime.datetime):
+        """Загрузка расписания"""
+        week = date.isocalendar()[1] - self.first_week
 
         self.db.execute(
             f'DELETE FROM `lessons` WHERE WEEK(`begin`, 1) = {date.isocalendar()[1]} AND groupId = {groupId};'
@@ -81,3 +83,97 @@ class Shedule_DB:
 
         for l in lessons:
             self.l9lk.db.insert('lessons', l)
+
+    def getGroups(self, l9Id: str):
+        groups = self.db.execute(
+            (
+                f'SELECT g.groupId, groupName FROM '
+                f'`groups_users` AS gu JOIN `groups` AS g '
+                'ON gu.groupId=g.groupId WHERE '
+                f'l9Id = {l9Id}'
+            )
+        ).fetchall()
+
+        return groups if groups != [] else None
+
+    def getLesson(self, lessonId):
+        icons = {'other': '📙', 'lect': '📗', 'lab': '📘', 'pract': '📕'}
+
+        lesson = self.db.get('lessons', f'lessonId = {lessonId}')
+
+        if lesson != []:
+            lesson = lesson[0]
+
+            teacher = None
+            if lesson[12] != None:
+                teacher = self.db.get(
+                    'teachers', f'teacherId = {lesson[12]}'
+                )
+
+            if teacher != None and teacher != []:
+                info = teacher[0]
+                teacher = f"{info[1]} {info[2][0]}.{info[3][0]}."
+
+            json_lesson = {
+                'numInDay': lesson[5],
+                'type': icons[lesson[7]],
+                'name': lesson[8],
+                'place': lesson[13],
+                'teacher': teacher,
+                'add_info': lesson[14],
+                'begin': lesson[10],
+                'end': lesson[11],
+            }
+
+            return json_lesson
+
+        else:
+            return {'empty'}
+
+    def strLesson(self, lessonIds):
+        lesson = [self.getLesson(i) for i in lessonIds]
+        begin = lesson[0]['begin']
+        end = lesson[0]['end']
+        text = "\n📆  %02i:%02i - %02i:%02i" % (
+            begin.hour,
+            begin.minute,
+            end.hour,
+            end.minute,
+        )
+
+        for l in lesson:
+            add_info = "" if l['add_info'] == None else "\n" + l['add_info']
+            teacher = "" if l['teacher'] == None else "\n👤  " + l['teacher']
+            place = "" if l['place'] == None else f"\n🧭 {l['place']}"
+            text += f"\n{l['type']} {l['name']}{place}{teacher}{add_info}\n"
+        return text
+
+    def nearLesson(self, date: datetime.datetime, l9Id: str, retry=False):
+        str_time = date.isoformat(sep=' ')
+        groupIds = self.getGroups(l9Id)
+
+        if groupIds != None:
+            second_gr = (
+                f' OR groupId = {groupIds[1][0]}'
+                if len(groupIds) == 2
+                else ''
+            )
+            lessonId = self.db.get(
+                'lessons',
+                f"(groupId = {groupIds[0][0]}{second_gr}) AND `end` > '{str_time}' "
+                'ORDER BY `begin` LIMIT 2',
+                ['lessonId, begin'],
+            )
+
+            if lessonId != []:
+                if len(lessonId) == 2 and lessonId[0][1] == lessonId[1][1]:
+                    return self.strLesson([lessonId[0][0], lessonId[1][0]])
+                else:
+                    return self.strLesson([lessonId[0][0]])
+
+            elif not retry:
+                for groupId in [i for i in groupIds if i[0] > 1000]:
+                    self.loadShedule(
+                        groupId[0], date + datetime.timedelta(days=7)
+                    )
+                return self.nearLesson(date, l9Id, retry=True)
