@@ -2,3 +2,4 @@ __pycache__
 config.json
 logs
 *.wpr
+*test.py

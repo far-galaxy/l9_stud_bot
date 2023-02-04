@@ -136,3 +136,72 @@ class Database:
             return str(someID)
         else:
             self.newID()
+
+    def checkTables(self, file: str):
+        """Проверка текущей структуры таблиц с файлом"""
+
+        actual_tables = {}
+        with open(f'{file}.sql', encoding='utf-8') as actual:
+            table = []
+            last_table = None
+            for line in actual:
+                if 'CREATE TABLE' in line:
+                    if last_table != None:
+                        actual_tables[last_table] = table
+                        table = []
+                    last_table = line.split()[-2].replace('`', '')
+                elif not '--' in line and ');' not in line:
+                    string = line.replace('\n', '').replace(
+                        'NOT NULL', 'N_N'
+                    )
+                    string = string.split('\t')
+                    string = [i for i in string if i != '']
+                    if string != []:
+                        table.append(string)
+
+            # Не теряем последнюю таблицу
+            actual_tables[last_table] = table
+
+        old_tables = self.execute(f'SHOW TABLES').fetchall()
+        old_tables = [i[0] for i in old_tables]
+
+        for act_table in actual_tables:
+            if act_table not in old_tables:
+                lines = "\n".join(
+                    [" ".join(i) for i in actual_tables[act_table]]
+                )
+                self.execute(f'CREATE TABLE `{act_table}` ({lines})')
+            """
+            else:
+                dump = self.execute(
+                    f'SHOW CREATE TABLE `{act_table}`'
+                ).fetchall()
+                dump = dump[0][1].replace('NOT NULL', 'N_N')
+                dump = dump.split('\n')
+                old_rows = [
+                    i.split()
+                    for i in dump
+                    if (
+                        ('PRIMARY KEY' not in i)
+                        and ('CONSTRAINT' not in i)
+                        and ('CREATE' not in i)
+                        and ('ENGINE' not in i)
+                    )
+                ]
+
+                # Корректируем имеющиеся столбцы
+                for act_row in actual_tables[act_table]:
+                    rows = [i[0] for i in old_rows]
+                    if (
+                        act_row[0] in rows
+                        and act_row != old_rows[rows.index(act_row[0])]
+                    ):
+                        line = (
+                            " ".join(act_row)
+                            .replace('N_N', 'NOT NULL')
+                            .replace(',', '')
+                        )
+                        self.execute(
+                            f'ALTER TABLE `{act_table}` MODIFY COLUMN {line}'
+                        )
+                        """
