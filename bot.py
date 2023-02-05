@@ -2,11 +2,13 @@ from database.l9 import L9_DB
 from database.tg import TG_DB
 from database.shedule import Shedule_DB
 from utils.config import *
+from utils.stuff import *
 import telegram
 from tg.keyboards import Keyboard
 import logging
 from logging.handlers import TimedRotatingFileHandler as TRFL
 import configparser
+import datetime
 
 logger = logging.getLogger('bot')
 
@@ -97,12 +99,45 @@ class Bot:
                     self.addGroup(l9Id, query)
 
                 elif query.text == 'Главное меню':
-                    near = self.shedule.nearLesson(query.date, l9Id)
-                    if near != None:
-                        # TODO: прописать другие случаи
+                    now = query.date
+                    # now = datetime.datetime(2023, 2, 6, 14, 0)
+                    pairs = self.shedule.nearLesson(now, l9Id)
+                    if pairs != None:
+                        pair = pairs[0][0][1]
+                        if pair.date() > now.date():
+                            text = loc['shedule']['next_days']
+                            day = datetime.timedelta(days=1)
+                            if pair.date() - now.date() == day:
+                                text += f" {loc['shedule']['tomorrow']}:\n"
+                            else:
+                                text += (
+                                    f' {pair.day} {month[pair.month-1]}:\n'
+                                )
+                        elif pair.time() > now.time():
+                            text = f"{loc['shedule']['today']}:\n"
+                        else:
+                            text = f"{loc['shedule']['now']}:\n"
+                        text += self.shedule.strLesson(
+                            [p[0] for p in pairs[0]]
+                        )
+
+                        if len(pairs) == 2 and pair.date() == now.date():
+                            text += f"\n{loc['shedule']['next']}:\n"
+                            text += self.shedule.strLesson(
+                                [p[0] for p in pairs[1]]
+                            )
+                        elif pair.date() == now.date():
+                            text += f"\n{loc['shedule']['next_empty']}"
+                        # TODO: Добавить смайликов
                         self.tg.sendMessage(
                             tgId,
-                            f"{loc['shedule']['near']}:\n{near}",
+                            text,
+                            reply_markup=Keyboard.menu(),
+                        )
+                    else:
+                        self.tg.sendMessage(
+                            tgId,
+                            loc['shedule']['no_shedule'],
                             reply_markup=Keyboard.menu(),
                         )
 

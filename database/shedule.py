@@ -3,6 +3,7 @@ from .a_ssau_parser import *
 import telegram
 from configparser import ConfigParser
 import datetime
+from itertools import groupby
 
 
 class Shedule_DB:
@@ -161,15 +162,32 @@ class Shedule_DB:
             lessonId = self.db.get(
                 'lessons',
                 f"(groupId = {groupIds[0][0]}{second_gr}) AND `end` > '{str_time}' "
-                'ORDER BY `begin` LIMIT 2',
-                ['lessonId, begin'],
+                'ORDER BY `begin` LIMIT 4',
+                ['lessonId', 'begin'],
             )
 
             if lessonId != []:
-                if len(lessonId) == 2 and lessonId[0][1] == lessonId[1][1]:
-                    return self.strLesson([lessonId[0][0], lessonId[1][0]])
+                if len(lessonId) >= 2:
+                    pairs = [
+                        list(pair)
+                        for begin, pair in groupby(
+                            lessonId, key=lambda d: d[1]
+                        )
+                    ]
+                    if (
+                        len(pairs) >= 2
+                        and pairs[0][0][1].date() != pairs[1][0][1].date()
+                    ):
+                        pairs = [pairs[0]]
+                    elif (
+                        len(pairs) > 2
+                        and pairs[0][0][1].date() == pairs[1][0][1].date()
+                    ):
+                        pairs = pairs[:2]
                 else:
-                    return self.strLesson([lessonId[0][0]])
+                    pairs = [lessonId[0]]
+
+                return pairs
 
             elif not retry:
                 for groupId in [i for i in groupIds if i[0] > 1000]:
