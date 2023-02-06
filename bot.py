@@ -95,6 +95,22 @@ class Bot:
                 if tag == 'not_started':
                     self.start(query)
 
+                elif query.text == 'Отмена':
+                    if self.shedule.getGroups(l9Id) != None:
+                        self.tg_db.changeTag(tgId, 'ready')
+                        self.tg.sendMessage(
+                            tgId,
+                            loc['etc']['cancel'],
+                            reply_markup=Keyboard.menu(),
+                        )
+                    else:
+                        self.tg_db.changeTag(tgId, 'add')
+                        self.tg.sendMessage(
+                            tgId,
+                            loc['etc']['need_group'],
+                            reply_markup=Keyboard.menu(),
+                        )
+
                 elif tag == 'add':
                     self.addGroup(l9Id, query)
 
@@ -140,15 +156,6 @@ class Bot:
                             loc['shedule']['no_shedule'],
                             reply_markup=Keyboard.menu(),
                         )
-
-                elif query.text == 'Отмена':
-                    # TODO: прописать отмену при отсутствующих группах
-                    self.tg_db.changeTag(tgId, 'ready')
-                    self.tg.sendMessage(
-                        tgId,
-                        loc['etc']['cancel'],
-                        reply_markup=Keyboard.menu(),
-                    )
 
                 else:
                     self.tg.sendMessage(
