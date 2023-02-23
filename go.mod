@@ -10,6 +10,12 @@ require (
 )
 
 require (
+	github.com/andybalholm/cascadia v1.3.1 // indirect
+	golang.org/x/net v0.7.0 // indirect
+)
+
+require (
+	github.com/PuerkitoBio/goquery v1.8.1
 	github.com/goccy/go-json v0.8.1 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
