@@ -26,7 +26,7 @@ func TestConnect(t *testing.T) {
 }
 
 func TestParse(t *testing.T) {
-	list, err := FindInRasp("2405")
+	list, err := FindInRasp("2207")
 	if err != nil {
 		t.Error(err)
 	}
@@ -35,5 +35,8 @@ func TestParse(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	Parse(doc)
+	_, err = Parse(doc)
+	if err != nil {
+		t.Error(err)
+	}
 }
