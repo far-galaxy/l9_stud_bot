@@ -49,5 +49,8 @@ func TestParse(t *testing.T) {
 	}
 
 	engine := database.Connect(os.Getenv("MYSQL_USER"), os.Getenv("MYSQL_PASS"), os.Getenv("MYSQL_DB"))
-	uploadShedule(engine, *shedule)
+	err = uploadShedule(engine, *shedule)
+	if err != nil {
+		t.Error(err)
+	}
 }
