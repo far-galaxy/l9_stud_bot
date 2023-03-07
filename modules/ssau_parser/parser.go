@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -84,24 +85,36 @@ func FindInRasp(query string) (RaspItems, error) {
 	return list, nil
 }
 
-func Connect(uri string, week int) (*goquery.Document, error) {
+// Connect to ssau.ru/rasp
+// Returns goquery.Document, is shedule a group shedule and its ID
+func Connect(uri string, week int) (*goquery.Document, bool, int64, error) {
 	client := http.Client{}
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://ssau.ru%s&selectedWeek=%d", uri, week), nil)
 	if err != nil {
-		return nil, err
+		return nil, false, 0, err
 	}
 	req.Header.Add("User-Agent", "Mozilla/5.0")
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, false, 0, err
 	}
 
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, false, 0, err
 	}
 
-	return doc, nil
+	var sheduleId int64
+	var isGroup bool
+
+	sheduleId, err = strconv.ParseInt(uri[14:], 0, 64)
+	if err != nil {
+		return nil, false, 0, err
+	}
+
+	isGroup = strings.Contains(uri, "group")
+
+	return doc, isGroup, sheduleId, nil
 }

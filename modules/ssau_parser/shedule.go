@@ -19,18 +19,22 @@ type SubLesson struct {
 	Type      string
 	Name      string
 	Place     string
-	TeacherID int64
+	TeacherId int64
+	GroupId   []int64
 	Comment   string
 	SubGroup  string
 }
 
 type Shedule struct {
-	SpecName string
-	Week     int
-	Lessons  [][]Lesson
+	IsGroup   bool
+	SheduleId int64
+	SpecName  string
+	Week      int
+	Lessons   [][]Lesson
 }
 
-func Parse(doc *goquery.Document) (*Shedule, error) {
+// Parse goquery shedule site
+func Parse(doc *goquery.Document, isGroup bool, sheduleId int64) (*Shedule, error) {
 	spec := doc.Find(".info-block__description div").First().Text()[1:]
 	log.Println(spec)
 
@@ -48,7 +52,7 @@ func Parse(doc *goquery.Document) (*Shedule, error) {
 
 	var lessons [][]SubLesson
 	doc.Find(".schedule__item:not(.schedule__head)").Each(func(i int, s *goquery.Selection) {
-		sl := ParseSubLesson(s)
+		sl := ParseSubLesson(s, isGroup, sheduleId)
 		lessons = append(lessons, sl)
 	})
 
@@ -82,7 +86,8 @@ func Parse(doc *goquery.Document) (*Shedule, error) {
 
 var types = [4]string{"lect", "lab", "pract", "other"}
 
-func ParseSubLesson(s *goquery.Selection) []SubLesson {
+// Parse shedule item
+func ParseSubLesson(s *goquery.Selection, isGroup bool, sheduleId int64) []SubLesson {
 	var subs []SubLesson
 	s.Find(".schedule__lesson").Each(func(j int, l *goquery.Selection) {
 		var sublesson SubLesson
@@ -98,13 +103,31 @@ func ParseSubLesson(s *goquery.Selection) []SubLesson {
 		}
 		sublesson.Type = types[type_idx-1]
 
-		teacher := l.Find(".schedule__teacher a").AttrOr("href", "/rasp?staffId=")
-		teacherId, err := strconv.ParseInt(teacher[14:], 0, 64)
-		if err != nil {
-			teacherId = 0
-		}
-		sublesson.TeacherID = teacherId
+		var teacherId int64
+		var groupId []int64
 
+		if isGroup {
+			teacher := l.Find(".schedule__teacher a").AttrOr("href", "/rasp?staffId=")
+			teacherId, err = strconv.ParseInt(teacher[14:], 0, 64)
+			if err != nil {
+				teacherId = 0
+			}
+			groupId = append(groupId, sheduleId)
+		} else {
+			teacherId = sheduleId
+			l.Find("a.schedule__group").Each(func(k int, gr *goquery.Selection) {
+				id, err := strconv.ParseInt(gr.AttrOr("href", "/rasp?groupId=")[14:], 0, 64)
+				if err != nil {
+					teacherId = 0
+				}
+				groupId = append(groupId, id)
+			})
+		}
+		sublesson.TeacherId = teacherId
+		sublesson.GroupId = groupId
+
+		// Я в рот ебал парсить это расписание, потому что у преподов решили номера подгрупп пихать
+		// в ссылки на группу, а не в предназначенный для этого элемент
 		subgroup := l.Find(".schedule__groups span").First().Text()
 		if subgroup == "  " {
 			subgroup = ""

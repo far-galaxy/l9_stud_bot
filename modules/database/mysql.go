@@ -18,7 +18,7 @@ func Connect(user, pass, db string) *xorm.Engine {
 	engine.ShowSQL(true)
 	engine.SetMapper(names.SameMapper{})
 
-	err = engine.Sync(&User{}, &TgUser{})
+	err = engine.Sync(&User{}, &TgUser{}, &Group{}, &Lesson{})
 	if err != nil {
 		log.Fatal(err)
 	}

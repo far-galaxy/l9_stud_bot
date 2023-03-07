@@ -1,5 +1,7 @@
 package database
 
+import "time"
+
 type User struct {
 	L9Id int64 `xorm:"pk"`
 }
@@ -9,4 +11,23 @@ type TgUser struct {
 	TgId   int64
 	Name   string
 	PosTag string
+}
+
+type Group struct {
+	GroupId   int64 `xorm:"pk"`
+	groupName string
+	specName  string
+}
+
+type Lesson struct {
+	LessonId  int64 `xorm:"pk autoincr"`
+	Type      string
+	Name      string
+	GroupId   int64
+	Begin     time.Time
+	End       time.Time
+	TeacherId int64
+	Place     string
+	Comment   string
+	SubGroup  string
 }
