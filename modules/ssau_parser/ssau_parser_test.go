@@ -30,16 +30,17 @@ func TestConnect(t *testing.T) {
 }
 
 func TestParse(t *testing.T) {
-	list, err := FindInRasp("2207")
+	list, err := FindInRasp("2305")
 	if err != nil {
 		t.Error(err)
 	}
+	week := 5
 	uri := list[0].Url
-	doc, is, gr, err := Connect(uri, 5)
+	doc, is, gr, err := Connect(uri, week)
 	if err != nil {
 		t.Error(err)
 	}
-	shedule, err := Parse(doc, is, gr)
+	shedule, err := Parse(doc, is, gr, week)
 	if err != nil {
 		t.Error(err)
 	}
@@ -49,6 +50,9 @@ func TestParse(t *testing.T) {
 	}
 
 	engine, err := database.Connect(os.Getenv("MYSQL_USER"), os.Getenv("MYSQL_PASS"), os.Getenv("MYSQL_DB"))
+	if err != nil {
+		t.Error(err)
+	}
 	err = uploadShedule(engine, *shedule)
 	if err != nil {
 		t.Error(err)

@@ -1,7 +1,6 @@
 package ssau_parser
 
 import (
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -28,15 +27,21 @@ type SubLesson struct {
 type Shedule struct {
 	IsGroup   bool
 	SheduleId int64
+	GroupName string
 	SpecName  string
 	Week      int
 	Lessons   [][]Lesson
 }
 
+func GetSheduleInfo(doc *goquery.Document, sh *Shedule) {
+	sh.SpecName = doc.Find(".info-block__description div").First().Text()[1:]
+	sh.GroupName = doc.Find(".info-block__title").First().Text()[1:]
+}
+
 // Parse goquery shedule site
-func Parse(doc *goquery.Document, isGroup bool, sheduleId int64) (*Shedule, error) {
-	spec := doc.Find(".info-block__description div").First().Text()[1:]
-	log.Println(spec)
+func Parse(doc *goquery.Document, isGroup bool, sheduleId int64, week int) (*Shedule, error) {
+	var sh Shedule
+	GetSheduleInfo(doc, &sh)
 
 	var raw_dates []string
 	doc.Find(".schedule__head-date").Each(func(i int, s *goquery.Selection) {
@@ -81,7 +86,11 @@ func Parse(doc *goquery.Document, isGroup bool, sheduleId int64) (*Shedule, erro
 		}
 		shedule = append(shedule, time_line)
 	}
-	return &Shedule{SpecName: spec, Lessons: shedule}, nil
+	sh.IsGroup = isGroup
+	sh.SheduleId = sheduleId
+	sh.Week = week
+	sh.Lessons = shedule
+	return &sh, nil
 }
 
 var types = [4]string{"lect", "lab", "pract", "other"}

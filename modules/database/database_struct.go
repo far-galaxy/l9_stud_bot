@@ -15,8 +15,16 @@ type TgUser struct {
 
 type Group struct {
 	GroupId   int64 `xorm:"pk"`
-	groupName string
-	specName  string
+	GroupName string
+	SpecName  string
+}
+
+type Teacher struct {
+	TeacherId int64 `xorm:"pk"`
+	LastName  string
+	FirstName string
+	MidName   string
+	SpecName  string
 }
 
 type Lesson struct {
