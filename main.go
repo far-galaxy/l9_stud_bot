@@ -14,7 +14,10 @@ func main() {
 		log.Fatal("No .env file found")
 	}
 
-	engine := database.Connect(os.Getenv("MYSQL_USER"), os.Getenv("MYSQL_PASS"), os.Getenv("MYSQL_DB"))
+	engine, err := database.Connect(os.Getenv("MYSQL_USER"), os.Getenv("MYSQL_PASS"), os.Getenv("MYSQL_DB"))
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	bot := new(tg.Bot)
 	bot.InitBot(os.Getenv("TELEGRAM_APITOKEN"), *engine)
@@ -25,7 +28,10 @@ func main() {
 		if update.Message != nil {
 			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 
-			tg_user := bot.InitUser(update.Message)
+			tg_user, err := bot.InitUser(update.Message)
+			if err != nil {
+				log.Fatal(err)
+			}
 
 			if tg_user.PosTag == "not_started" {
 				bot.Start()

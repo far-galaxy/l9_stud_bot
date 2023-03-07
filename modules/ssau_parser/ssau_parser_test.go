@@ -48,7 +48,7 @@ func TestParse(t *testing.T) {
 		log.Fatal("No .env file found")
 	}
 
-	engine := database.Connect(os.Getenv("MYSQL_USER"), os.Getenv("MYSQL_PASS"), os.Getenv("MYSQL_DB"))
+	engine, err := database.Connect(os.Getenv("MYSQL_USER"), os.Getenv("MYSQL_PASS"), os.Getenv("MYSQL_DB"))
 	err = uploadShedule(engine, *shedule)
 	if err != nil {
 		t.Error(err)

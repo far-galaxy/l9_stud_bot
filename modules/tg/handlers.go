@@ -7,7 +7,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func (bot *Bot) InitUser(msg *tgbotapi.Message) *database.TgUser {
+func (bot *Bot) InitUser(msg *tgbotapi.Message) (*database.TgUser, error) {
 	db := &bot.DB
 	var users []database.TgUser
 	err := db.Find(&users, &database.TgUser{TgId: msg.Chat.ID})
@@ -17,7 +17,10 @@ func (bot *Bot) InitUser(msg *tgbotapi.Message) *database.TgUser {
 
 	var tg_user database.TgUser
 	if len(users) == 0 {
-		l9id := database.GenerateID(db)
+		l9id, err := database.GenerateID(db)
+		if err != nil {
+			return nil, err
+		}
 
 		user := database.User{
 			L9Id: l9id,
@@ -29,19 +32,19 @@ func (bot *Bot) InitUser(msg *tgbotapi.Message) *database.TgUser {
 			TgId:   msg.Chat.ID,
 			PosTag: "not_started",
 		}
-		_, err := db.Insert(user, tg_user)
+		_, err = db.Insert(user, tg_user)
 		if err != nil {
-			log.Fatal(err)
+			return nil, err
 		}
 	} else {
 		tg_user = users[0]
 	}
 	bot.TG_user = tg_user
-	return &tg_user
+	return &tg_user, nil
 }
 
 func (bot *Bot) Start() {
-	bot.TG_user.PosTag = "started"
+	bot.TG_user.PosTag = "add"
 	_, err := bot.DB.Update(bot.TG_user)
 	if err != nil {
 		log.Fatal(err)

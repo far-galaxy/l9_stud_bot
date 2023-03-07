@@ -1,7 +1,6 @@
 package database
 
 import (
-	"log"
 	"math/rand"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -9,10 +8,10 @@ import (
 	"xorm.io/xorm/names"
 )
 
-func Connect(user, pass, db string) *xorm.Engine {
+func Connect(user, pass, db string) (*xorm.Engine, error) {
 	engine, err := xorm.NewEngine("mysql", user+":"+pass+"@tcp(localhost:3306)/"+db+"?charset=utf8")
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	engine.ShowSQL(true)
@@ -20,22 +19,22 @@ func Connect(user, pass, db string) *xorm.Engine {
 
 	err = engine.Sync(&User{}, &TgUser{}, &Group{}, &Lesson{})
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
-	return engine
+	return engine, nil
 }
 
-func GenerateID(engine *xorm.Engine) int64 {
+func GenerateID(engine *xorm.Engine) (int64, error) {
 	id := rand.Int63n(899999999) + 100000000
 
 	exists, err := engine.ID(id).Exist(&User{})
 	if err != nil {
-		log.Fatal(err)
+		return 0, err
 	}
 
 	if exists {
 		return GenerateID(engine)
 	} else {
-		return id
+		return id, nil
 	}
 }
