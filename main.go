@@ -35,6 +35,8 @@ func main() {
 
 			if tg_user.PosTag == "not_started" {
 				bot.Start()
+			} else if tg_user.PosTag == "add" {
+				bot.Find(update.Message.Text)
 			} else {
 				bot.Etc()
 			}
