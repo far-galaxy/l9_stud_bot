@@ -14,17 +14,18 @@ type Bot struct {
 	TG_user database.TgUser
 }
 
-func (bot *Bot) InitBot(token string, engine xorm.Engine) {
+func (bot *Bot) InitBot(token string, engine xorm.Engine) error {
 	var err error
 	bot.TG, err = tgbotapi.NewBotAPI(token)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	bot.TG.Debug = true
 
 	bot.DB = engine
 
 	log.Printf("Authorized on account %s", bot.TG.Self.UserName)
+	return nil
 }
 
 func (bot *Bot) GetUpdates() *tgbotapi.UpdatesChannel {

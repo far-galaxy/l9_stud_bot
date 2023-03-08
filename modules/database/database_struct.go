@@ -13,6 +13,13 @@ type TgUser struct {
 	PosTag string
 }
 
+type ShedulesInUser struct {
+	UID       int64 `xorm:"pk"`
+	L9Id      int64
+	IsTeacher bool
+	SheduleId int64
+}
+
 type Group struct {
 	GroupId   int64 `xorm:"pk"`
 	GroupName string

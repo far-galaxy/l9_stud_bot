@@ -37,7 +37,7 @@ func GenerateKeyboard(array []tgbotapi.InlineKeyboardButton, query string) tgbot
 		}
 	}
 	markup = append(markup, keys)
-	no_one := tgbotapi.NewInlineKeyboardButtonData("No one", "no_one_"+query)
+	no_one := tgbotapi.NewInlineKeyboardButtonData("Отмена", "cancel")
 	markup = append(markup, []tgbotapi.InlineKeyboardButton{no_one})
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: markup}
 }
