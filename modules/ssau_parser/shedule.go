@@ -76,7 +76,7 @@ func Parse(doc *goquery.Document, isGroup bool, sheduleId int64, week int) (*She
 			if err != nil {
 				return nil, err
 			}
-			idx := (len(raw_times)-2)*t/2 + d
+			idx := (len(raw_times)/2+1)*t/2 + d
 			lesson := Lesson{
 				Begin:      begin,
 				End:        end,

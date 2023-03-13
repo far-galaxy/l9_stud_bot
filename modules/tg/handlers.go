@@ -127,11 +127,11 @@ func (bot *Bot) Find(query string) error {
 	return err
 }
 
-func (bot *Bot) Confirm(query *tgbotapi.CallbackQuery) {
+func (bot *Bot) Confirm(query *tgbotapi.CallbackQuery) error {
 	isGroup := bot.TG_user.PosTag == "confirm_group"
 	groupId, err := strconv.ParseInt(query.Data, 0, 64)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	var groups []database.ShedulesInUser
 	err = bot.DB.Find(&groups, &database.ShedulesInUser{
@@ -140,7 +140,7 @@ func (bot *Bot) Confirm(query *tgbotapi.CallbackQuery) {
 		IsTeacher: !isGroup,
 	})
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	if len(groups) == 0 {
 		shInUser := database.ShedulesInUser{
@@ -151,10 +151,15 @@ func (bot *Bot) Confirm(query *tgbotapi.CallbackQuery) {
 		bot.DB.InsertOne(shInUser)
 		bot.DeleteMsg(query)
 		msg := tgbotapi.NewMessage(bot.TG_user.TgId, "Подключено!")
+		keyboard := tgbotapi.NewReplyKeyboard([]tgbotapi.KeyboardButton{tgbotapi.NewKeyboardButton("Главное меню")})
+		msg.ReplyMarkup = keyboard
 		bot.TG.Send(msg)
 
 		bot.TG_user.PosTag = "ready"
-		bot.DB.Update(bot.TG_user)
+		err = bot.UpdateUserDB()
+		if err != nil {
+			return err
+		}
 	} else {
 		var msg string
 		if isGroup {
@@ -165,9 +170,10 @@ func (bot *Bot) Confirm(query *tgbotapi.CallbackQuery) {
 		callback := tgbotapi.NewCallback(query.ID, msg)
 		bot.TG.Request(callback)
 	}
+	return nil
 }
 
-func (bot *Bot) Cancel(query *tgbotapi.CallbackQuery) {
+func (bot *Bot) Cancel(query *tgbotapi.CallbackQuery) error {
 	shedules, err := bot.DB.Count(&database.ShedulesInUser{
 		L9Id: bot.TG_user.L9Id,
 	})
@@ -176,7 +182,10 @@ func (bot *Bot) Cancel(query *tgbotapi.CallbackQuery) {
 	}
 	if shedules == 0 {
 		bot.TG_user.PosTag = "add"
-		bot.DB.Update(bot.TG_user)
+		err = bot.UpdateUserDB()
+		if err != nil {
+			return err
+		}
 		bot.DeleteMsg(query)
 		msg := tgbotapi.NewMessage(
 			bot.TG_user.TgId,
@@ -185,8 +194,13 @@ func (bot *Bot) Cancel(query *tgbotapi.CallbackQuery) {
 		bot.TG.Send(msg)
 	} else {
 		bot.TG_user.PosTag = "ready"
+		err = bot.UpdateUserDB()
+		if err != nil {
+			return err
+		}
 		bot.DeleteMsg(query)
 	}
+	return nil
 }
 
 func (bot *Bot) Etc() {

@@ -42,6 +42,8 @@ func main() {
 				bot.Start()
 			} else if tg_user.PosTag == "add" {
 				bot.Find(msg.Text)
+			} else if msg.Text == "Главное меню" {
+				bot.GetSummary()
 			} else {
 				bot.Etc()
 			}

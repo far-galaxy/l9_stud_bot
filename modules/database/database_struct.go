@@ -14,7 +14,7 @@ type TgUser struct {
 }
 
 type ShedulesInUser struct {
-	UID       int64 `xorm:"pk"`
+	UID       int64 `xorm:"pk autoincr"` // Не забывать про автоинкремент!!!
 	L9Id      int64
 	IsTeacher bool
 	SheduleId int64
