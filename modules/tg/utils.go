@@ -41,3 +41,8 @@ func GenerateKeyboard(array []tgbotapi.InlineKeyboardButton, query string) tgbot
 	markup = append(markup, []tgbotapi.InlineKeyboardButton{no_one})
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: markup}
 }
+
+func (bot *Bot) DeleteMsg(query *tgbotapi.CallbackQuery) {
+	delete := tgbotapi.NewDeleteMessage(query.From.ID, query.Message.MessageID)
+	bot.TG.Request(delete)
+}

@@ -57,8 +57,10 @@ func main() {
 				log.Fatal(err)
 			}
 
-			if strings.Contains(tg_user.PosTag, "confirm") {
-				bot.Confirm(query, tg_user, tg_user.PosTag == "confirm_group")
+			if query.Data == "cancel" {
+				bot.Cancel(query)
+			} else if strings.Contains(tg_user.PosTag, "confirm") {
+				bot.Confirm(query)
 			}
 		}
 	}
