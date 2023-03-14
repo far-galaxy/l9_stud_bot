@@ -13,12 +13,17 @@ import (
 )
 
 func (bot *Bot) GetSummary() {
-	now := time.Now()
+	now := time.Now().Add(time.Hour * time.Duration(5))
 	log.Println(now.Format("01-02-2006 15:04:05 -07"), now.Format("01-02-2006 15:04:05"))
 
 	var lessons []database.Lesson
 	var shedules []database.ShedulesInUser
 	bot.DB.ID(bot.TG_user.L9Id).Find(&shedules)
+
+	if len(shedules) == 0 {
+		bot.Etc()
+		return
+	}
 
 	var groups []string
 	var teachers []string
@@ -31,12 +36,22 @@ func (bot *Bot) GetSummary() {
 		}
 	}
 
-	teachers_str := strings.Join(teachers, ",")
-	groups_str := strings.Join(groups, ",")
+	var condition, teachers_str, groups_str string
+	if len(groups) > 0 {
+		groups_str = strings.Join(groups, ",")
+		condition = "groupId in (" + groups_str + ") "
+	}
+	if len(teachers) > 0 {
+		if len(condition) > 0 {
+			condition += " or "
+		}
+		teachers_str += strings.Join(teachers, ",")
+		condition += "teacherId in (" + teachers_str + ") "
+	}
 
 	bot.DB.
 		Where("end > ?", now.Format("2006-01-02 15:04:05")).
-		And("groupId in (?) or teacherId in (?)", groups_str, teachers_str).
+		And(condition).
 		OrderBy("begin").
 		Limit(16).
 		Find(&lessons)
@@ -122,7 +137,7 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine) (string, error) {
 	endStr := pair[0].End.Format("15:04")
 	str = fmt.Sprintf("📆 %s - %s\n", beginStr, endStr)
 
-	for _, sublesson := range pair {
+	for i, sublesson := range pair {
 		var type_emoji string
 		switch sublesson.Type {
 		case "lect":
@@ -138,7 +153,7 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine) (string, error) {
 		}
 		str += fmt.Sprintf("%s%s\n", type_emoji, sublesson.Name)
 		if sublesson.Place != "" {
-			str += fmt.Sprintf("🧭%s\n", sublesson.Place)
+			str += fmt.Sprintf("🧭 %s\n", sublesson.Place)
 		}
 		if sublesson.TeacherId != 0 {
 			var t database.Teacher
@@ -147,19 +162,19 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine) (string, error) {
 				return "", err
 			}
 			name := fmt.Sprintf("%s %s.%s.", t.LastName, t.FirstName[0:2], t.MidName[0:2])
-			str += fmt.Sprintf("👤%s\n", name)
+			str += fmt.Sprintf("👤 %s\n", name)
 		}
 		if sublesson.SubGroup != "" {
-			str += fmt.Sprintf("👥%s\n", sublesson.SubGroup)
+			str += fmt.Sprintf("👥 %s\n", sublesson.SubGroup)
 		}
 		if sublesson.Comment != "" {
-			str += fmt.Sprintf("💬%s\n", sublesson.Comment)
+			str += fmt.Sprintf("💬 %s\n", sublesson.Comment)
 		}
-		if len(pair) > 1 {
+		if i != len(pair)-1 {
 			str += "+\n"
 		}
 	}
 
-	str += "--------------------------------\n"
+	str += "------------------------------------------\n"
 	return str, nil
 }
