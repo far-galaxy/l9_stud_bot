@@ -19,8 +19,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer engine.Close()
 
 	bot := new(tg.Bot)
+	bot.Week = 5
 	err = bot.InitBot(os.Getenv("TELEGRAM_APITOKEN"), *engine)
 	if err != nil {
 		log.Fatal(err)

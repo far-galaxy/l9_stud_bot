@@ -12,7 +12,7 @@ import (
 )
 
 func (bot *Bot) InitUser(id int64, name string) (*database.TgUser, error) {
-	db := &bot.DB
+	db := bot.DB
 	var users []database.TgUser
 	err := db.Find(&users, &database.TgUser{TgId: id})
 	if err != nil {

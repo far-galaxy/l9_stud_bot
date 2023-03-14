@@ -30,7 +30,7 @@ func TestConnect(t *testing.T) {
 }
 
 func TestParse(t *testing.T) {
-	list, err := FindInRasp("2305")
+	list, err := FindInRasp("2108")
 	if err != nil {
 		t.Error(err)
 	}
@@ -53,7 +53,7 @@ func TestParse(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	err = uploadShedule(engine, *shedule)
+	err = UploadShedule(engine, *shedule)
 	if err != nil {
 		t.Error(err)
 	}

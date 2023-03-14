@@ -1,15 +1,15 @@
 package ssau_parser
 
 import (
+	"fmt"
 	"log"
-	"strconv"
 	"strings"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
 	"xorm.io/xorm"
 )
 
-func uploadShedule(db *xorm.Engine, sh Shedule) error {
+func UploadShedule(db *xorm.Engine, sh Shedule) error {
 	err := addGroupOrTeacher(db, sh)
 	if err != nil {
 		return err
@@ -34,7 +34,7 @@ func uploadShedule(db *xorm.Engine, sh Shedule) error {
 				}
 
 				if !exists && subLesson.TeacherId != 0 {
-					uri := "/rasp?staffId=" + strconv.FormatInt(subLesson.TeacherId, 10)
+					uri := GenerateUri(subLesson.TeacherId, true)
 					doc, _, _, err := Connect(uri, sh.Week)
 					if err != nil {
 						return err
@@ -55,7 +55,7 @@ func uploadShedule(db *xorm.Engine, sh Shedule) error {
 					}
 
 					if !exists {
-						uri := "/rasp?groupId=" + strconv.FormatInt(groupId, 10)
+						uri := GenerateUri(subLesson.TeacherId, false)
 						doc, _, _, err := Connect(uri, sh.Week)
 						if err != nil {
 							return err
@@ -83,10 +83,20 @@ func uploadShedule(db *xorm.Engine, sh Shedule) error {
 		}
 	}
 	if len(pairs) > 0 {
-		_, err := db.Insert(pairs)
+		_, err := db.Insert(&pairs)
 		return err
 	}
 	return nil
+}
+
+func GenerateUri(id int64, isTeacher bool) string {
+	var uri string
+	if isTeacher {
+		uri = fmt.Sprintf("/rasp?staffId=%d", id)
+	} else {
+		uri = fmt.Sprintf("/rasp?groupId=%d", id)
+	}
+	return uri
 }
 
 func isGroupExists(db *xorm.Engine, groupId int64) (bool, error) {
@@ -137,7 +147,7 @@ func addGroupOrTeacher(db *xorm.Engine, sh Shedule) error {
 				TeacherId: sh.SheduleId,
 				LastName:  name[0],
 				FirstName: name[1],
-				MidName:   name[2],
+				MidName:   name[2], // Уебать Сасау и придумать что-то с хреново прописанныит преподами
 				SpecName:  sh.SpecName,
 			}
 			db.InsertOne(teacher)

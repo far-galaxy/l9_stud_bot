@@ -10,8 +10,9 @@ import (
 
 type Bot struct {
 	TG      *tgbotapi.BotAPI
-	DB      xorm.Engine
+	DB      *xorm.Engine
 	TG_user database.TgUser
+	Week    int
 }
 
 func (bot *Bot) InitBot(token string, engine xorm.Engine) error {
@@ -22,7 +23,7 @@ func (bot *Bot) InitBot(token string, engine xorm.Engine) error {
 	}
 	bot.TG.Debug = true
 
-	bot.DB = engine
+	bot.DB = &engine
 
 	log.Printf("Authorized on account %s", bot.TG.Self.UserName)
 	return nil

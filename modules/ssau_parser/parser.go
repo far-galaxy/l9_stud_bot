@@ -118,3 +118,9 @@ func Connect(uri string, week int) (*goquery.Document, bool, int64, error) {
 
 	return doc, isGroup, sheduleId, nil
 }
+
+func ConnectById(id int64, isTeacher bool, week int) (*goquery.Document, error) {
+	uri := GenerateUri(id, isTeacher)
+	doc, _, _, err := Connect(uri, week)
+	return doc, err
+}

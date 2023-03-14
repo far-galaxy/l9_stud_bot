@@ -8,11 +8,12 @@ import (
 	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"xorm.io/xorm"
 )
 
-func (bot *Bot) GetSummary() {
+func (bot *Bot) GetSummary(isRetry ...bool) {
 	now := time.Now().Add(time.Hour * time.Duration(5))
 	log.Println(now.Format("01-02-2006 15:04:05 -07"), now.Format("01-02-2006 15:04:05"))
 
@@ -92,6 +93,18 @@ func (bot *Bot) GetSummary() {
 
 		msg := tgbotapi.NewMessage(bot.TG_user.TgId, str)
 		bot.TG.Send(msg)
+	} else if len(isRetry) == 0 {
+		_, week := time.Now().ISOWeek()
+		week -= bot.Week
+		for _, sh := range shedules {
+			doc, err := ssau_parser.ConnectById(sh.SheduleId, sh.IsTeacher, week)
+			shedule, err := ssau_parser.Parse(doc, !sh.IsTeacher, sh.SheduleId, week)
+			err = ssau_parser.UploadShedule(bot.DB, *shedule)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		bot.GetSummary(true)
 	}
 
 }
@@ -101,7 +114,7 @@ func (bot *Bot) GetDayShedule(lessons [][]database.Lesson) (string, error) {
 	day := lessons[0][0].Begin.Day()
 	for _, pair := range lessons {
 		if pair[0].Begin.Day() == day {
-			line, err := PairToStr(pair, &bot.DB)
+			line, err := PairToStr(pair, bot.DB)
 			if err != nil {
 				return "", err
 			}
