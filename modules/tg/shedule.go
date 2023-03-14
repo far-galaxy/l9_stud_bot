@@ -35,53 +35,85 @@ func (bot *Bot) GetSummary() {
 	groups_str := strings.Join(groups, ",")
 
 	bot.DB.
-		Where("begin > ?", now.Format("2006-01-02 15:04:05")).
+		Where("end > ?", now.Format("2006-01-02 15:04:05")).
 		And("groupId in (?) or teacherId in (?)", groups_str, teachers_str).
 		OrderBy("begin").
-		Limit(6).
+		Limit(16).
 		Find(&lessons)
 
 	log.Println(lessons)
 
 	if len(lessons) != 0 {
 		var firstPair, secondPair []database.Lesson
-		l_idx := 0
-		day := lessons[0].Begin
-		// Я хз, надо ли упарываться для случаев с более чем двумя подпарами
-		for lessons[l_idx].Begin == day && l_idx < len(lessons) {
-			firstPair = append(firstPair, lessons[l_idx])
-			l_idx++
-		}
-		if l_idx < len(lessons) {
-			day = lessons[l_idx].Begin
-			for lessons[l_idx].Begin == day && l_idx < len(lessons) {
-				secondPair = append(secondPair, lessons[l_idx])
-				l_idx++
-			}
-		}
+		pairs := GroupPairs(lessons)
+		firstPair = pairs[0]
+		secondPair = pairs[1]
 		log.Println(firstPair, secondPair)
 
 		var str string
-		if firstPair[0].Begin.Day() != time.Now().Day() {
+		if pairs[0][0].Begin.Day() != time.Now().Day() {
 			str = "❗️Сегодня пар нет\nБлижайшие занятия "
 			if time.Until(firstPair[0].Begin).Hours() < 48 {
 				str += "завтра\n"
 			} else {
 				str += fmt.Sprintf("%s\n\n", firstPair[0].Begin.Format("02.01"))
 			}
+			day, _ := bot.GetDayShedule(pairs)
+			str += day
+		} else {
+			str = "Сводка на сегодня\n\n"
+			day, _ := bot.GetDayShedule(pairs)
+			str += day
+			/*
+				firstPairStr, _ := PairToStr(firstPair, &bot.DB)
+				str += firstPairStr
+
+				if len(secondPair) != 0 && firstPair[0].Begin.Day() == secondPair[0].Begin.Day() {
+					secondPairStr, _ := PairToStr(secondPair, &bot.DB)
+					str += "\n--\n" + secondPairStr
+				}
+			*/
 		}
 
-		firstPairStr, _ := PairToStr(firstPair, &bot.DB)
-		str += firstPairStr
-
-		if len(secondPair) != 0 && firstPair[0].Begin.Day() == secondPair[0].Begin.Day() {
-			secondPairStr, _ := PairToStr(secondPair, &bot.DB)
-			str += secondPairStr
-		}
 		msg := tgbotapi.NewMessage(bot.TG_user.TgId, str)
 		bot.TG.Send(msg)
 	}
 
+}
+
+func (bot *Bot) GetDayShedule(lessons [][]database.Lesson) (string, error) {
+	var str string
+	day := lessons[0][0].Begin.Day()
+	for _, pair := range lessons {
+		if pair[0].Begin.Day() == day {
+			line, err := PairToStr(pair, &bot.DB)
+			if err != nil {
+				return "", err
+			}
+			str += line
+		} else {
+			break
+		}
+	}
+	return str, nil
+}
+
+func GroupPairs(lessons []database.Lesson) [][]database.Lesson {
+	var shedule [][]database.Lesson
+	var pair []database.Lesson
+
+	l_idx := 0
+
+	for l_idx < len(lessons) {
+		day := lessons[l_idx].Begin
+		for l_idx < len(lessons) && lessons[l_idx].Begin == day {
+			pair = append(pair, lessons[l_idx])
+			l_idx++
+		}
+		shedule = append(shedule, pair)
+		pair = []database.Lesson{}
+	}
+	return shedule
 }
 
 func PairToStr(pair []database.Lesson, db *xorm.Engine) (string, error) {
@@ -123,7 +155,11 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine) (string, error) {
 		if sublesson.Comment != "" {
 			str += fmt.Sprintf("💬%s\n", sublesson.Comment)
 		}
-		str += "--------------------------------\n"
+		if len(pair) > 1 {
+			str += "+\n"
+		}
 	}
+
+	str += "--------------------------------\n"
 	return str, nil
 }
