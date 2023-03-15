@@ -42,10 +42,10 @@ func main() {
 
 			if tg_user.PosTag == "not_started" {
 				bot.Start()
-			} else if tg_user.PosTag == "add" {
-				bot.Find(msg.Text)
 			} else if msg.Text == "Главное меню" {
-				bot.GetSummary()
+				bot.GetPersonalSummary()
+			} else if tg_user.PosTag == "add" || tg_user.PosTag == "ready" {
+				bot.Find(msg.Text)
 			} else {
 				bot.Etc()
 			}
@@ -63,8 +63,11 @@ func main() {
 
 			if query.Data == "cancel" {
 				bot.Cancel(query)
-			} else if strings.Contains(tg_user.PosTag, "confirm") {
+			} else if strings.Contains(tg_user.PosTag, "confirm_add") {
 				bot.Confirm(query)
+			} else if strings.Contains(tg_user.PosTag, "confirm_see") {
+				bot.SeeShedule(query)
+				bot.DeleteMsg(query)
 			}
 		}
 	}

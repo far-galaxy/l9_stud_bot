@@ -34,8 +34,13 @@ type Shedule struct {
 }
 
 func GetSheduleInfo(doc *goquery.Document, sh *Shedule) {
-	sh.SpecName = doc.Find(".info-block__description div").First().Text()[1:]
+	spec := doc.Find(".info-block__description div").First().Text()
+	if spec != "" {
+		spec = spec[1:]
+	}
+	sh.SpecName = spec
 	sh.GroupName = doc.Find(".info-block__title").First().Text()[1:]
+
 }
 
 // Parse goquery shedule site

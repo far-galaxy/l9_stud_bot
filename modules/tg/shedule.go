@@ -13,18 +13,24 @@ import (
 	"xorm.io/xorm"
 )
 
-func (bot *Bot) GetSummary(isRetry ...bool) {
-	now := time.Now().Add(time.Hour * time.Duration(5))
-	log.Println(now.Format("01-02-2006 15:04:05 -07"), now.Format("01-02-2006 15:04:05"))
-
-	var lessons []database.Lesson
+func (bot *Bot) GetPersonalSummary() {
 	var shedules []database.ShedulesInUser
 	bot.DB.ID(bot.TG_user.L9Id).Find(&shedules)
 
 	if len(shedules) == 0 {
 		bot.Etc()
 		return
+	} else {
+		err := bot.GetSummary(shedules)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
+}
+
+func (bot *Bot) GetSummary(shedules []database.ShedulesInUser, isRetry ...bool) error {
+	now := time.Now().Add(time.Hour * time.Duration(5) * (-1))
+	log.Println(now.Format("01-02-2006 15:04:05 -07"), now.Format("01-02-2006 15:04:05"))
 
 	var groups []string
 	var teachers []string
@@ -50,14 +56,17 @@ func (bot *Bot) GetSummary(isRetry ...bool) {
 		condition += "teacherId in (" + teachers_str + ") "
 	}
 
-	bot.DB.
+	var lessons []database.Lesson
+	err := bot.DB.
 		Where("end > ?", now.Format("2006-01-02 15:04:05")).
 		And(condition).
 		OrderBy("begin").
 		Limit(16).
 		Find(&lessons)
 
-	log.Println(lessons)
+	if err != nil {
+		return err
+	}
 
 	if len(lessons) != 0 {
 		var firstPair, secondPair []database.Lesson
@@ -80,15 +89,6 @@ func (bot *Bot) GetSummary(isRetry ...bool) {
 			str = "Сводка на сегодня\n\n"
 			day, _ := bot.GetDayShedule(pairs)
 			str += day
-			/*
-				firstPairStr, _ := PairToStr(firstPair, &bot.DB)
-				str += firstPairStr
-
-				if len(secondPair) != 0 && firstPair[0].Begin.Day() == secondPair[0].Begin.Day() {
-					secondPairStr, _ := PairToStr(secondPair, &bot.DB)
-					str += "\n--\n" + secondPairStr
-				}
-			*/
 		}
 
 		msg := tgbotapi.NewMessage(bot.TG_user.TgId, str)
@@ -98,15 +98,21 @@ func (bot *Bot) GetSummary(isRetry ...bool) {
 		week -= bot.Week
 		for _, sh := range shedules {
 			doc, err := ssau_parser.ConnectById(sh.SheduleId, sh.IsTeacher, week)
+			if err != nil {
+				return err
+			}
 			shedule, err := ssau_parser.Parse(doc, !sh.IsTeacher, sh.SheduleId, week)
+			if err != nil {
+				return err
+			}
 			err = ssau_parser.UploadShedule(bot.DB, *shedule)
 			if err != nil {
-				log.Fatal(err)
+				return err
 			}
 		}
-		bot.GetSummary(true)
+		bot.GetSummary(shedules, true)
 	}
-
+	return nil
 }
 
 func (bot *Bot) GetDayShedule(lessons [][]database.Lesson) (string, error) {
@@ -174,7 +180,7 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine) (string, error) {
 			if err != nil {
 				return "", err
 			}
-			name := fmt.Sprintf("%s %s.%s.", t.LastName, t.FirstName[0:2], t.MidName[0:2])
+			name := GenerateName(t)
 			str += fmt.Sprintf("👤 %s\n", name)
 		}
 		if sublesson.SubGroup != "" {

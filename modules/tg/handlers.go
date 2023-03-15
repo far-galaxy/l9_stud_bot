@@ -106,14 +106,18 @@ func (bot *Bot) Find(query string) error {
 
 	if len(allGroups) != 0 {
 		if bot.TG_user.PosTag == "add" {
-			bot.TG_user.PosTag = "confirm_group"
+			bot.TG_user.PosTag = "confirm_add_group"
+		} else {
+			bot.TG_user.PosTag = "confirm_see_group"
 		}
 		msg := tgbotapi.NewMessage(bot.TG_user.TgId, "Вот что я нашёл.\nВыбери свою группу")
 		msg.ReplyMarkup = GenerateKeyboard(GenerateGroupsArray(allGroups), query)
 		bot.TG.Send(msg)
 	} else if len(allTeachers) != 0 {
 		if bot.TG_user.PosTag == "add" {
-			bot.TG_user.PosTag = "confirm_teacher"
+			bot.TG_user.PosTag = "confirm_add_teacher"
+		} else {
+			bot.TG_user.PosTag = "confirm_see_teacher"
 		}
 		msg := tgbotapi.NewMessage(bot.TG_user.TgId, "Вот что я нашёл.\nВыбери нужного преподавателя")
 		msg.ReplyMarkup = GenerateKeyboard(GenerateTeachersArray(allTeachers), query)
@@ -127,8 +131,27 @@ func (bot *Bot) Find(query string) error {
 	return err
 }
 
+func (bot *Bot) SeeShedule(query *tgbotapi.CallbackQuery) error {
+	isGroup := bot.TG_user.PosTag == "confirm_see_group"
+	groupId, err := strconv.ParseInt(query.Data, 0, 64)
+	if err != nil {
+		return err
+	}
+	shedule := database.ShedulesInUser{
+		IsTeacher: !isGroup,
+		SheduleId: groupId,
+	}
+	err = bot.GetSummary([]database.ShedulesInUser{shedule})
+	if err != nil {
+		return err
+	}
+	bot.TG_user.PosTag = "ready"
+	err = bot.UpdateUserDB()
+	return err
+}
+
 func (bot *Bot) Confirm(query *tgbotapi.CallbackQuery) error {
-	isGroup := bot.TG_user.PosTag == "confirm_group"
+	isGroup := bot.TG_user.PosTag == "confirm_add_group"
 	groupId, err := strconv.ParseInt(query.Data, 0, 64)
 	if err != nil {
 		return err

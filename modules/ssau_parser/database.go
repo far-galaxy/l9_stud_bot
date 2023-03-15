@@ -146,8 +146,7 @@ func addGroupOrTeacher(db *xorm.Engine, sh Shedule) error {
 			teacher := database.Teacher{
 				TeacherId: sh.SheduleId,
 				LastName:  name[0],
-				FirstName: name[1],
-				MidName:   name[2], // Уебать Сасау и придумать что-то с хреново прописанныит преподами
+				FirstName: strings.Join(name[1:], " "),
 				SpecName:  sh.SpecName,
 			}
 			db.InsertOne(teacher)

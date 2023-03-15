@@ -3,6 +3,7 @@ package tg
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -16,10 +17,19 @@ func GenerateGroupsArray(groups []database.Group) []tgbotapi.InlineKeyboardButto
 	return grKeys
 }
 
-func GenerateTeachersArray(groups []database.Teacher) []tgbotapi.InlineKeyboardButton {
+func GenerateName(t database.Teacher) string {
+	var initials string
+	for _, n := range strings.Split(t.FirstName, " ") {
+		initials += fmt.Sprintf("%s.", n[:2])
+	}
+	name := fmt.Sprintf("%s %s", t.LastName, initials)
+	return name
+}
+
+func GenerateTeachersArray(teachers []database.Teacher) []tgbotapi.InlineKeyboardButton {
 	var teacherKeys []tgbotapi.InlineKeyboardButton
-	for _, t := range groups {
-		name := fmt.Sprintf("%s %s.%s.", t.LastName, t.FirstName[0:2], t.MidName[0:2])
+	for _, t := range teachers {
+		name := GenerateName(t)
 		teacherKeys = append(teacherKeys, tgbotapi.NewInlineKeyboardButtonData(name, strconv.FormatInt(t.TeacherId, 10)))
 	}
 	return teacherKeys
