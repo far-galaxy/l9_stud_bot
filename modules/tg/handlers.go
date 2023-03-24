@@ -34,7 +34,7 @@ func (bot *Bot) InitUser(id int64, name string) (*database.TgUser, error) {
 			L9Id:   l9id,
 			Name:   name,
 			TgId:   id,
-			PosTag: "not_started",
+			PosTag: "ready",
 		}
 		_, err = db.Insert(user, tg_user)
 		if err != nil {
@@ -48,14 +48,14 @@ func (bot *Bot) InitUser(id int64, name string) (*database.TgUser, error) {
 }
 
 func (bot *Bot) Start() error {
-	bot.TG_user.PosTag = "add"
+	/*bot.TG_user.PosTag = "add"
 	_, err := bot.DB.Update(bot.TG_user)
 	if err != nil {
 		return err
-	}
+	}*/
 	msg := tgbotapi.NewMessage(bot.TG_user.TgId, "Привет! Введи свой <b>номер группы</b> или <b>фамилию преподавателя</b>")
 	msg.ParseMode = tgbotapi.ModeHTML
-	_, err = bot.TG.Send(msg)
+	_, err := bot.TG.Send(msg)
 	return err
 }
 
@@ -104,7 +104,35 @@ func (bot *Bot) Find(query string) error {
 		}
 	}
 
-	if len(allGroups) != 0 {
+	if len(allGroups) == 1 || len(allTeachers) == 1 {
+		if bot.TG_user.PosTag == "add" {
+			msg := tgbotapi.NewMessage(bot.TG_user.TgId, "Подключено!")
+			keyboard := tgbotapi.NewReplyKeyboard([]tgbotapi.KeyboardButton{tgbotapi.NewKeyboardButton("Главное меню")})
+			msg.ReplyMarkup = keyboard
+			bot.TG.Send(msg)
+		} else {
+			var sheduleId int64
+			var isGroup bool
+			if len(allGroups) == 1 {
+				sheduleId = allGroups[0].GroupId
+				isGroup = true
+			} else {
+				sheduleId = allTeachers[0].TeacherId
+				isGroup = false
+			}
+			shedule := database.ShedulesInUser{
+				IsTeacher: !isGroup,
+				SheduleId: sheduleId,
+			}
+			err := bot.GetSummary([]database.ShedulesInUser{shedule}, false)
+			if err != nil {
+				return err
+			}
+		}
+		bot.TG_user.PosTag = "ready"
+		err := bot.UpdateUserDB()
+		return err
+	} else if len(allGroups) != 0 {
 		if bot.TG_user.PosTag == "add" {
 			bot.TG_user.PosTag = "confirm_add_group"
 		} else {
@@ -197,32 +225,13 @@ func (bot *Bot) Confirm(query *tgbotapi.CallbackQuery) error {
 }
 
 func (bot *Bot) Cancel(query *tgbotapi.CallbackQuery) error {
-	shedules, err := bot.DB.Count(&database.ShedulesInUser{
-		L9Id: bot.TG_user.L9Id,
-	})
+	bot.TG_user.PosTag = "ready"
+	err := bot.UpdateUserDB()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
-	if shedules == 0 {
-		bot.TG_user.PosTag = "add"
-		err = bot.UpdateUserDB()
-		if err != nil {
-			return err
-		}
-		bot.DeleteMsg(query)
-		msg := tgbotapi.NewMessage(
-			bot.TG_user.TgId,
-			"Ой, для работы с ботом нужно подключить хотя бы одно расписание группы или преподавателя!\nВведи свой номер группы или фамилию преподавателя",
-		)
-		bot.TG.Send(msg)
-	} else {
-		bot.TG_user.PosTag = "ready"
-		err = bot.UpdateUserDB()
-		if err != nil {
-			return err
-		}
-		bot.DeleteMsg(query)
-	}
+	bot.DeleteMsg(query)
+
 	return nil
 }
 
