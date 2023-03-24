@@ -52,6 +52,67 @@ func GenerateKeyboard(array []tgbotapi.InlineKeyboardButton, query string) tgbot
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: markup}
 }
 
+func SummaryKeyboard(clickedButton string, sheduleId int64, isTeacher bool) tgbotapi.InlineKeyboardMarkup {
+	var tail string
+	if sheduleId == 0 {
+		tail = "_personal"
+	} else if isTeacher {
+		tail = fmt.Sprintf("_teacher_%d", sheduleId)
+	} else {
+		tail = fmt.Sprintf("_group_%d", sheduleId)
+	}
+
+	near := []tgbotapi.InlineKeyboardButton{
+		tgbotapi.NewInlineKeyboardButtonData("Краткая сводка", "near"+tail),
+	}
+	day := []tgbotapi.InlineKeyboardButton{
+		tgbotapi.NewInlineKeyboardButtonData("День", "day"+tail),
+	}
+	week := []tgbotapi.InlineKeyboardButton{
+		tgbotapi.NewInlineKeyboardButtonData("Неделя", "week"+tail),
+	}
+	arrows := []tgbotapi.InlineKeyboardButton{
+		tgbotapi.NewInlineKeyboardButtonData("<", "prev_"+clickedButton+tail),
+		tgbotapi.NewInlineKeyboardButtonData(">", "next_"+clickedButton+tail),
+	}
+	options := []tgbotapi.InlineKeyboardButton{
+		tgbotapi.NewInlineKeyboardButtonData("Настройки", "options"),
+	}
+
+	var markup [][]tgbotapi.InlineKeyboardButton
+	switch clickedButton {
+	case "day":
+		markup = [][]tgbotapi.InlineKeyboardButton{
+			arrows, near, week,
+		}
+	case "week":
+		markup = [][]tgbotapi.InlineKeyboardButton{
+			arrows, near, day,
+		}
+	default:
+		markup = [][]tgbotapi.InlineKeyboardButton{
+			day, week,
+		}
+	}
+	if sheduleId == 0 {
+		markup = append(markup, options)
+	}
+	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: markup}
+}
+
+func ParseQuery(data []string) ([]database.ShedulesInUser, error) {
+	isGroup := data[1] == "group"
+	sheduleId, err := strconv.ParseInt(data[2], 0, 64)
+	if err != nil {
+		return nil, err
+	}
+	shedule := database.ShedulesInUser{
+		IsTeacher: !isGroup,
+		SheduleId: sheduleId,
+	}
+	return []database.ShedulesInUser{shedule}, nil
+}
+
 func (bot *Bot) DeleteMsg(query *tgbotapi.CallbackQuery) {
 	delete := tgbotapi.NewDeleteMessage(query.From.ID, query.Message.MessageID)
 	bot.TG.Request(delete)

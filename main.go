@@ -68,6 +68,28 @@ func main() {
 			} else if strings.Contains(tg_user.PosTag, "confirm_see") {
 				bot.SeeShedule(query)
 				bot.DeleteMsg(query)
+			} else if strings.Contains(query.Data, "day") {
+				data := strings.Split(query.Data, "_")
+				if data[1] == "personal" {
+					bot.GetPersonalDaySummary(0, *query.Message)
+				} else {
+					shedule, err := tg.ParseQuery(data)
+					if err != nil {
+						log.Fatal(err)
+					}
+					bot.GetDaySummary(shedule, 0, false, *query.Message)
+				}
+			} else if strings.Contains(query.Data, "near") {
+				data := strings.Split(query.Data, "_")
+				if data[1] == "personal" {
+					bot.GetPersonalSummary(*query.Message)
+				} else {
+					shedule, err := tg.ParseQuery(data)
+					if err != nil {
+						log.Fatal(err)
+					}
+					bot.GetSummary(shedule, false, *query.Message)
+				}
 			}
 		}
 	}

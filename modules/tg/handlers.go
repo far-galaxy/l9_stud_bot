@@ -141,7 +141,7 @@ func (bot *Bot) SeeShedule(query *tgbotapi.CallbackQuery) error {
 		IsTeacher: !isGroup,
 		SheduleId: groupId,
 	}
-	err = bot.GetSummary([]database.ShedulesInUser{shedule})
+	err = bot.GetSummary([]database.ShedulesInUser{shedule}, false)
 	if err != nil {
 		return err
 	}

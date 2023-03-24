@@ -13,7 +13,7 @@ import (
 	"xorm.io/xorm"
 )
 
-func (bot *Bot) GetPersonalSummary() {
+func (bot *Bot) GetPersonalSummary(msg ...tgbotapi.Message) {
 	var shedules []database.ShedulesInUser
 	bot.DB.ID(bot.TG_user.L9Id).Find(&shedules)
 
@@ -21,15 +21,167 @@ func (bot *Bot) GetPersonalSummary() {
 		bot.Etc()
 		return
 	} else {
-		err := bot.GetSummary(shedules)
+		err := bot.GetSummary(shedules, true, msg...)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 }
 
-func (bot *Bot) GetSummary(shedules []database.ShedulesInUser, isRetry ...bool) error {
-	now := time.Now().Add(time.Hour * time.Duration(5) * (-1))
+func (bot *Bot) GetSummary(shedules []database.ShedulesInUser, isPersonal bool, editMsg ...tgbotapi.Message) error {
+	now := time.Now() //.Add(time.Hour * time.Duration(5) * (-1))
+
+	lessons, err := bot.GetLessons(shedules, now)
+	if err != nil {
+		return err
+	}
+	if len(lessons) != 0 {
+		var firstPair, secondPair []database.Lesson
+		pairs := GroupPairs(lessons)
+		firstPair = pairs[0]
+		log.Println(firstPair, secondPair)
+
+		var str string
+		if pairs[0][0].Begin.Day() != time.Now().Day() {
+			str = "❗️Сегодня пар нет\nБлижайшие занятия "
+			if time.Until(firstPair[0].Begin).Hours() < 48 {
+				str += "завтра\n"
+			} else {
+				str += fmt.Sprintf("%s\n\n", firstPair[0].Begin.Format("02.01"))
+			}
+			day, err := bot.GetDayShedule(pairs)
+			if err != nil {
+				return err
+			}
+			str += day
+		} else {
+			if firstPair[0].Begin.Before(now) {
+				str = "Сейчас:\n\n"
+			} else {
+				str = "Ближайшая пара сегодня:\n\n"
+			}
+			firstStr, err := PairToStr(firstPair, bot.DB)
+			if err != nil {
+				return err
+			}
+			str += firstStr
+			if len(pairs) > 1 {
+				secondPair = pairs[1]
+				if firstPair[0].Begin.Day() == secondPair[0].Begin.Day() {
+					str += "\nПосле неё:\n\n"
+					secondStr, err := PairToStr(secondPair, bot.DB)
+					if err != nil {
+						return err
+					}
+					str += secondStr
+				} else {
+					str += "\nБольше ничего сегодня нет"
+				}
+			} else {
+				str += "\nБольше ничего сегодня нет"
+			}
+
+		}
+
+		var shId int64
+		if isPersonal {
+			shId = 0
+		} else {
+			shId = shedules[0].SheduleId
+		}
+
+		markup := SummaryKeyboard(
+			"near",
+			shId,
+			shedules[0].IsTeacher,
+		)
+		if len(editMsg) > 0 {
+			msg := tgbotapi.NewEditMessageText(
+				editMsg[0].Chat.ID,
+				editMsg[0].MessageID,
+				str,
+			)
+			msg.ReplyMarkup = &markup
+			bot.TG.Request(msg)
+		} else {
+			msg := tgbotapi.NewMessage(bot.TG_user.TgId, str)
+			msg.ReplyMarkup = markup
+			bot.TG.Send(msg)
+		}
+
+	} else {
+		msg := tgbotapi.NewMessage(bot.TG_user.TgId, "Ой! Пар не обнаружено ):")
+		bot.TG.Send(msg)
+	}
+	return nil
+}
+
+func (bot *Bot) GetPersonalDaySummary(dt int, msg ...tgbotapi.Message) {
+	var shedules []database.ShedulesInUser
+	bot.DB.ID(bot.TG_user.L9Id).Find(&shedules)
+
+	if len(shedules) == 0 {
+		bot.Etc()
+		return
+	} else {
+		err := bot.GetDaySummary(shedules, dt, true, msg...)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
+func (bot *Bot) GetDaySummary(shedules []database.ShedulesInUser, dt int, isPersonal bool, editMsg ...tgbotapi.Message) error {
+	now := time.Now()
+	day := time.Date(now.Year(), now.Month(), now.Day()+dt, 0, 0, 0, 0, now.Location())
+	lessons, err := bot.GetLessons(shedules, day)
+	if err != nil {
+		return err
+	}
+	if len(lessons) != 0 {
+		pairs := GroupPairs(lessons)
+		var str string
+
+		str = fmt.Sprintf("Расписание на %s\n\n", pairs[0][0].Begin.Format("02.01"))
+		day, err := bot.GetDayShedule(pairs)
+		if err != nil {
+			return err
+		}
+		str += day
+
+		var shId int64
+		if isPersonal {
+			shId = 0
+		} else {
+			shId = shedules[0].SheduleId
+		}
+		markup := SummaryKeyboard(
+			"day",
+			shId,
+			shedules[0].IsTeacher,
+		)
+		if len(editMsg) > 0 {
+			msg := tgbotapi.NewEditMessageText(
+				editMsg[0].Chat.ID,
+				editMsg[0].MessageID,
+				str,
+			)
+			msg.ReplyMarkup = &markup
+			bot.TG.Request(msg)
+		} else {
+			msg := tgbotapi.NewMessage(bot.TG_user.TgId, str)
+			msg.ReplyMarkup = markup
+			bot.TG.Send(msg)
+		}
+	} else {
+		msg := tgbotapi.NewMessage(bot.TG_user.TgId, "Ой! Пар не обнаружено ):")
+		bot.TG.Send(msg)
+	}
+
+	return nil
+}
+
+func (bot *Bot) GetLessons(shedules []database.ShedulesInUser, now time.Time, isRetry ...bool) ([]database.Lesson, error) {
 	log.Println(now.Format("01-02-2006 15:04:05 -07"), now.Format("01-02-2006 15:04:05"))
 
 	var groups []string
@@ -65,54 +217,32 @@ func (bot *Bot) GetSummary(shedules []database.ShedulesInUser, isRetry ...bool) 
 		Find(&lessons)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if len(lessons) != 0 {
-		var firstPair, secondPair []database.Lesson
-		pairs := GroupPairs(lessons)
-		firstPair = pairs[0]
-		secondPair = pairs[1]
-		log.Println(firstPair, secondPair)
-
-		var str string
-		if pairs[0][0].Begin.Day() != time.Now().Day() {
-			str = "❗️Сегодня пар нет\nБлижайшие занятия "
-			if time.Until(firstPair[0].Begin).Hours() < 48 {
-				str += "завтра\n"
-			} else {
-				str += fmt.Sprintf("%s\n\n", firstPair[0].Begin.Format("02.01"))
-			}
-			day, _ := bot.GetDayShedule(pairs)
-			str += day
-		} else {
-			str = "Сводка на сегодня\n\n"
-			day, _ := bot.GetDayShedule(pairs)
-			str += day
-		}
-
-		msg := tgbotapi.NewMessage(bot.TG_user.TgId, str)
-		bot.TG.Send(msg)
+	if len(lessons) > 0 {
+		return lessons, nil
 	} else if len(isRetry) == 0 {
 		_, week := time.Now().ISOWeek()
 		week -= bot.Week
 		for _, sh := range shedules {
 			doc, err := ssau_parser.ConnectById(sh.SheduleId, sh.IsTeacher, week)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			shedule, err := ssau_parser.Parse(doc, !sh.IsTeacher, sh.SheduleId, week)
 			if err != nil {
-				return err
+				return nil, err
 			}
 			err = ssau_parser.UploadShedule(bot.DB, *shedule)
 			if err != nil {
-				return err
+				return nil, err
 			}
 		}
-		bot.GetSummary(shedules, true)
+		return bot.GetLessons(shedules, now, true)
+	} else {
+		return nil, nil
 	}
-	return nil
 }
 
 func (bot *Bot) GetDayShedule(lessons [][]database.Lesson) (string, error) {
