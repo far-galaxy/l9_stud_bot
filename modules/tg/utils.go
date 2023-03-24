@@ -52,15 +52,8 @@ func GenerateKeyboard(array []tgbotapi.InlineKeyboardButton, query string) tgbot
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: markup}
 }
 
-func SummaryKeyboard(clickedButton string, sheduleId int64, isTeacher bool) tgbotapi.InlineKeyboardMarkup {
-	var tail string
-	if sheduleId == 0 {
-		tail = "_personal"
-	} else if isTeacher {
-		tail = fmt.Sprintf("_teacher_%d", sheduleId)
-	} else {
-		tail = fmt.Sprintf("_group_%d", sheduleId)
-	}
+func SummaryKeyboard(clickedButton string, sheduleId int64, isTeacher bool, dt int) tgbotapi.InlineKeyboardMarkup {
+	tail := GenerateButtonTail(sheduleId, dt, isTeacher)
 
 	near := []tgbotapi.InlineKeyboardButton{
 		tgbotapi.NewInlineKeyboardButtonData("Краткая сводка", "near"+tail),
@@ -68,22 +61,28 @@ func SummaryKeyboard(clickedButton string, sheduleId int64, isTeacher bool) tgbo
 	day := []tgbotapi.InlineKeyboardButton{
 		tgbotapi.NewInlineKeyboardButtonData("День", "day"+tail),
 	}
-	week := []tgbotapi.InlineKeyboardButton{
+	/*week := []tgbotapi.InlineKeyboardButton{
 		tgbotapi.NewInlineKeyboardButtonData("Неделя", "week"+tail),
+	}*/
+
+	var arrows []tgbotapi.InlineKeyboardButton
+	if clickedButton == "day" || clickedButton == "week" {
+		prev_arrow := GenerateButtonTail(sheduleId, dt-1, isTeacher)
+		next_arrow := GenerateButtonTail(sheduleId, dt+1, isTeacher)
+		arrows = []tgbotapi.InlineKeyboardButton{
+			tgbotapi.NewInlineKeyboardButtonData("<", clickedButton+prev_arrow),
+			tgbotapi.NewInlineKeyboardButtonData(">", clickedButton+next_arrow),
+		}
 	}
-	arrows := []tgbotapi.InlineKeyboardButton{
-		tgbotapi.NewInlineKeyboardButtonData("<", "prev_"+clickedButton+tail),
-		tgbotapi.NewInlineKeyboardButtonData(">", "next_"+clickedButton+tail),
-	}
-	options := []tgbotapi.InlineKeyboardButton{
+	/*options := []tgbotapi.InlineKeyboardButton{
 		tgbotapi.NewInlineKeyboardButtonData("Настройки", "options"),
-	}
+	}*/
 
 	var markup [][]tgbotapi.InlineKeyboardButton
 	switch clickedButton {
 	case "day":
 		markup = [][]tgbotapi.InlineKeyboardButton{
-			arrows, near, week,
+			arrows, near, //week,
 		}
 	case "week":
 		markup = [][]tgbotapi.InlineKeyboardButton{
@@ -91,26 +90,58 @@ func SummaryKeyboard(clickedButton string, sheduleId int64, isTeacher bool) tgbo
 		}
 	default:
 		markup = [][]tgbotapi.InlineKeyboardButton{
-			day, week,
+			day, //week,
 		}
 	}
-	if sheduleId == 0 {
+	/*if sheduleId == 0 {
 		markup = append(markup, options)
-	}
+	}*/
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: markup}
 }
 
-func ParseQuery(data []string) ([]database.ShedulesInUser, error) {
+func GenerateButtonTail(sheduleId int64, dt int, isTeacher bool) string {
+	var tail string
+	if sheduleId == 0 {
+		tail = fmt.Sprintf("_personal_%d", dt)
+	} else if isTeacher {
+		tail = fmt.Sprintf("_teacher_%d_%d", dt, sheduleId)
+	} else {
+		tail = fmt.Sprintf("_group_%d_%d", dt, sheduleId)
+	}
+	return tail
+}
+
+func (bot *Bot) EditOrSend(str string, markup tgbotapi.InlineKeyboardMarkup, editMsg ...tgbotapi.Message) {
+	if len(editMsg) > 0 {
+		msg := tgbotapi.NewEditMessageText(
+			editMsg[0].Chat.ID,
+			editMsg[0].MessageID,
+			str,
+		)
+		msg.ReplyMarkup = &markup
+		bot.TG.Request(msg)
+	} else {
+		msg := tgbotapi.NewMessage(bot.TG_user.TgId, str)
+		msg.ReplyMarkup = markup
+		bot.TG.Send(msg)
+	}
+}
+
+func ParseQuery(data []string) ([]database.ShedulesInUser, int, error) {
 	isGroup := data[1] == "group"
-	sheduleId, err := strconv.ParseInt(data[2], 0, 64)
+	sheduleId, err := strconv.ParseInt(data[3], 0, 64)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	shedule := database.ShedulesInUser{
 		IsTeacher: !isGroup,
 		SheduleId: sheduleId,
 	}
-	return []database.ShedulesInUser{shedule}, nil
+	dt, err := strconv.ParseInt(data[2], 0, 0)
+	if err != nil {
+		return nil, 0, err
+	}
+	return []database.ShedulesInUser{shedule}, int(dt), nil
 }
 
 func (bot *Bot) DeleteMsg(query *tgbotapi.CallbackQuery) {

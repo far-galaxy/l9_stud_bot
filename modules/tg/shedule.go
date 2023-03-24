@@ -94,20 +94,9 @@ func (bot *Bot) GetSummary(shedules []database.ShedulesInUser, isPersonal bool, 
 			"near",
 			shId,
 			shedules[0].IsTeacher,
+			0,
 		)
-		if len(editMsg) > 0 {
-			msg := tgbotapi.NewEditMessageText(
-				editMsg[0].Chat.ID,
-				editMsg[0].MessageID,
-				str,
-			)
-			msg.ReplyMarkup = &markup
-			bot.TG.Request(msg)
-		} else {
-			msg := tgbotapi.NewMessage(bot.TG_user.TgId, str)
-			msg.ReplyMarkup = markup
-			bot.TG.Send(msg)
-		}
+		bot.EditOrSend(str, markup, editMsg...)
 
 	} else {
 		msg := tgbotapi.NewMessage(bot.TG_user.TgId, "Ой! Пар не обнаружено ):")
@@ -159,20 +148,9 @@ func (bot *Bot) GetDaySummary(shedules []database.ShedulesInUser, dt int, isPers
 			"day",
 			shId,
 			shedules[0].IsTeacher,
+			dt,
 		)
-		if len(editMsg) > 0 {
-			msg := tgbotapi.NewEditMessageText(
-				editMsg[0].Chat.ID,
-				editMsg[0].MessageID,
-				str,
-			)
-			msg.ReplyMarkup = &markup
-			bot.TG.Request(msg)
-		} else {
-			msg := tgbotapi.NewMessage(bot.TG_user.TgId, str)
-			msg.ReplyMarkup = markup
-			bot.TG.Send(msg)
-		}
+		bot.EditOrSend(str, markup, editMsg...)
 	} else {
 		msg := tgbotapi.NewMessage(bot.TG_user.TgId, "Ой! Пар не обнаружено ):")
 		bot.TG.Send(msg)
@@ -181,7 +159,7 @@ func (bot *Bot) GetDaySummary(shedules []database.ShedulesInUser, dt int, isPers
 	return nil
 }
 
-func (bot *Bot) GetLessons(shedules []database.ShedulesInUser, now time.Time, isRetry ...bool) ([]database.Lesson, error) {
+func (bot *Bot) GetLessons(shedules []database.ShedulesInUser, now time.Time, isRetry ...int) ([]database.Lesson, error) {
 	log.Println(now.Format("01-02-2006 15:04:05 -07"), now.Format("01-02-2006 15:04:05"))
 
 	var groups []string
@@ -222,15 +200,19 @@ func (bot *Bot) GetLessons(shedules []database.ShedulesInUser, now time.Time, is
 
 	if len(lessons) > 0 {
 		return lessons, nil
-	} else if len(isRetry) == 0 {
-		_, week := time.Now().ISOWeek()
+	} else if len(isRetry) == 0 || isRetry[0] < 2 {
+		if len(isRetry) == 0 {
+			isRetry = []int{0}
+		}
+		dw := isRetry[0]
+		_, week := now.ISOWeek()
 		week -= bot.Week
 		for _, sh := range shedules {
-			doc, err := ssau_parser.ConnectById(sh.SheduleId, sh.IsTeacher, week)
+			doc, err := ssau_parser.ConnectById(sh.SheduleId, sh.IsTeacher, week+dw)
 			if err != nil {
 				return nil, err
 			}
-			shedule, err := ssau_parser.Parse(doc, !sh.IsTeacher, sh.SheduleId, week)
+			shedule, err := ssau_parser.Parse(doc, !sh.IsTeacher, sh.SheduleId, week+dw)
 			if err != nil {
 				return nil, err
 			}
@@ -239,7 +221,7 @@ func (bot *Bot) GetLessons(shedules []database.ShedulesInUser, now time.Time, is
 				return nil, err
 			}
 		}
-		return bot.GetLessons(shedules, now, true)
+		return bot.GetLessons(shedules, now, dw+1)
 	} else {
 		return nil, nil
 	}

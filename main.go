@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
@@ -69,22 +70,27 @@ func main() {
 				bot.SeeShedule(query)
 				bot.DeleteMsg(query)
 			} else if strings.Contains(query.Data, "day") {
+				// TODO: Зарефакторить
 				data := strings.Split(query.Data, "_")
 				if data[1] == "personal" {
-					bot.GetPersonalDaySummary(0, *query.Message)
-				} else {
-					shedule, err := tg.ParseQuery(data)
+					dt, err := strconv.ParseInt(data[2], 0, 64)
 					if err != nil {
 						log.Fatal(err)
 					}
-					bot.GetDaySummary(shedule, 0, false, *query.Message)
+					bot.GetPersonalDaySummary(int(dt), *query.Message)
+				} else {
+					shedule, dt, err := tg.ParseQuery(data)
+					if err != nil {
+						log.Fatal(err)
+					}
+					bot.GetDaySummary(shedule, dt, false, *query.Message)
 				}
 			} else if strings.Contains(query.Data, "near") {
 				data := strings.Split(query.Data, "_")
 				if data[1] == "personal" {
 					bot.GetPersonalSummary(*query.Message)
 				} else {
-					shedule, err := tg.ParseQuery(data)
+					shedule, _, err := tg.ParseQuery(data)
 					if err != nil {
 						log.Fatal(err)
 					}
