@@ -160,8 +160,60 @@ func (bot *Bot) GetDaySummary(shedules []database.ShedulesInUser, dt int, isPers
 }
 
 func (bot *Bot) GetLessons(shedules []database.ShedulesInUser, now time.Time, isRetry ...int) ([]database.Lesson, error) {
-	log.Println(now.Format("01-02-2006 15:04:05 -07"), now.Format("01-02-2006 15:04:05"))
 
+	condition := CreateCondition(shedules)
+
+	var lessons []database.Lesson
+	err := bot.DB.
+		Where("end > ?", now.Format("2006-01-02 15:04:05")).
+		And(condition).
+		OrderBy("begin").
+		Limit(16).
+		Find(&lessons)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if len(lessons) > 0 {
+		return lessons, nil
+	} else if len(isRetry) == 0 || isRetry[0] < 2 {
+		_, week := now.ISOWeek()
+		isRetry, err = bot.LoadShedule(shedules, week, isRetry...)
+		if err != nil {
+			return nil, err
+		}
+		dw := isRetry[0]
+		return bot.GetLessons(shedules, now, dw+1)
+	} else {
+		return nil, nil
+	}
+}
+
+func (bot *Bot) LoadShedule(shedules []database.ShedulesInUser, week int, isRetry ...int) ([]int, error) {
+	if len(isRetry) == 0 {
+		isRetry = []int{0}
+	}
+	dw := isRetry[0]
+	week -= bot.Week
+	for _, sh := range shedules {
+		doc, err := ssau_parser.ConnectById(sh.SheduleId, sh.IsTeacher, week+dw)
+		if err != nil {
+			return nil, err
+		}
+		shedule, err := ssau_parser.Parse(doc, !sh.IsTeacher, sh.SheduleId, week+dw)
+		if err != nil {
+			return nil, err
+		}
+		err = ssau_parser.UploadShedule(bot.DB, *shedule)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return isRetry, nil
+}
+
+func CreateCondition(shedules []database.ShedulesInUser) string {
 	var groups []string
 	var teachers []string
 
@@ -185,46 +237,7 @@ func (bot *Bot) GetLessons(shedules []database.ShedulesInUser, now time.Time, is
 		teachers_str += strings.Join(teachers, ",")
 		condition += "teacherId in (" + teachers_str + ") "
 	}
-
-	var lessons []database.Lesson
-	err := bot.DB.
-		Where("end > ?", now.Format("2006-01-02 15:04:05")).
-		And(condition).
-		OrderBy("begin").
-		Limit(16).
-		Find(&lessons)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if len(lessons) > 0 {
-		return lessons, nil
-	} else if len(isRetry) == 0 || isRetry[0] < 2 {
-		if len(isRetry) == 0 {
-			isRetry = []int{0}
-		}
-		dw := isRetry[0]
-		_, week := now.ISOWeek()
-		week -= bot.Week
-		for _, sh := range shedules {
-			doc, err := ssau_parser.ConnectById(sh.SheduleId, sh.IsTeacher, week+dw)
-			if err != nil {
-				return nil, err
-			}
-			shedule, err := ssau_parser.Parse(doc, !sh.IsTeacher, sh.SheduleId, week+dw)
-			if err != nil {
-				return nil, err
-			}
-			err = ssau_parser.UploadShedule(bot.DB, *shedule)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return bot.GetLessons(shedules, now, dw+1)
-	} else {
-		return nil, nil
-	}
+	return condition
 }
 
 func (bot *Bot) GetDayShedule(lessons [][]database.Lesson) (string, error) {

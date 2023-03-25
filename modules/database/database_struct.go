@@ -35,14 +35,15 @@ type Teacher struct {
 }
 
 type Lesson struct {
-	LessonId  int64 `xorm:"pk autoincr"`
-	Type      string
-	Name      string
-	GroupId   int64
-	Begin     time.Time
-	End       time.Time
-	TeacherId int64
-	Place     string
-	Comment   string
-	SubGroup  string
+	LessonId     int64 `xorm:"pk autoincr"`
+	NumInShedule int
+	Type         string
+	Name         string
+	GroupId      int64
+	Begin        time.Time
+	End          time.Time
+	TeacherId    int64
+	Place        string
+	Comment      string
+	SubGroup     string
 }

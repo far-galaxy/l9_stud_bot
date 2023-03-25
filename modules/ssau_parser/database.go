@@ -73,6 +73,7 @@ func UploadShedule(db *xorm.Engine, sh Shedule) error {
 						return err
 					}
 					if len(existsLessons) == 0 {
+						pair.NumInShedule = lesson.NumInShedule
 						pair.Place = subLesson.Place
 						pair.Comment = subLesson.Comment
 						pair.SubGroup = subLesson.SubGroup

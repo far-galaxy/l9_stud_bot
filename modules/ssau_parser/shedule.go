@@ -9,9 +9,10 @@ import (
 )
 
 type Lesson struct {
-	Begin      time.Time
-	End        time.Time
-	SubLessons []SubLesson
+	Begin        time.Time
+	End          time.Time
+	NumInShedule int
+	SubLessons   []SubLesson
 }
 
 type SubLesson struct {
@@ -83,9 +84,10 @@ func Parse(doc *goquery.Document, isGroup bool, sheduleId int64, week int) (*She
 			}
 			idx := (len(raw_dates))*t/2 + d
 			lesson := Lesson{
-				Begin:      begin,
-				End:        end,
-				SubLessons: lessons[idx],
+				Begin:        begin,
+				End:          end,
+				NumInShedule: t / 2,
+				SubLessons:   lessons[idx],
 			}
 			time_line = append(time_line, lesson)
 		}

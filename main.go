@@ -96,6 +96,13 @@ func main() {
 					}
 					bot.GetSummary(shedule, false, *query.Message)
 				}
+			} else if strings.Contains(query.Data, "week") {
+				data := strings.Split(query.Data, "_")
+				shedule, dw, err := tg.ParseQuery(data)
+				if err != nil {
+					log.Fatal(err)
+				}
+				bot.GetWeekSummary(shedule, dw, false, *query.Message)
 			}
 		}
 	}
