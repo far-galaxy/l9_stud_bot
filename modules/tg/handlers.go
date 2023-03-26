@@ -178,6 +178,34 @@ func (bot *Bot) SeeShedule(query *tgbotapi.CallbackQuery) error {
 	return err
 }
 
+func (bot *Bot) HandleSummary(query *tgbotapi.CallbackQuery) error {
+	data := strings.Split(query.Data, "_")
+	shedule, dt, err := ParseQuery(data)
+	if err != nil {
+		return err
+	}
+	if data[1] == "personal" {
+		switch data[0] {
+		case "day":
+			bot.GetPersonalDaySummary(int(dt), *query.Message)
+		case "week":
+			bot.GetPersonalWeekSummary(int(dt), *query.Message)
+		default:
+			bot.GetPersonalSummary(*query.Message)
+		}
+	} else {
+		switch data[0] {
+		case "day":
+			bot.GetDaySummary(shedule, dt, false, *query.Message)
+		case "week":
+			bot.GetWeekSummary(shedule, dt, false, *query.Message)
+		default:
+			bot.GetSummary(shedule, false, *query.Message)
+		}
+	}
+	return nil
+}
+
 func (bot *Bot) Confirm(query *tgbotapi.CallbackQuery) error {
 	isGroup := bot.TG_user.PosTag == "confirm_add_group"
 	groupId, err := strconv.ParseInt(query.Data, 0, 64)

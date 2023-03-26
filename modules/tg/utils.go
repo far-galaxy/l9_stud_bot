@@ -65,13 +65,18 @@ func SummaryKeyboard(clickedButton string, sheduleId int64, isTeacher bool, dt i
 		tgbotapi.NewInlineKeyboardButtonData("Неделя", "week"+tail),
 	}
 
+	update := GenerateButtonTail(sheduleId, dt, isTeacher)
 	var arrows []tgbotapi.InlineKeyboardButton
 	if clickedButton == "day" || clickedButton == "week" {
 		prev_arrow := GenerateButtonTail(sheduleId, dt-1, isTeacher)
 		next_arrow := GenerateButtonTail(sheduleId, dt+1, isTeacher)
 		arrows = []tgbotapi.InlineKeyboardButton{
-			tgbotapi.NewInlineKeyboardButtonData("<", clickedButton+prev_arrow),
-			tgbotapi.NewInlineKeyboardButtonData(">", clickedButton+next_arrow),
+			tgbotapi.NewInlineKeyboardButtonData("⏮", clickedButton+prev_arrow),
+			tgbotapi.NewInlineKeyboardButtonData("⏭", clickedButton+next_arrow),
+		}
+	} else {
+		arrows = []tgbotapi.InlineKeyboardButton{
+			tgbotapi.NewInlineKeyboardButtonData("🔄", clickedButton+update),
 		}
 	}
 	/*options := []tgbotapi.InlineKeyboardButton{
@@ -90,7 +95,7 @@ func SummaryKeyboard(clickedButton string, sheduleId int64, isTeacher bool, dt i
 		}
 	default:
 		markup = [][]tgbotapi.InlineKeyboardButton{
-			day, week,
+			arrows, day, week,
 		}
 	}
 	/*if sheduleId == 0 {
@@ -102,7 +107,7 @@ func SummaryKeyboard(clickedButton string, sheduleId int64, isTeacher bool, dt i
 func GenerateButtonTail(sheduleId int64, dt int, isTeacher bool) string {
 	var tail string
 	if sheduleId == 0 {
-		tail = fmt.Sprintf("_personal_%d", dt)
+		tail = fmt.Sprintf("_personal_%d_0", dt)
 	} else if isTeacher {
 		tail = fmt.Sprintf("_teacher_%d_%d", dt, sheduleId)
 	} else {
@@ -142,6 +147,17 @@ func ParseQuery(data []string) ([]database.ShedulesInUser, int, error) {
 		return nil, 0, err
 	}
 	return []database.ShedulesInUser{shedule}, int(dt), nil
+}
+
+var SumKey = []string{"near", "day", "week"}
+
+func KeywordContains(str string, keywords []string) bool {
+	for _, key := range keywords {
+		if strings.Contains(str, key) {
+			return true
+		}
+	}
+	return false
 }
 
 func (bot *Bot) DeleteMsg(query *tgbotapi.CallbackQuery) {

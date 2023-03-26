@@ -2,7 +2,6 @@ package tg
 
 import (
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math"
 	"os"
@@ -45,7 +44,22 @@ func (bot *Bot) GetWeekLessons(shedules []database.ShedulesInUser, week int, isR
 
 var days = [6]string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}
 
-func (bot *Bot) GetWeekSummary(shedules []database.ShedulesInUser, dw int, isPersonal bool, editMsg ...tgbotapi.Message) {
+func (bot *Bot) GetPersonalWeekSummary(dt int, msg ...tgbotapi.Message) {
+	var shedules []database.ShedulesInUser
+	bot.DB.ID(bot.TG_user.L9Id).Find(&shedules)
+
+	if len(shedules) == 0 {
+		bot.Etc()
+		return
+	} else {
+		err := bot.GetWeekSummary(shedules, dt, true, msg...)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
+func (bot *Bot) GetWeekSummary(shedules []database.ShedulesInUser, dw int, isPersonal bool, editMsg ...tgbotapi.Message) error {
 	_, week := time.Now().ISOWeek()
 	week += dw
 	lessons, _ := bot.GetWeekLessons(shedules, week-bot.Week)
@@ -94,15 +108,15 @@ func (bot *Bot) GetWeekSummary(shedules []database.ShedulesInUser, dw int, isPer
 	}
 
 	html := bot.CreateHTMLShedule(week, shedule, dates, times)
-
-	f, _ := os.Create("sh.html")
+	fname := fmt.Sprintf("./%d_%d.html", bot.TG_user.L9Id, week-bot.Week)
+	f, _ := os.Create(fname)
 	defer f.Close()
 	f.WriteString(html)
 
-	wkhtml.SetPath("C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltopdf.exe")
+	wkhtml.SetPath(bot.WkPath)
 	pdfg, err := wkhtml.NewPDFGenerator()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 	pdfg.Dpi.Set(300)
 	pdfg.MarginBottom.Set(0)
@@ -115,19 +129,20 @@ func (bot *Bot) GetWeekSummary(shedules []database.ShedulesInUser, dw int, isPer
 
 	err = pdfg.Create()
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	err = pdfg.WriteFile("./sh.pdf")
+	fname = fmt.Sprintf("./%d_%d.pdf", bot.TG_user.L9Id, week-bot.Week)
+	err = pdfg.WriteFile(fname)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	photoBytes, err := ioutil.ReadFile("./sh.pdf")
+	photoBytes, err := os.ReadFile(fname)
 	if err != nil {
-		panic(err)
+		return err
 	}
-	fname := fmt.Sprintf("Расписание %d неделя.pdf", week-bot.Week)
+	fname = fmt.Sprintf("Расписание %d неделя.pdf", week-bot.Week)
 	photoFileBytes := tgbotapi.FileBytes{
 		Name:  fname,
 		Bytes: photoBytes,
@@ -136,7 +151,7 @@ func (bot *Bot) GetWeekSummary(shedules []database.ShedulesInUser, dw int, isPer
 	msg := tgbotapi.NewDocument(bot.TG_user.TgId, photoFileBytes)
 	_, err = bot.TG.Send(msg)
 	if err != nil {
-		log.Println(err)
+		return err
 	}
 	var shId int64
 	if isPersonal {
@@ -152,6 +167,7 @@ func (bot *Bot) GetWeekSummary(shedules []database.ShedulesInUser, dw int, isPer
 	)
 	str := fmt.Sprintf("Расписание на %d неделю сообщением ниже 👇", week-bot.Week)
 	bot.EditOrSend(str, markup, editMsg...)
+	return nil
 }
 
 const head = `<html lang="ru">

@@ -13,6 +13,7 @@ type Bot struct {
 	DB      *xorm.Engine
 	TG_user database.TgUser
 	Week    int
+	WkPath  string
 }
 
 func (bot *Bot) InitBot(token string, engine xorm.Engine) error {

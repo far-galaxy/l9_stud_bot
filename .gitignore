@@ -6,3 +6,5 @@ logs
 *.exe
 *.env
 .vscode
+*.html
+*.pdf

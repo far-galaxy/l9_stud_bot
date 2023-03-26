@@ -3,7 +3,6 @@ package main
 import (
 	"log"
 	"os"
-	"strconv"
 	"strings"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
@@ -24,6 +23,7 @@ func main() {
 
 	bot := new(tg.Bot)
 	bot.Week = 5
+	bot.WkPath = os.Getenv("WK_PATH")
 	err = bot.InitBot(os.Getenv("TELEGRAM_APITOKEN"), *engine)
 	if err != nil {
 		log.Fatal(err)
@@ -69,40 +69,8 @@ func main() {
 			} else if strings.Contains(tg_user.PosTag, "confirm_see") {
 				bot.SeeShedule(query)
 				bot.DeleteMsg(query)
-			} else if strings.Contains(query.Data, "day") {
-				// TODO: Зарефакторить
-				data := strings.Split(query.Data, "_")
-				if data[1] == "personal" {
-					dt, err := strconv.ParseInt(data[2], 0, 64)
-					if err != nil {
-						log.Fatal(err)
-					}
-					bot.GetPersonalDaySummary(int(dt), *query.Message)
-				} else {
-					shedule, dt, err := tg.ParseQuery(data)
-					if err != nil {
-						log.Fatal(err)
-					}
-					bot.GetDaySummary(shedule, dt, false, *query.Message)
-				}
-			} else if strings.Contains(query.Data, "near") {
-				data := strings.Split(query.Data, "_")
-				if data[1] == "personal" {
-					bot.GetPersonalSummary(*query.Message)
-				} else {
-					shedule, _, err := tg.ParseQuery(data)
-					if err != nil {
-						log.Fatal(err)
-					}
-					bot.GetSummary(shedule, false, *query.Message)
-				}
-			} else if strings.Contains(query.Data, "week") {
-				data := strings.Split(query.Data, "_")
-				shedule, dw, err := tg.ParseQuery(data)
-				if err != nil {
-					log.Fatal(err)
-				}
-				bot.GetWeekSummary(shedule, dw, false, *query.Message)
+			} else if tg.KeywordContains(query.Data, tg.SumKey) {
+				bot.HandleSummary(query)
 			}
 		}
 	}
