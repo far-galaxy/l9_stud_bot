@@ -55,7 +55,7 @@ func UploadShedule(db *xorm.Engine, sh Shedule) error {
 					}
 
 					if !exists {
-						uri := GenerateUri(subLesson.TeacherId, false)
+						uri := GenerateUri(groupId, false)
 						doc, _, _, err := Connect(uri, sh.Week)
 						if err != nil {
 							return err

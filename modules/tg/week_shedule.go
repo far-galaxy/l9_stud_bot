@@ -251,8 +251,37 @@ func (bot *Bot) CreateHTMLShedule(week int, shedule [][6][]database.Lesson, date
 				if l[0].Place != "" {
 					html += fmt.Sprintf("<h3>%s</h3>\n", l[0].Place)
 				}
+				if l[0].SubGroup != "" {
+					html += fmt.Sprintf("<h3>%s</h3>\n", l[0].SubGroup)
+				}
+				if l[0].Comment != "" {
+					html += fmt.Sprintf("<h3>%s</h3>\n", l[0].Comment)
+				}
+
+				if len(l) == 2 {
+					html += "<hr>\n"
+					if l[0].Name != l[1].Name {
+						html += fmt.Sprintf("<div><p></p></div>\n<h2>%s</h2><hr>", l[1].Name)
+					}
+					if l[1].TeacherId != 0 {
+						var t database.Teacher
+						bot.DB.ID(l[1].TeacherId).Get(&t)
+						name := GenerateName(t)
+						html += fmt.Sprintf("<h5 id=\"prep\">%s</h5>\n", name)
+					}
+					if l[1].Place != "" {
+						html += fmt.Sprintf("<h3>%s</h3>\n", l[1].Place)
+					}
+					if l[1].SubGroup != "" {
+						html += fmt.Sprintf("<h3>%s</h3>\n", l[1].SubGroup)
+					}
+					if l[1].Comment != "" {
+						html += fmt.Sprintf("<h3>%s</h3>\n", l[1].Comment)
+					}
+				}
 
 				html += "</th>\n"
+
 			} else {
 				html += "<th class=\"subj\"></th>\n"
 			}
