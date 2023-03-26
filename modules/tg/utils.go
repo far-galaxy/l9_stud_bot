@@ -53,7 +53,7 @@ func GenerateKeyboard(array []tgbotapi.InlineKeyboardButton, query string) tgbot
 }
 
 func SummaryKeyboard(clickedButton string, sheduleId int64, isTeacher bool, dt int) tgbotapi.InlineKeyboardMarkup {
-	tail := GenerateButtonTail(sheduleId, dt, isTeacher)
+	tail := GenerateButtonTail(sheduleId, 0, isTeacher)
 
 	near := []tgbotapi.InlineKeyboardButton{
 		tgbotapi.NewInlineKeyboardButtonData("Краткая сводка", "near"+tail),
@@ -72,6 +72,7 @@ func SummaryKeyboard(clickedButton string, sheduleId int64, isTeacher bool, dt i
 		next_arrow := GenerateButtonTail(sheduleId, dt+1, isTeacher)
 		arrows = []tgbotapi.InlineKeyboardButton{
 			tgbotapi.NewInlineKeyboardButtonData("⏮", clickedButton+prev_arrow),
+			tgbotapi.NewInlineKeyboardButtonData("🔄", clickedButton+update),
 			tgbotapi.NewInlineKeyboardButtonData("⏭", clickedButton+next_arrow),
 		}
 	} else {

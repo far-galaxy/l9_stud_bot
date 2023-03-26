@@ -5,6 +5,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -82,16 +83,26 @@ func (bot *Bot) GetWeekSummary(shedules []database.ShedulesInUser, dw int, isPer
 		}
 	}
 	var times []ssau_parser.Lesson
+	var beginsSlice []time.Time
+	var endsSlice []time.Time
 	for b := range begins {
-		l := ssau_parser.Lesson{
-			Begin: b,
-		}
-		times = append(times, l)
+		beginsSlice = append(beginsSlice, b)
 	}
-	i := 0
 	for e := range ends {
-		times[i].End = e
-		i++
+		endsSlice = append(endsSlice, e)
+	}
+	sort.Slice(beginsSlice, func(i, j int) bool {
+		return beginsSlice[i].Before(beginsSlice[j])
+	})
+	sort.Slice(endsSlice, func(i, j int) bool {
+		return endsSlice[i].Before(endsSlice[j])
+	})
+	for i, b := range beginsSlice {
+		sh := ssau_parser.Lesson{
+			Begin: b,
+			End:   endsSlice[i],
+		}
+		times = append(times, sh)
 	}
 
 	weekBegin := timex.WeekStart(lessons[0].Begin.Year(), week)
@@ -108,7 +119,15 @@ func (bot *Bot) GetWeekSummary(shedules []database.ShedulesInUser, dw int, isPer
 	}
 
 	html := bot.CreateHTMLShedule(week, shedule, dates, times)
-	fname := fmt.Sprintf("./%d_%d.html", bot.TG_user.L9Id, week-bot.Week)
+
+	if _, err := os.Stat("shedules"); os.IsNotExist(err) {
+		err = os.Mkdir("shedules", os.ModePerm)
+		if err != nil {
+			return err
+		}
+	}
+
+	fname := fmt.Sprintf("./shedules/%d_%d.html", bot.TG_user.L9Id, week-bot.Week)
 	f, _ := os.Create(fname)
 	defer f.Close()
 	f.WriteString(html)
@@ -132,7 +151,7 @@ func (bot *Bot) GetWeekSummary(shedules []database.ShedulesInUser, dw int, isPer
 		return err
 	}
 
-	fname = fmt.Sprintf("./%d_%d.pdf", bot.TG_user.L9Id, week-bot.Week)
+	fname = fmt.Sprintf("./shedules/%d_%d.pdf", bot.TG_user.L9Id, week-bot.Week)
 	err = pdfg.WriteFile(fname)
 	if err != nil {
 		return err
@@ -165,7 +184,15 @@ func (bot *Bot) GetWeekSummary(shedules []database.ShedulesInUser, dw int, isPer
 		shedules[0].IsTeacher,
 		dw,
 	)
-	str := fmt.Sprintf("Расписание на %d неделю сообщением ниже 👇", week-bot.Week)
+	_, nowWeek := time.Now().ISOWeek()
+	var str string
+	if week == nowWeek {
+		str = fmt.Sprintf("Расписание на текущую (%d) неделю сообщением ниже 👇", week-bot.Week)
+	} else if week-nowWeek == 1 {
+		str = fmt.Sprintf("Расписание на следующую (%d) неделю сообщением ниже 👇", week-bot.Week)
+	} else {
+		str = fmt.Sprintf("Расписание на %d неделю сообщением ниже 👇", week-bot.Week)
+	}
 	bot.EditOrSend(str, markup, editMsg...)
 	return nil
 }
@@ -179,7 +206,7 @@ const head = `<html lang="ru">
 </head>
 
 <style>
-.note div,.rasp div{background-color:#f0f8ff;padding:10px;text-align:center;border-radius:10px}.note,th.head,th.time{font-family:monospace}.subj div #text,.subj p{display:none}html{font-size:1.3rem}body{background:#dc14bd}table{table-layout:fixed;width:100%;border-spacing:5px 5px}.note div{margin:10px 0}.head p,.subj p,hr{margin:0}.rasp div{transition:.3s}th.head{background-color:#0ff;border-radius:10px;padding:5px;font-size:1.05rem}th.subj,th.time{background-color:#f0f8ff;padding:10px;border-radius:10px}th.time{font-size:1.1rem}.subj h2,.subj p{font-size:.85rem}th.subj:not(.lab,.lect,.pract,.other){background-color:#a9a9a9}.subj div{border-radius:10px;padding:5px}.subj p{font-family:monospace;color:#f0f8ff}.subj h2,.subj h3,.subj h5{font-family:monospace;text-align:left;margin:5px}.subj h3{font-size:.65rem}.subj h5{font-size:.7rem;font-weight:400}.lect div{background-color:#7fff00}.pract div{background-color:#dc143c}.lab div{background-color:#8a2be2}.other div{background-color:#ff8c00}
+.note div,.rasp div{background-color:#f0f8ff;padding:10px;text-align:center;border-radius:10px}.note,th.head,th.time{font-family:monospace}.subj div #text,.subj p{display:none}html{font-size:1.5rem}body{background:#dc14bd}table{table-layout:fixed;width:100%;border-spacing:5px 5px}.note div{margin:10px 0}.head p,.subj p,hr{margin:0}.rasp div{transition:.3s}th.head{background-color:#0ff;border-radius:10px;padding:5px;font-size:1.05rem}th.subj,th.time{background-color:#f0f8ff;padding:10px;border-radius:10px}th.time{font-size:1.1rem}.subj h2,.subj p{font-size:.85rem}th.subj:not(.lab,.lect,.pract,.other){background-color:#a9a9a9}.subj div{border-radius:10px;padding:5px}.subj p{font-family:monospace;color:#f0f8ff}.subj h2,.subj h3,.subj h5{font-family:monospace;text-align:left;margin:5px}.subj h3{font-size:.65rem}.subj h5{font-size:.7rem;font-weight:400}.lect div{background-color:#7fff00}.pract div{background-color:#dc143c}.lab div{background-color:#8a2be2}.other div{background-color:#ff8c00}
 </style>
 
 <body>

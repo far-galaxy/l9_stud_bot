@@ -41,9 +41,9 @@ func (bot *Bot) GetSummary(shedules []database.ShedulesInUser, isPersonal bool, 
 		firstPair = pairs[0]
 		log.Println(firstPair, secondPair)
 
-		var str string
+		str := "📝Краткая сводка:\n\n"
 		if pairs[0][0].Begin.Day() != time.Now().Day() {
-			str = "❗️Сегодня пар нет\nБлижайшие занятия "
+			str += "❗️Сегодня пар нет\nБлижайшие занятия "
 			if time.Until(firstPair[0].Begin).Hours() < 48 {
 				str += "завтра\n"
 			} else {
@@ -56,9 +56,9 @@ func (bot *Bot) GetSummary(shedules []database.ShedulesInUser, isPersonal bool, 
 			str += day
 		} else {
 			if firstPair[0].Begin.Before(now) {
-				str = "Сейчас:\n\n"
+				str += "Сейчас:\n\n"
 			} else {
-				str = "Ближайшая пара сегодня:\n\n"
+				str += "Ближайшая пара сегодня:\n\n"
 			}
 			firstStr, err := PairToStr(firstPair, bot.DB)
 			if err != nil {
@@ -120,6 +120,15 @@ func (bot *Bot) GetPersonalDaySummary(dt int, msg ...tgbotapi.Message) {
 	}
 }
 
+var ruWeekdays = []string{
+	"понедельник",
+	"вторник",
+	"среду",
+	"четверг",
+	"пятницу",
+	"субботу",
+}
+
 func (bot *Bot) GetDaySummary(shedules []database.ShedulesInUser, dt int, isPersonal bool, editMsg ...tgbotapi.Message) error {
 	now := time.Now()
 	day := time.Date(now.Year(), now.Month(), now.Day()+dt, 0, 0, 0, 0, now.Location())
@@ -131,7 +140,11 @@ func (bot *Bot) GetDaySummary(shedules []database.ShedulesInUser, dt int, isPers
 		pairs := GroupPairs(lessons)
 		var str string
 
-		str = fmt.Sprintf("Расписание на %s\n\n", pairs[0][0].Begin.Format("02.01"))
+		str = fmt.Sprintf(
+			"Расписание на %s, %s\n\n",
+			ruWeekdays[int(pairs[0][0].Begin.Weekday())-1],
+			pairs[0][0].Begin.Format("02.01"),
+		)
 		day, err := bot.GetDayShedule(pairs)
 		if err != nil {
 			return err
