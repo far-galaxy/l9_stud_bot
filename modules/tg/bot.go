@@ -1,7 +1,9 @@
 package tg
 
 import (
+	"io"
 	"log"
+	"os"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -14,6 +16,7 @@ type Bot struct {
 	TG_user database.TgUser
 	Week    int
 	WkPath  string
+	Debug   *log.Logger
 }
 
 func (bot *Bot) InitBot(token string, engine xorm.Engine) error {
@@ -23,6 +26,9 @@ func (bot *Bot) InitBot(token string, engine xorm.Engine) error {
 		return err
 	}
 	bot.TG.Debug = true
+
+	logger := log.New(io.MultiWriter(os.Stderr, database.CreateLog("tg")), "", log.LstdFlags)
+	tgbotapi.SetLogger(logger)
 
 	bot.DB = &engine
 

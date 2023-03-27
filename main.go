@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -24,6 +25,7 @@ func main() {
 	bot := new(tg.Bot)
 	bot.Week = 5
 	bot.WkPath = os.Getenv("WK_PATH")
+	bot.Debug = log.New(io.MultiWriter(os.Stderr, database.CreateLog("messages")), "", log.LstdFlags)
 	err = bot.InitBot(os.Getenv("TELEGRAM_APITOKEN"), *engine)
 	if err != nil {
 		log.Fatal(err)
@@ -34,7 +36,7 @@ func main() {
 	for update := range *updates {
 		if update.Message != nil {
 			msg := update.Message
-			log.Printf("Message [%s] %s", msg.From.UserName, msg.Text)
+			bot.Debug.Printf("Message [%s] %s", msg.From.UserName, msg.Text)
 
 			tg_user, err := bot.InitUser(msg.From.ID, msg.From.UserName)
 			if err != nil {
@@ -55,7 +57,7 @@ func main() {
 
 		if update.CallbackQuery != nil {
 			query := update.CallbackQuery
-			log.Printf("Callback [%s] %s", query.From.UserName, query.Data)
+			bot.Debug.Printf("Callback [%s] %s", query.From.UserName, query.Data)
 
 			tg_user, err := bot.InitUser(query.From.ID, query.From.UserName)
 			if err != nil {

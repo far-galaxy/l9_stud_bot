@@ -1,10 +1,13 @@
 package database
 
 import (
+	"log"
 	"math/rand"
+	"os"
 
 	_ "github.com/go-sql-driver/mysql"
 	"xorm.io/xorm"
+	xlog "xorm.io/xorm/log"
 	"xorm.io/xorm/names"
 )
 
@@ -13,7 +16,8 @@ func Connect(user, pass, db string) (*xorm.Engine, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	sqlLogger := xlog.NewSimpleLogger(CreateLog("sql"))
+	engine.SetLogger(sqlLogger)
 	engine.ShowSQL(true)
 	engine.SetMapper(names.SameMapper{})
 
@@ -37,4 +41,19 @@ func GenerateID(engine *xorm.Engine) (int64, error) {
 	} else {
 		return id, nil
 	}
+}
+
+func CreateLog(name string) *os.File {
+	if _, err := os.Stat("logs"); os.IsNotExist(err) {
+		err = os.Mkdir("logs", os.ModePerm)
+		if err != nil {
+			log.Fatal("Fail to create log folder")
+		}
+	}
+	fileName := "./logs/" + name + ".log"
+	logFile, err := os.Create(fileName)
+	if err != nil {
+		log.Fatal("Fail to open tg.log file")
+	}
+	return logFile
 }
