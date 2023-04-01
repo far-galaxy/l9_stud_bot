@@ -29,15 +29,15 @@ func (bot *Bot) GetWeekLessons(shedules []database.ShedulesInUser, week int, isR
 	if err != nil {
 		return nil, err
 	}
-	if len(lessons) > 0 {
-		return lessons, nil
-	} else if len(isRetry) == 0 || isRetry[0] < 2 {
+	if len(isRetry) == 0 || isRetry[0] < 2 {
 		isRetry, err = bot.LoadShedule(shedules, week+bot.Week, isRetry...)
 		if err != nil {
 			return nil, err
 		}
 		dw := isRetry[0]
 		return bot.GetWeekLessons(shedules, week, dw+1)
+	} else if len(isRetry) != 0 && len(lessons) != 0 {
+		return lessons, nil
 	} else {
 		return nil, nil
 	}
@@ -63,12 +63,16 @@ func (bot *Bot) GetPersonalWeekSummary(dt int, msg ...tgbotapi.Message) {
 func (bot *Bot) GetWeekSummary(shedules []database.ShedulesInUser, dw int, isPersonal bool, editMsg ...tgbotapi.Message) error {
 	_, week := time.Now().ISOWeek()
 	week += dw
-	lessons, _ := bot.GetWeekLessons(shedules, week-bot.Week)
+	lessons, err := bot.GetWeekLessons(shedules, week-bot.Week)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	var dates []time.Time
 	begins := make(map[time.Time]bool)
 	ends := make(map[time.Time]bool)
 	height := 0
+	minDay := lessons[0].NumInShedule
 	for _, lesson := range lessons {
 		t := lesson.Begin
 		begin := time.Date(2000, 1, 1, t.Hour(), t.Minute(), 0, 0, t.Location())
@@ -80,6 +84,8 @@ func (bot *Bot) GetWeekSummary(shedules []database.ShedulesInUser, dw int, isPer
 
 		if lesson.NumInShedule > height {
 			height = lesson.NumInShedule
+		} else if lesson.NumInShedule < minDay {
+			minDay = lesson.NumInShedule
 		}
 	}
 	var times []ssau_parser.Lesson
@@ -110,12 +116,12 @@ func (bot *Bot) GetWeekSummary(shedules []database.ShedulesInUser, dw int, isPer
 		dates = append(dates, weekBegin.Add(time.Hour*time.Duration(24*i)))
 	}
 
-	shedule := make([][6][]database.Lesson, height+1)
+	shedule := make([][6][]database.Lesson, height-minDay+1)
 	pairs := GroupPairs(lessons)
 
 	for _, p := range pairs {
 		day := int(math.Floor(p[0].Begin.Sub(weekBegin).Hours() / 24))
-		shedule[p[0].NumInShedule][day] = p
+		shedule[p[0].NumInShedule-minDay][day] = p
 	}
 
 	html := bot.CreateHTMLShedule(week, shedule, dates, times)

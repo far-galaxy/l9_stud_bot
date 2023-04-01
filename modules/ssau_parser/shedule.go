@@ -68,8 +68,33 @@ func Parse(doc *goquery.Document, isGroup bool, sheduleId int64, week int) (*She
 	})
 
 	var shedule [][]Lesson
+	var firstNum int
 
 	for t := 0; t < len(raw_times); t += 2 {
+		if t == 0 {
+			begin, err := time.Parse(" 15:04 -07", raw_times[t])
+			if err != nil {
+				return nil, err
+			}
+			switch begin.Hour() {
+			case 8:
+				firstNum = 0
+			case 9:
+				firstNum = 1
+			case 11:
+				firstNum = 2
+			case 13:
+				firstNum = 3
+			case 15:
+				firstNum = 4
+			case 17:
+				firstNum = 5
+			case 18:
+				firstNum = 6
+			case 20:
+				firstNum = 7
+			}
+		}
 		var time_line []Lesson
 		for d, date := range raw_dates {
 			begin_raw := date + raw_times[t]
@@ -86,7 +111,7 @@ func Parse(doc *goquery.Document, isGroup bool, sheduleId int64, week int) (*She
 			lesson := Lesson{
 				Begin:        begin,
 				End:          end,
-				NumInShedule: t / 2,
+				NumInShedule: t/2 + firstNum,
 				SubLessons:   lessons[idx],
 			}
 			time_line = append(time_line, lesson)

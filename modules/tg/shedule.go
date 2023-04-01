@@ -188,9 +188,7 @@ func (bot *Bot) GetLessons(shedules []database.ShedulesInUser, now time.Time, is
 		return nil, err
 	}
 
-	if len(lessons) > 0 {
-		return lessons, nil
-	} else if len(isRetry) == 0 || isRetry[0] < 2 {
+	if len(isRetry) == 0 || isRetry[0] < 2 {
 		_, week := now.ISOWeek()
 		isRetry, err = bot.LoadShedule(shedules, week, isRetry...)
 		if err != nil {
@@ -198,6 +196,8 @@ func (bot *Bot) GetLessons(shedules []database.ShedulesInUser, now time.Time, is
 		}
 		dw := isRetry[0]
 		return bot.GetLessons(shedules, now, dw+1)
+	} else if len(isRetry) != 0 && len(lessons) != 0 {
+		return lessons, nil
 	} else {
 		return nil, nil
 	}

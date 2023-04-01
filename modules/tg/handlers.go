@@ -34,7 +34,7 @@ func (bot *Bot) InitUser(id int64, name string) (*database.TgUser, error) {
 			L9Id:   l9id,
 			Name:   name,
 			TgId:   id,
-			PosTag: "not_started",
+			PosTag: "ready",
 		}
 		_, err = db.Insert(user, tg_user)
 		if err != nil {
@@ -53,7 +53,11 @@ func (bot *Bot) Start() error {
 	if err != nil {
 		return err
 	}
-	msg := tgbotapi.NewMessage(bot.TG_user.TgId, "Привет! У меня можно посмотреть расписание занятий\nПросто введи <b>номер группы</b> или <b>фамилию преподавателя</b>")
+	msg := tgbotapi.NewMessage(
+		bot.TG_user.TgId,
+		`Привет! Я новая версия этого бота и пока тут за главного (:
+У меня можно посмотреть в удобном формате <b>ближайшие пары</b>, расписание <b>по дням</b> и даже <b>по неделям</b>!
+Просто напиши мне <b>номер группы</b> или <b>фамилию преподавателя</b>`)
 	msg.ParseMode = tgbotapi.ModeHTML
 	_, err = bot.TG.Send(msg)
 	return err
