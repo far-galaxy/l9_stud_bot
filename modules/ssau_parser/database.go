@@ -1,7 +1,6 @@
 package ssau_parser
 
 import (
-	"fmt"
 	"log"
 	"strings"
 
@@ -9,7 +8,7 @@ import (
 	"xorm.io/xorm"
 )
 
-func UploadShedule(db *xorm.Engine, sh Shedule) error {
+func UploadShedule(db *xorm.Engine, sh WeekShedule) error {
 	err := addGroupOrTeacher(db, sh)
 	if err != nil {
 		return err
@@ -19,7 +18,7 @@ func UploadShedule(db *xorm.Engine, sh Shedule) error {
 	for _, line := range sh.Lessons {
 		for _, lesson := range line {
 			var pair database.Lesson
-			for _, subLesson := range lesson.SubLessons {
+			for _, subLesson := range lesson.Lessons {
 				pair = database.Lesson{
 					Begin:     lesson.Begin,
 					End:       lesson.End,
@@ -35,11 +34,11 @@ func UploadShedule(db *xorm.Engine, sh Shedule) error {
 
 				if !exists && subLesson.TeacherId != 0 {
 					uri := GenerateUri(subLesson.TeacherId, true)
-					doc, _, _, err := Connect(uri, sh.Week)
+					doc, _, _, err := DownloadShedule(uri, sh.Week)
 					if err != nil {
 						return err
 					}
-					var gr Shedule
+					var gr WeekShedule
 					gr.IsGroup = false
 					gr.SheduleId = subLesson.TeacherId
 					GetSheduleInfo(doc, &gr)
@@ -56,11 +55,11 @@ func UploadShedule(db *xorm.Engine, sh Shedule) error {
 
 					if !exists {
 						uri := GenerateUri(groupId, false)
-						doc, _, _, err := Connect(uri, sh.Week)
+						doc, _, _, err := DownloadShedule(uri, sh.Week)
 						if err != nil {
 							return err
 						}
-						var gr Shedule
+						var gr WeekShedule
 						gr.IsGroup = true
 						gr.SheduleId = groupId
 						GetSheduleInfo(doc, &gr)
@@ -90,16 +89,6 @@ func UploadShedule(db *xorm.Engine, sh Shedule) error {
 	return nil
 }
 
-func GenerateUri(id int64, isTeacher bool) string {
-	var uri string
-	if isTeacher {
-		uri = fmt.Sprintf("/rasp?staffId=%d", id)
-	} else {
-		uri = fmt.Sprintf("/rasp?groupId=%d", id)
-	}
-	return uri
-}
-
 func isGroupExists(db *xorm.Engine, groupId int64) (bool, error) {
 	var exists []database.Group
 	err := db.Find(&exists, database.Group{GroupId: groupId})
@@ -120,7 +109,7 @@ func isTeacherExists(db *xorm.Engine, teacherId int64) (bool, error) {
 	return len(exists) == 1, nil
 }
 
-func addGroupOrTeacher(db *xorm.Engine, sh Shedule) error {
+func addGroupOrTeacher(db *xorm.Engine, sh WeekShedule) error {
 	if sh.IsGroup {
 		exists, err := isGroupExists(db, sh.SheduleId)
 		if err != nil {

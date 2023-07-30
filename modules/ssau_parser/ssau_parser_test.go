@@ -9,8 +9,9 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// TODO: выдумать и прописать упоротые тесты для всего
 func TestFindInRasp(t *testing.T) {
-	list, err := FindInRasp("2305")
+	list, err := SearchInRasp("2305")
 	if err != nil {
 		t.Error(err)
 	}
@@ -18,25 +19,25 @@ func TestFindInRasp(t *testing.T) {
 }
 
 func TestConnect(t *testing.T) {
-	list, err := FindInRasp("2305")
+	list, err := SearchInRasp("2305")
 	if err != nil {
 		t.Error(err)
 	}
 	uri := list[0].Url
-	_, _, _, err = Connect(uri, 3)
+	_, _, _, err = DownloadShedule(uri, 3)
 	if err != nil {
 		t.Error(err)
 	}
 }
 
 func TestParse(t *testing.T) {
-	list, err := FindInRasp("2108")
+	list, err := SearchInRasp("2108")
 	if err != nil {
 		t.Error(err)
 	}
 	week := 5
 	uri := list[0].Url
-	doc, is, gr, err := Connect(uri, week)
+	doc, is, gr, err := DownloadShedule(uri, week)
 	if err != nil {
 		t.Error(err)
 	}

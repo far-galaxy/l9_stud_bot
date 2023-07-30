@@ -210,7 +210,7 @@ func (bot *Bot) LoadShedule(shedules []database.ShedulesInUser, week int, isRetr
 	dw := isRetry[0]
 	week -= bot.Week
 	for _, sh := range shedules {
-		doc, err := ssau_parser.ConnectById(sh.SheduleId, sh.IsTeacher, week+dw)
+		doc, err := ssau_parser.DownloadSheduleById(sh.SheduleId, sh.IsTeacher, week+dw)
 		if err != nil {
 			return nil, err
 		}

@@ -88,7 +88,7 @@ func (bot *Bot) GetWeekSummary(shedules []database.ShedulesInUser, dw int, isPer
 			minDay = lesson.NumInShedule
 		}
 	}
-	var times []ssau_parser.Lesson
+	var times []ssau_parser.Pair
 	var beginsSlice []time.Time
 	var endsSlice []time.Time
 	for b := range begins {
@@ -104,7 +104,7 @@ func (bot *Bot) GetWeekSummary(shedules []database.ShedulesInUser, dw int, isPer
 		return endsSlice[i].Before(endsSlice[j])
 	})
 	for i, b := range beginsSlice {
-		sh := ssau_parser.Lesson{
+		sh := ssau_parser.Pair{
 			Begin: b,
 			End:   endsSlice[i],
 		}
@@ -230,7 +230,7 @@ var weekdays = [6]string{
 	"сб",
 }
 
-func (bot *Bot) CreateHTMLShedule(week int, shedule [][6][]database.Lesson, dates []time.Time, times []ssau_parser.Lesson) string {
+func (bot *Bot) CreateHTMLShedule(week int, shedule [][6][]database.Lesson, dates []time.Time, times []ssau_parser.Pair) string {
 	html := head
 	html += fmt.Sprintf("<div class=\"note\"><div id=\"week\">%d неделя</div></div>\n", week-bot.Week)
 	html += "<table class=\"rasp\">\n<tr><th class=\"head\" style=\"width: 4rem\">Время</th>\n"

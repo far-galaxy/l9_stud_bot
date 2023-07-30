@@ -1,126 +1,179 @@
 package ssau_parser
 
 import (
-	"encoding/json"
-	"errors"
-	"fmt"
-	"io"
-	"log"
-	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
 
-type RaspList struct {
-	Items []RaspItems
+type Pair struct {
+	Begin        time.Time
+	End          time.Time
+	NumInShedule int
+	Lessons      []Lesson
 }
 
-type RaspItems []struct {
-	Id   int64
-	Url  string
-	Text string
+type Lesson struct {
+	Type      string
+	Name      string
+	Place     string
+	TeacherId int64
+	GroupId   []int64
+	Comment   string
+	SubGroup  string
 }
 
-func FindInRasp(query string) (RaspItems, error) {
-	client := http.Client{}
+type WeekShedule struct {
+	IsGroup   bool
+	SheduleId int64
+	GroupName string
+	SpecName  string
+	Week      int
+	Lessons   [][]Pair
+}
 
-	req, err := http.NewRequest("GET", "https://ssau.ru/rasp", nil)
-	if err != nil {
-		return nil, err
+// Получить полный номер группы и название специальности
+// TODO: проверить, как это с преподами работает
+func GetSheduleInfo(doc *goquery.Document, sh *WeekShedule) {
+	spec := doc.Find(".info-block__description div").First().Text()
+	if spec != "" {
+		spec = spec[1:]
 	}
-	req.Header.Add("User-Agent", "Mozilla/5.0")
+	sh.SpecName = spec
+	sh.GroupName = strings.TrimSpace(doc.Find(".info-block__title").First().Text())
 
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
+}
 
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	csrf, exists := doc.Find("meta[name='csrf-token']").Attr("content")
-	if !exists {
-		return nil, errors.New("missed csrf")
-	}
+// Соотнесение часа начала пары с его порядковым номером
+var hourMap = map[int]int{8: 0, 9: 1, 11: 2, 13: 3, 15: 4, 17: 5, 18: 6, 20: 7}
 
-	parm := url.Values{}
-	parm.Add("text", query)
-	req, err = http.NewRequest("POST", "https://ssau.ru/rasp/search", strings.NewReader(parm.Encode()))
-	if err != nil {
-		return nil, err
-	}
+// Парсинг страницы с расписанием
+func Parse(p Page) (*WeekShedule, error) {
+	var sh WeekShedule
+	doc := p.Doc
+	GetSheduleInfo(doc, &sh)
 
-	for _, cookie := range resp.Cookies() {
-		req.AddCookie(cookie)
-	}
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("User-Agent", "Mozilla/5.0")
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("X-CSRF-TOKEN", csrf)
+	var raw_dates []string
+	doc.Find(".schedule__head-date").Each(func(i int, s *goquery.Selection) {
+		sh_date := s.Text()
+		raw_dates = append(raw_dates, sh_date)
+	})
 
-	resp, err = client.Do(req)
-	if err != nil {
-		return nil, err
-	}
+	var raw_times []string
+	doc.Find(".schedule__time-item").Each(func(i int, s *goquery.Selection) {
+		sh_time := s.Text() + "+04"
+		raw_times = append(raw_times, sh_time)
+	})
 
-	var list RaspItems
-	if resp.StatusCode == 200 {
-		body, err := io.ReadAll(resp.Body)
+	var lessons [][]Lesson
+	doc.Find(".schedule__item:not(.schedule__head)").Each(func(i int, s *goquery.Selection) {
+		sl := ParseSubLesson(s, p.IsGroup, p.ID)
+		lessons = append(lessons, sl)
+	})
+
+	var shedule [][]Pair
+	var firstNum int
+
+	for t := 0; t < len(raw_times); t += 2 {
+		if t == 0 {
+			begin, err := time.Parse(" 15:04 -07", raw_times[t])
+			if err != nil {
+				return nil, err
+			}
+			firstNum, _ = hourMap[begin.Hour()]
+
+		}
+		var time_line []Pair
+		for d, date := range raw_dates {
+			begin_raw := date + raw_times[t]
+			begin, err := time.Parse(" 02.01.2006 15:04 -07", begin_raw)
+			if err != nil {
+				return nil, err
+			}
+			end_raw := date + raw_times[t+1]
+			end, err := time.Parse(" 02.01.2006 15:04 -07", end_raw)
+			if err != nil {
+				return nil, err
+			}
+			idx := (len(raw_dates))*t/2 + d
+			lesson := Pair{
+				Begin:        begin,
+				End:          end,
+				NumInShedule: t/2 + firstNum,
+				Lessons:      lessons[idx],
+			}
+			time_line = append(time_line, lesson)
+		}
+		shedule = append(shedule, time_line)
+	}
+	sh.IsGroup = p.IsGroup
+	sh.SheduleId = p.ID
+	sh.Week = p.Week
+	sh.Lessons = shedule
+	return &sh, nil
+}
+
+var types = [4]string{"lect", "lab", "pract", "other"}
+
+// Парсинг занятия
+func ParseSubLesson(s *goquery.Selection, isGroup bool, sheduleId int64) []Lesson {
+	var subs []Lesson
+	s.Find(".schedule__lesson").Each(func(j int, l *goquery.Selection) {
+		var sublesson Lesson
+
+		name := l.Find("div.schedule__discipline").First()
+		sublesson.Name = name.Text()[1:]
+		l_type := name.AttrOr("class", "lesson-color-type-4")
+		t := strings.Split(l_type, " ")
+		l_type = t[len(t)-1]
+		type_idx, err := strconv.ParseInt(l_type[len(l_type)-1:], 0, 8)
 		if err != nil {
-			log.Fatal(err)
+			type_idx = 4
 		}
+		sublesson.Type = types[type_idx-1]
 
-		if err := json.Unmarshal(body, &list); err != nil {
-			return nil, err
+		var teacherId int64
+		var groupId []int64
+
+		if isGroup {
+			teacher := l.Find(".schedule__teacher a").AttrOr("href", "/rasp?staffId=")
+			teacherId, err = strconv.ParseInt(teacher[14:], 0, 64)
+			if err != nil {
+				teacherId = 0
+			}
+			groupId = append(groupId, sheduleId)
+		} else {
+			teacherId = sheduleId
+			l.Find("a.schedule__group").Each(func(k int, gr *goquery.Selection) {
+				id, err := strconv.ParseInt(gr.AttrOr("href", "/rasp?groupId=")[14:], 0, 64)
+				if err != nil {
+					teacherId = 0
+				}
+				groupId = append(groupId, id)
+			})
 		}
+		sublesson.TeacherId = teacherId
+		sublesson.GroupId = groupId
 
-	} else {
-		return nil, fmt.Errorf("responce: %s", resp.Status)
-	}
+		// Я в рот ебал парсить это расписание, потому что у преподов решили номера подгрупп пихать
+		// в ссылки на группу, а не в предназначенный для этого элемент
+		subgroup := l.Find(".schedule__groups span").First().Text()
+		if subgroup == "  " {
+			subgroup = ""
+		}
+		sublesson.SubGroup = subgroup
 
-	return list, nil
-}
+		place := l.Find("div.schedule__place").First().Text()
+		if len(place) > 2 {
+			place = place[1:]
+		}
+		sublesson.Place = place
+		sublesson.Comment = l.Find("div.schedule__comment").First().Text()
 
-// Connect to ssau.ru/rasp
-// Returns goquery.Document, is shedule a group shedule and its ID
-func Connect(uri string, week int) (*goquery.Document, bool, int64, error) {
-	client := http.Client{}
+		subs = append(subs, sublesson)
+	})
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("https://ssau.ru%s&selectedWeek=%d", uri, week), nil)
-	if err != nil {
-		return nil, false, 0, err
-	}
-	req.Header.Add("User-Agent", "Mozilla/5.0")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, false, 0, err
-	}
-
-	doc, err := goquery.NewDocumentFromReader(resp.Body)
-	if err != nil {
-		return nil, false, 0, err
-	}
-
-	var sheduleId int64
-	var isGroup bool
-
-	sheduleId, err = strconv.ParseInt(uri[14:], 0, 64)
-	if err != nil {
-		return nil, false, 0, err
-	}
-
-	isGroup = strings.Contains(uri, "group")
-
-	return doc, isGroup, sheduleId, nil
-}
-
-func ConnectById(id int64, isTeacher bool, week int) (*goquery.Document, error) {
-	uri := GenerateUri(id, isTeacher)
-	doc, _, _, err := Connect(uri, week)
-	return doc, err
+	return subs
 }

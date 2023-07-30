@@ -70,7 +70,7 @@ func (bot *Bot) Find(query string) error {
 	var teachers []database.Teacher
 	bot.DB.Where(builder.Like{"LastName", query}).Find(&teachers)
 
-	list, _ := ssau_parser.FindInRasp(query)
+	list, _ := ssau_parser.SearchInRasp(query)
 
 	allGroups := groups
 	allTeachers := teachers
