@@ -2,6 +2,7 @@ package ssau_parser
 
 import (
 	"log"
+	"strconv"
 	"strings"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
@@ -24,23 +25,23 @@ func UploadShedule(db *xorm.Engine, sh WeekShedule) error {
 					End:       lesson.End,
 					Type:      subLesson.Type,
 					Name:      subLesson.Name,
-					TeacherId: subLesson.TeacherId,
+					TeacherId: subLesson.TeacherId[0],
 				}
 
-				exists, err := isTeacherExists(db, subLesson.TeacherId)
+				exists, err := isTeacherExists(db, subLesson.TeacherId[0])
 				if err != nil {
 					return err
 				}
 
-				if !exists && subLesson.TeacherId != 0 {
-					uri := GenerateUri(subLesson.TeacherId, true)
+				if !exists && subLesson.TeacherId[0] != 0 {
+					uri := GenerateUri(subLesson.TeacherId[0], true)
 					doc, err := DownloadShedule(uri, sh.Week)
 					if err != nil {
 						return err
 					}
 					var gr WeekShedule
 					gr.IsGroup = false
-					gr.SheduleId = subLesson.TeacherId
+					gr.SheduleId = subLesson.TeacherId[0]
 					GetSheduleInfo(doc.Doc, &gr)
 					addGroupOrTeacher(db, gr)
 				}
@@ -75,7 +76,7 @@ func UploadShedule(db *xorm.Engine, sh WeekShedule) error {
 						pair.NumInShedule = lesson.NumInShedule
 						pair.Place = subLesson.Place
 						pair.Comment = subLesson.Comment
-						pair.SubGroup = subLesson.SubGroup
+						pair.SubGroup = strconv.Itoa(subLesson.SubGroup[0])
 						pairs = append(pairs, pair)
 					}
 				}

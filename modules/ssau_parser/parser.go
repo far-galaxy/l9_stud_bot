@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
+	"golang.org/x/exp/slices"
 )
 
 type Pair struct {
@@ -19,10 +20,10 @@ type Lesson struct {
 	Type      string
 	Name      string
 	Place     string
-	TeacherId int64
+	TeacherId []int64
 	GroupId   []int64
 	Comment   string
-	SubGroup  string
+	SubGroup  []int
 }
 
 type WeekShedule struct {
@@ -75,10 +76,7 @@ func Parse(p Page) (*WeekShedule, error) {
 
 	var lessons [][]Lesson
 	doc.Find(".schedule__item:not(.schedule__head)").Each(func(i int, s *goquery.Selection) {
-		//sl := ParseLesson(s, p.IsGroup, p.ID)
-		sl := []Lesson{
-			{},
-		}
+		sl := ParseLesson(s, p.IsGroup, p.ID)
 		lessons = append(lessons, sl)
 	})
 
@@ -133,51 +131,76 @@ func ParseLesson(s *goquery.Selection, isGroup bool, sheduleId int64) []Lesson {
 		var sublesson Lesson
 
 		name := l.Find("div.schedule__discipline").First()
-		sublesson.Name = name.Text()[1:]
-		l_type := name.AttrOr("class", "lesson-color-type-4")
-		t := strings.Split(l_type, " ")
-		l_type = t[len(t)-1]
-		type_idx, err := strconv.ParseInt(l_type[len(l_type)-1:], 0, 8)
-		if err != nil {
-			type_idx = 4
+		sublesson.Name = strings.TrimSpace(name.Text())
+		if strings.ToLower(sublesson.Name) == "военная подготовка" {
+			sublesson.Type = "mil"
+		} else {
+			l_type := name.AttrOr("class", "lesson-color-type-4")
+			t := strings.Split(l_type, " ")
+			l_type = t[len(t)-1]
+			type_idx, err := strconv.ParseInt(l_type[len(l_type)-1:], 0, 8)
+			if err != nil {
+				type_idx = 4
+			}
+			sublesson.Type = types[type_idx-1]
 		}
-		sublesson.Type = types[type_idx-1]
 
-		var teacherId int64
+		var teacherId []int64
 		var groupId []int64
 
-		if isGroup {
-			teacher := l.Find(".schedule__teacher a").AttrOr("href", "/rasp?staffId=")
-			teacherId, err = strconv.ParseInt(teacher[14:], 0, 64)
+		l.Find(".schedule__teacher a").Each(func(k int, gr *goquery.Selection) {
+			id, err := strconv.ParseInt(gr.AttrOr("href", "/rasp?staffId=")[14:], 0, 64)
 			if err != nil {
-				teacherId = 0
+				return
 			}
-			groupId = append(groupId, sheduleId)
-		} else {
-			teacherId = sheduleId
-			l.Find("a.schedule__group").Each(func(k int, gr *goquery.Selection) {
-				id, err := strconv.ParseInt(gr.AttrOr("href", "/rasp?groupId=")[14:], 0, 64)
-				if err != nil {
-					teacherId = 0
+			teacherId = append(teacherId, id)
+		})
+
+		l.Find("a.schedule__group").Each(func(k int, gr *goquery.Selection) {
+			id, err := strconv.ParseInt(gr.AttrOr("href", "/rasp?groupId=")[14:], 0, 64)
+			if err != nil {
+				return
+			}
+			groupId = append(groupId, id)
+
+			// Вытягиваем подгруппу из преподавательского расписания
+			if !isGroup {
+				group := gr.First().Text()
+				if idx := strings.Index(group, "("); idx != -1 {
+					if endIdx := strings.Index(group[idx:], ")"); endIdx != -1 {
+						if sub, err := strconv.Atoi(group[idx+1 : idx+endIdx]); err == nil {
+							sublesson.SubGroup = append(sublesson.SubGroup, sub)
+						}
+					}
+				} else {
+					sublesson.SubGroup = append(sublesson.SubGroup, 0)
 				}
-				groupId = append(groupId, id)
-			})
+			}
+		})
+
+		// Добавляем, собственно, группу или преподавателя настоящего расписания
+		if isGroup {
+			if !slices.Contains(groupId, sheduleId) {
+				groupId = append(groupId, sheduleId)
+			}
+		} else {
+			teacherId = append(teacherId, sheduleId)
 		}
+
 		sublesson.TeacherId = teacherId
 		sublesson.GroupId = groupId
 
-		// Я в рот ебал парсить это расписание, потому что у преподов решили номера подгрупп пихать
-		// в ссылки на группу, а не в предназначенный для этого элемент
-		subgroup := l.Find(".schedule__groups span").First().Text()
-		if subgroup == "  " {
-			subgroup = ""
+		if isGroup && len(groupId) == 1 {
+			subgroup := strings.TrimSpace(l.Find(".schedule__groups span").First().Text())
+			if len(subgroup) != 0 {
+				subgroup = strings.Split(subgroup, ":")[1]
+				subgroupNum, _ := strconv.Atoi(subgroup)
+				sublesson.SubGroup = append(sublesson.SubGroup, subgroupNum)
+			}
 		}
-		sublesson.SubGroup = subgroup
 
 		place := l.Find("div.schedule__place").First().Text()
-		if len(place) > 2 {
-			place = place[1:]
-		}
+		place = strings.TrimSpace(place)
 		sublesson.Place = place
 		sublesson.Comment = l.Find("div.schedule__comment").First().Text()
 

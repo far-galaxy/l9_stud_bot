@@ -28,5 +28,6 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/syndtr/goleveldb v1.0.0 // indirect
+	golang.org/x/exp v0.0.0-20230728194245-b0cb94b80691
 	xorm.io/builder v0.3.11-0.20220531020008-1bd24a7dc978 // indirect
 )

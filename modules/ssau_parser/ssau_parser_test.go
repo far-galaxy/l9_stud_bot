@@ -75,15 +75,17 @@ func TestDownloadShedule(t *testing.T) {
 
 func TestParse(t *testing.T) {
 	headURL = "http://127.0.0.1:5000"
-	page, err := DownloadSheduleById(530996168, true, 1)
+	page, err := DownloadSheduleById(802440189, true, 3)
 	if err != nil {
 		log.Println(err)
+		return
 	}
 	_, err = Parse(page)
 	if err != nil {
 		log.Println(err)
 	}
 
+	// Ошибки в скелете расписания
 	for i := 1; i < 6; i++ {
 		page, err := DownloadSheduleById(123, true, i)
 		if err != nil {
@@ -94,5 +96,19 @@ func TestParse(t *testing.T) {
 		if err != nil {
 			log.Println(err)
 		}
+	}
+
+	// Ошибки внутри пар
+	for i := 2; i < 3; i++ {
+		page, err := DownloadSheduleById(62806001, false, i)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		sh, err := Parse(page)
+		if err != nil {
+			log.Println(err)
+		}
+		log.Println(sh.FullName)
 	}
 }
