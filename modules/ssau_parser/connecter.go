@@ -101,6 +101,9 @@ func DownloadShedule(uri string, week int) (Page, error) {
 	var page Page
 	var err error
 
+	if len(uri) < 15 {
+		return page, fmt.Errorf("uri too short, maybe its wrong: %s", uri)
+	}
 	page.ID, err = strconv.ParseInt(uri[14:], 0, 64)
 	if err != nil {
 		return page, err
@@ -118,6 +121,10 @@ func DownloadShedule(uri string, week int) (Page, error) {
 	resp, err := client.Do(req)
 	if err != nil {
 		return page, err
+	}
+
+	if resp.StatusCode != 200 {
+		return page, fmt.Errorf("responce: %s", resp.Status)
 	}
 
 	page.Doc, err = goquery.NewDocumentFromReader(resp.Body)

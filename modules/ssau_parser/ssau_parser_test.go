@@ -41,3 +41,34 @@ func pingQuery(query string, t *testing.T) {
 		log.Println(query, list)
 	}
 }
+
+var groupUri = []string{
+	"/rasp?groupId=530996168",
+	"/rasp?staffId=59915001",
+	"/aaa",
+	"/aaaaaaaaaaaaaa",
+	"/rasp?groupId=123",
+}
+var weeks = []int{
+	1,
+	2,
+	100,
+}
+
+func TestDownloadShedule(t *testing.T) {
+	// headURL = "https://ssau.ru"
+	headURL = "http://127.0.0.1:5000"
+	for _, uri := range groupUri {
+		for _, week := range weeks {
+			if _, err := DownloadShedule(uri, week); err != nil {
+				log.Println(err)
+			}
+		}
+	}
+	if _, err := DownloadSheduleById(530996168, true, 1); err != nil {
+		log.Println(err)
+	}
+	if _, err := DownloadSheduleById(59915001, false, 1); err != nil {
+		log.Println(err)
+	}
+}
