@@ -112,3 +112,31 @@ func TestParse(t *testing.T) {
 		log.Println(sh.FullName)
 	}
 }
+
+func TestSheduleCompare(t *testing.T) {
+	headURL = "http://127.0.0.1:5000"
+	page, err := DownloadSheduleById(802440189, true, 4)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	sh, err := Parse(page)
+	if err != nil {
+		log.Println(err)
+	}
+	lessons := UncoverShedule(*sh)
+
+	page, err = DownloadSheduleById(802440189, true, 8)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	sh, err = Parse(page)
+	if err != nil {
+		log.Println(err)
+	}
+	new_lessons := UncoverShedule(*sh)
+
+	add, del := Compare(new_lessons, lessons)
+	log.Println(add, del)
+}

@@ -45,5 +45,6 @@ type Lesson struct {
 	TeacherId    int64
 	Place        string
 	Comment      string
-	SubGroup     string
+	SubGroup     int64
+	Hash         string
 }

@@ -24,6 +24,7 @@ type Lesson struct {
 	GroupId   []int64
 	Comment   string
 	SubGroup  []int
+	Hash      []byte
 }
 
 type WeekShedule struct {
@@ -126,14 +127,14 @@ var types = [4]string{"lect", "lab", "pract", "other"}
 
 // Парсинг занятия
 func ParseLesson(s *goquery.Selection, isGroup bool, sheduleId int64) []Lesson {
-	var subs []Lesson
+	var lessons []Lesson
 	s.Find(".schedule__lesson").Each(func(j int, l *goquery.Selection) {
-		var sublesson Lesson
+		var lesson Lesson
 
 		name := l.Find("div.schedule__discipline").First()
-		sublesson.Name = strings.TrimSpace(name.Text())
-		if strings.ToLower(sublesson.Name) == "военная подготовка" {
-			sublesson.Type = "mil"
+		lesson.Name = strings.TrimSpace(name.Text())
+		if strings.ToLower(lesson.Name) == "военная подготовка" {
+			lesson.Type = "mil"
 		} else {
 			l_type := name.AttrOr("class", "lesson-color-type-4")
 			t := strings.Split(l_type, " ")
@@ -142,7 +143,7 @@ func ParseLesson(s *goquery.Selection, isGroup bool, sheduleId int64) []Lesson {
 			if err != nil {
 				type_idx = 4
 			}
-			sublesson.Type = types[type_idx-1]
+			lesson.Type = types[type_idx-1]
 		}
 
 		var teacherId []int64
@@ -169,11 +170,11 @@ func ParseLesson(s *goquery.Selection, isGroup bool, sheduleId int64) []Lesson {
 				if idx := strings.Index(group, "("); idx != -1 {
 					if endIdx := strings.Index(group[idx:], ")"); endIdx != -1 {
 						if sub, err := strconv.Atoi(group[idx+1 : idx+endIdx]); err == nil {
-							sublesson.SubGroup = append(sublesson.SubGroup, sub)
+							lesson.SubGroup = append(lesson.SubGroup, sub)
 						}
 					}
 				} else {
-					sublesson.SubGroup = append(sublesson.SubGroup, 0)
+					lesson.SubGroup = append(lesson.SubGroup, 0)
 				}
 			}
 		})
@@ -187,25 +188,27 @@ func ParseLesson(s *goquery.Selection, isGroup bool, sheduleId int64) []Lesson {
 			teacherId = append(teacherId, sheduleId)
 		}
 
-		sublesson.TeacherId = teacherId
-		sublesson.GroupId = groupId
+		lesson.TeacherId = teacherId
+		lesson.GroupId = groupId
 
 		if isGroup && len(groupId) == 1 {
 			subgroup := strings.TrimSpace(l.Find(".schedule__groups span").First().Text())
 			if len(subgroup) != 0 {
 				subgroup = strings.Split(subgroup, ":")[1]
-				subgroupNum, _ := strconv.Atoi(subgroup)
-				sublesson.SubGroup = append(sublesson.SubGroup, subgroupNum)
+				subgroupNum, _ := strconv.Atoi(strings.TrimSpace(subgroup))
+				lesson.SubGroup = append(lesson.SubGroup, subgroupNum)
+			} else {
+				lesson.SubGroup = append(lesson.SubGroup, 0)
 			}
 		}
 
 		place := l.Find("div.schedule__place").First().Text()
 		place = strings.TrimSpace(place)
-		sublesson.Place = place
-		sublesson.Comment = l.Find("div.schedule__comment").First().Text()
+		lesson.Place = place
+		lesson.Comment = l.Find("div.schedule__comment").First().Text()
 
-		subs = append(subs, sublesson)
+		lessons = append(lessons, lesson)
 	})
 
-	return subs
+	return lessons
 }

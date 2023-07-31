@@ -2,7 +2,6 @@ package ssau_parser
 
 import (
 	"log"
-	"strconv"
 	"strings"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
@@ -76,7 +75,7 @@ func UploadShedule(db *xorm.Engine, sh WeekShedule) error {
 						pair.NumInShedule = lesson.NumInShedule
 						pair.Place = subLesson.Place
 						pair.Comment = subLesson.Comment
-						pair.SubGroup = strconv.Itoa(subLesson.SubGroup[0])
+						pair.SubGroup = int64(subLesson.SubGroup[0])
 						pairs = append(pairs, pair)
 					}
 				}
