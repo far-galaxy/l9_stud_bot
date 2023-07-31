@@ -210,18 +210,20 @@ func (bot *Bot) LoadShedule(shedules []database.ShedulesInUser, week int, isRetr
 	dw := isRetry[0]
 	week -= bot.Week
 	for _, sh := range shedules {
-		doc, err := ssau_parser.DownloadSheduleById(sh.SheduleId, sh.IsTeacher, week+dw)
+		_, err := ssau_parser.DownloadSheduleById(sh.SheduleId, sh.IsTeacher, week+dw)
 		if err != nil {
 			return nil, err
 		}
-		shedule, err := ssau_parser.Parse(doc, !sh.IsTeacher, sh.SheduleId, week+dw)
-		if err != nil {
-			return nil, err
-		}
-		err = ssau_parser.UploadShedule(bot.DB, *shedule)
-		if err != nil {
-			return nil, err
-		}
+		/*
+			shedule, err := ssau_parser.Parse(p)
+			if err != nil {
+				return nil, err
+			}
+			err = ssau_parser.UploadShedule(bot.DB, *shedule)
+			if err != nil {
+				return nil, err
+			}
+		*/
 	}
 	return isRetry, nil
 }

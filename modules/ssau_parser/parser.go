@@ -28,22 +28,28 @@ type Lesson struct {
 type WeekShedule struct {
 	IsGroup   bool
 	SheduleId int64
-	GroupName string
+	FullName  string
 	SpecName  string
 	Week      int
+	WeekBegin int
 	Lessons   [][]Pair
 }
 
-// Получить полный номер группы и название специальности
-// TODO: проверить, как это с преподами работает
+// Получить полный номер группы и название специальности (ФИО и место работы для преподавателей)
 func GetSheduleInfo(doc *goquery.Document, sh *WeekShedule) {
-	spec := doc.Find(".info-block__description div").First().Text()
-	if spec != "" {
-		spec = spec[1:]
-	}
-	sh.SpecName = spec
-	sh.GroupName = strings.TrimSpace(doc.Find(".info-block__title").First().Text())
+	sh.SpecName = strings.TrimSpace(doc.Find(".info-block__description div").First().Text())
+	sh.FullName = strings.TrimSpace(doc.Find(".info-block__title").First().Text())
 
+	begin := doc.Find(".info-block__semester div").Last().Text()
+	begin = strings.TrimSpace(begin)
+	begin = strings.TrimPrefix(begin, "Начало семестра: ")
+
+	startWeekTime, err := time.Parse("02.01.2006", begin)
+	if err != nil {
+		sh.WeekBegin = 0
+	} else {
+		_, sh.WeekBegin = startWeekTime.ISOWeek()
+	}
 }
 
 // Соотнесение часа начала пары с его порядковым номером
@@ -69,7 +75,7 @@ func Parse(p Page) (*WeekShedule, error) {
 
 	var lessons [][]Lesson
 	doc.Find(".schedule__item:not(.schedule__head)").Each(func(i int, s *goquery.Selection) {
-		sl := ParseSubLesson(s, p.IsGroup, p.ID)
+		sl := ParseLesson(s, p.IsGroup, p.ID)
 		lessons = append(lessons, sl)
 	})
 
@@ -82,9 +88,9 @@ func Parse(p Page) (*WeekShedule, error) {
 			if err != nil {
 				return nil, err
 			}
-			firstNum, _ = hourMap[begin.Hour()]
-
+			firstNum = hourMap[begin.Hour()]
 		}
+
 		var time_line []Pair
 		for d, date := range raw_dates {
 			begin_raw := date + raw_times[t]
@@ -118,7 +124,7 @@ func Parse(p Page) (*WeekShedule, error) {
 var types = [4]string{"lect", "lab", "pract", "other"}
 
 // Парсинг занятия
-func ParseSubLesson(s *goquery.Selection, isGroup bool, sheduleId int64) []Lesson {
+func ParseLesson(s *goquery.Selection, isGroup bool, sheduleId int64) []Lesson {
 	var subs []Lesson
 	s.Find(".schedule__lesson").Each(func(j int, l *goquery.Selection) {
 		var sublesson Lesson

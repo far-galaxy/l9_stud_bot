@@ -34,14 +34,14 @@ func UploadShedule(db *xorm.Engine, sh WeekShedule) error {
 
 				if !exists && subLesson.TeacherId != 0 {
 					uri := GenerateUri(subLesson.TeacherId, true)
-					doc, _, _, err := DownloadShedule(uri, sh.Week)
+					doc, err := DownloadShedule(uri, sh.Week)
 					if err != nil {
 						return err
 					}
 					var gr WeekShedule
 					gr.IsGroup = false
 					gr.SheduleId = subLesson.TeacherId
-					GetSheduleInfo(doc, &gr)
+					GetSheduleInfo(doc.Doc, &gr)
 					addGroupOrTeacher(db, gr)
 				}
 
@@ -55,14 +55,14 @@ func UploadShedule(db *xorm.Engine, sh WeekShedule) error {
 
 					if !exists {
 						uri := GenerateUri(groupId, false)
-						doc, _, _, err := DownloadShedule(uri, sh.Week)
+						doc, err := DownloadShedule(uri, sh.Week)
 						if err != nil {
 							return err
 						}
 						var gr WeekShedule
 						gr.IsGroup = true
 						gr.SheduleId = groupId
-						GetSheduleInfo(doc, &gr)
+						GetSheduleInfo(doc.Doc, &gr)
 						addGroupOrTeacher(db, gr)
 					}
 
@@ -119,7 +119,7 @@ func addGroupOrTeacher(db *xorm.Engine, sh WeekShedule) error {
 		if !exists {
 			group := database.Group{
 				GroupId:   sh.SheduleId,
-				GroupName: sh.GroupName,
+				GroupName: sh.FullName,
 				SpecName:  sh.SpecName,
 			}
 			db.InsertOne(group)
@@ -131,7 +131,7 @@ func addGroupOrTeacher(db *xorm.Engine, sh WeekShedule) error {
 		}
 
 		if !exists {
-			name := strings.Split(sh.GroupName, " ")
+			name := strings.Split(sh.FullName, " ")
 			log.Println(name)
 			teacher := database.Teacher{
 				TeacherId: sh.SheduleId,
