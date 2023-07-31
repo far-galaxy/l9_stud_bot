@@ -72,3 +72,27 @@ func TestDownloadShedule(t *testing.T) {
 		log.Println(err)
 	}
 }
+
+func TestParse(t *testing.T) {
+	headURL = "http://127.0.0.1:5000"
+	page, err := DownloadSheduleById(530996168, true, 1)
+	if err != nil {
+		log.Println(err)
+	}
+	_, err = Parse(page)
+	if err != nil {
+		log.Println(err)
+	}
+
+	for i := 1; i < 6; i++ {
+		page, err := DownloadSheduleById(123, true, i)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		_, err = Parse(page)
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}

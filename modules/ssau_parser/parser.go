@@ -75,7 +75,10 @@ func Parse(p Page) (*WeekShedule, error) {
 
 	var lessons [][]Lesson
 	doc.Find(".schedule__item:not(.schedule__head)").Each(func(i int, s *goquery.Selection) {
-		sl := ParseLesson(s, p.IsGroup, p.ID)
+		//sl := ParseLesson(s, p.IsGroup, p.ID)
+		sl := []Lesson{
+			{},
+		}
 		lessons = append(lessons, sl)
 	})
 
