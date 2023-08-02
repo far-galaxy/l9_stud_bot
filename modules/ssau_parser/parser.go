@@ -1,7 +1,6 @@
 package ssau_parser
 
 import (
-	"errors"
 	"strconv"
 	"strings"
 	"time"
@@ -220,38 +219,4 @@ func ParseLesson(s *goquery.Selection, isGroup bool, sheduleId int64) []Lesson {
 	})
 
 	return lessons
-}
-
-// Загрузка, парсинг и раскрытие расписания в одной функции
-// Обязательно наличие IsGroup, SheduleId, Week в объекте
-func (sh *WeekShedule) DownloadById(uncover bool) error {
-	if sh.SheduleId == 0 {
-		return errors.New("schedule id not included")
-	}
-	if sh.Week == 0 {
-		return errors.New("week not included")
-	}
-
-	page, err := DownloadSheduleById(sh.SheduleId, sh.IsGroup, sh.Week)
-	if err != nil {
-		return err
-	}
-	err = sh.Parse(page, uncover)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// Загрузка, парсинг и раскрытие расписания в одной функции по URI и номеру недели
-func (sh *WeekShedule) Download(uri string, week int, uncover bool) error {
-	page, err := DownloadShedule(uri, week)
-	if err != nil {
-		return err
-	}
-	err = sh.Parse(page, uncover)
-	if err != nil {
-		return err
-	}
-	return nil
 }

@@ -2,13 +2,47 @@ package ssau_parser
 
 import (
 	"bytes"
-	"encoding/gob"
-	"fmt"
-
 	"crypto/md5"
+	"encoding/gob"
+	"errors"
+	"fmt"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
 )
+
+// Загрузка, парсинг и раскрытие расписания в одной функции по URI и номеру недели
+func (sh *WeekShedule) Download(uri string, week int, uncover bool) error {
+	page, err := DownloadShedule(uri, week)
+	if err != nil {
+		return err
+	}
+	err = sh.Parse(page, uncover)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Загрузка, парсинг и раскрытие расписания в одной функции
+// Обязательно наличие IsGroup, SheduleId, Week в объекте
+func (sh *WeekShedule) DownloadById(uncover bool) error {
+	if sh.SheduleId == 0 {
+		return errors.New("schedule id not included")
+	}
+	if sh.Week == 0 {
+		return errors.New("week not included")
+	}
+
+	page, err := DownloadSheduleById(sh.SheduleId, sh.IsGroup, sh.Week)
+	if err != nil {
+		return err
+	}
+	err = sh.Parse(page, uncover)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 // Раскрытие недельного расписания в список занятий для базы данных и сравнения
 func (sh *WeekShedule) UncoverShedule() {
@@ -68,6 +102,7 @@ func Diff(jeden []database.Lesson, dzwa []database.Lesson) []database.Lesson {
 	return diff
 }
 
+// Получение хэша занятия для быстрого сравнения
 func Hash(s database.Lesson) string {
 	var b bytes.Buffer
 	gob.NewEncoder(&b).Encode(s)
