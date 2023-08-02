@@ -47,8 +47,8 @@ func (sh *WeekShedule) DownloadById(uncover bool) error {
 // Раскрытие недельного расписания в список занятий для базы данных и сравнения
 func (sh *WeekShedule) UncoverShedule() {
 	var lessons []database.Lesson
-	for y, line := range sh.Lessons {
-		for x, pair := range line {
+	for _, line := range sh.Lessons {
+		for _, pair := range line {
 			for _, lesson := range pair.Lessons {
 				for i, gId := range lesson.GroupId {
 					if len(lesson.TeacherId) == 0 {
@@ -68,7 +68,6 @@ func (sh *WeekShedule) UncoverShedule() {
 							SubGroup:     int64(lesson.SubGroup[i]),
 						}
 						l.Hash = Hash(l)
-						l.LessonId = int64(y*len(line) + x)
 						lessons = append(lessons, l)
 					}
 				}

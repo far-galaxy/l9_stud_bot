@@ -8,99 +8,33 @@ import (
 	"xorm.io/xorm"
 )
 
-func UpdateSchedule(db *xorm.Engine, sh WeekShedule) error {
-	err := checkGroupOrTeacher(db, sh)
-	if err != nil {
-		return err
+// Согласование недельного расписания с БД
+// Возвращает соответственно добавленные и удалённые занятия
+func UpdateSchedule(db *xorm.Engine, sh WeekShedule) ([]database.Lesson, []database.Lesson, error) {
+	if err := checkGroupOrTeacher(db, sh); err != nil {
+		return nil, nil, err
 	}
 
 	first_new := sh.Uncovered[0]
 	_, week := first_new.Begin.ISOWeek()
 	var old []database.Lesson
 	db.Where("WEEK(`Begin`) = ?", week).Asc("Begin").Find(&old)
-	Compare(sh.Uncovered, old)
-	return nil
-}
-
-func UploadShedule(db *xorm.Engine, sh WeekShedule) error {
-	err := checkGroupOrTeacher(db, sh)
-	if err != nil {
-		return err
-	}
-
-	var pairs []database.Lesson
-	for _, line := range sh.Lessons {
-		for _, lesson := range line {
-			var pair database.Lesson
-			for _, subLesson := range lesson.Lessons {
-				pair = database.Lesson{
-					Begin:     lesson.Begin,
-					End:       lesson.End,
-					Type:      subLesson.Type,
-					Name:      subLesson.Name,
-					TeacherId: subLesson.TeacherId[0],
-				}
-
-				exists, err := isTeacherExists(db, subLesson.TeacherId[0])
-				if err != nil {
-					return err
-				}
-
-				if !exists && subLesson.TeacherId[0] != 0 {
-					uri := GenerateUri(subLesson.TeacherId[0], true)
-					doc, err := DownloadShedule(uri, sh.Week)
-					if err != nil {
-						return err
-					}
-					var gr WeekShedule
-					gr.IsGroup = false
-					gr.SheduleId = subLesson.TeacherId[0]
-					GetSheduleInfo(doc.Doc, &gr)
-					checkGroupOrTeacher(db, gr)
-				}
-
-				for _, groupId := range subLesson.GroupId {
-					pair.GroupId = groupId
-
-					exists, err := isGroupExists(db, groupId)
-					if err != nil {
-						return err
-					}
-
-					if !exists {
-						uri := GenerateUri(groupId, false)
-						doc, err := DownloadShedule(uri, sh.Week)
-						if err != nil {
-							return err
-						}
-						var gr WeekShedule
-						gr.IsGroup = true
-						gr.SheduleId = groupId
-						GetSheduleInfo(doc.Doc, &gr)
-						checkGroupOrTeacher(db, gr)
-					}
-
-					var existsLessons []database.Lesson
-					err = db.Find(&existsLessons, pair)
-					if err != nil {
-						return err
-					}
-					if len(existsLessons) == 0 {
-						pair.NumInShedule = lesson.NumInShedule
-						pair.Place = subLesson.Place
-						pair.Comment = subLesson.Comment
-						pair.SubGroup = int64(subLesson.SubGroup[0])
-						pairs = append(pairs, pair)
-					}
-				}
-			}
+	add, del := Compare(sh.Uncovered, old)
+	if len(add) > 0 {
+		if _, err := db.Insert(add); err != nil {
+			return nil, nil, err
 		}
 	}
-	if len(pairs) > 0 {
-		_, err := db.Insert(&pairs)
-		return err
+	if len(del) > 0 {
+		var ids []int64
+		for _, d := range del {
+			ids = append(ids, d.LessonId)
+		}
+		if _, err := db.In("lessonid", ids).Delete(&database.Lesson{}); err != nil {
+			return nil, nil, err
+		}
 	}
-	return nil
+	return add, del, nil
 }
 
 func isGroupExists(db *xorm.Engine, groupId int64) (bool, error) {
