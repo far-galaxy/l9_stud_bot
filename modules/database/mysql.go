@@ -1,9 +1,11 @@
 package database
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 	"os"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"xorm.io/xorm"
@@ -47,13 +49,21 @@ func CreateLog(name string) *os.File {
 	if _, err := os.Stat("logs"); os.IsNotExist(err) {
 		err = os.Mkdir("logs", os.ModePerm)
 		if err != nil {
-			log.Fatal("Fail to create log folder")
+			log.Fatal("failed create log folder")
 		}
 	}
 	fileName := "./logs/" + name + ".log"
+	if _, err := os.Stat(fileName); !os.IsNotExist(err) {
+		new := fmt.Sprintf("./logs/%s.before.%s.log", name, time.Now().Format("06-02-01-15-04-05"))
+		err := os.Rename(fileName, new)
+		if err != nil {
+			log.Fatalf("failed rename %s file to %s", fileName, new)
+		}
+	}
 	logFile, err := os.Create(fileName)
 	if err != nil {
-		log.Fatal("Fail to open tg.log file")
+		log.Fatalf("failed open %s.log file", name)
 	}
+	defer logFile.Close()
 	return logFile
 }
