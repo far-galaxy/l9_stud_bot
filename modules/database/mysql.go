@@ -13,8 +13,14 @@ import (
 	"xorm.io/xorm/names"
 )
 
-func Connect(user, pass, db string) (*xorm.Engine, error) {
-	engine, err := xorm.NewEngine("mysql", user+":"+pass+"@tcp(localhost:3306)/"+db+"?charset=utf8")
+type DB struct {
+	User   string
+	Pass   string
+	Schema string
+}
+
+func Connect(db DB) (*xorm.Engine, error) {
+	engine, err := xorm.NewEngine("mysql", fmt.Sprintf("%s:%s@tcp(localhost:3306)/%s?charset=utf8", db.User, db.Pass, db.Schema))
 	if err != nil {
 		return nil, err
 	}

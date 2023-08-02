@@ -6,35 +6,32 @@ import (
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/tg"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 func main() {
 	tg.CheckEnv()
-
-	engine, err := database.Connect(os.Getenv("MYSQL_USER"), os.Getenv("MYSQL_PASS"), os.Getenv("MYSQL_DB"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer engine.Close()
 
 	//bot := new(tg.Bot)
 	// bot.Week = 5
 	// bot.WkPath = os.Getenv("WK_PATH")
 	// bot.Debug = log.New(io.MultiWriter(os.Stderr, database.CreateLog("messages")), "", log.LstdFlags)
 	bot, err := tg.InitBot(
-		os.Getenv("MYSQL_USER"),
-		os.Getenv("MYSQL_PASS"),
-		os.Getenv("MYSQL_DB"),
+		database.DB{
+			User:   os.Getenv("MYSQL_USER"),
+			Pass:   os.Getenv("MYSQL_PASS"),
+			Schema: os.Getenv("MYSQL_DB"),
+		},
 		os.Getenv("TELEGRAM_APITOKEN"),
 	)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	bot.GetUpdates()
 	for update := range *bot.Updates {
-		handle(bot, update)
+		err := bot.HandleUpdate(update)
+		if err != nil {
+			log.Println(err)
+		}
 	}
 	/*
 		for update := range *bot.Updates {
@@ -80,11 +77,4 @@ func main() {
 				}
 			}
 		}*/
-}
-
-func handle(bot *tg.Bot, update tgbotapi.Update) {
-	if update.Message != nil {
-		msg := update.Message
-		bot.Debug.Printf("Message [%s] %s", msg.From.UserName, msg.Text)
-	}
 }

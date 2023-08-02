@@ -8,9 +8,14 @@ import (
 	"xorm.io/xorm"
 )
 
-// TODO: переместить все функции с БД к модулю БД
+var TestDB = database.DB{
+	User:   "test",
+	Pass:   "TESTpass1!",
+	Schema: "testdb",
+}
+
 func prepareDB() *xorm.Engine {
-	db, err := database.Connect("test", "TESTpass1!", "testdb")
+	db, err := database.Connect(TestDB)
 	if err != nil {
 		log.Println(err)
 		return nil

@@ -39,13 +39,13 @@ func CheckEnv() error {
 }
 
 // Полная инициализация бота со стороны Telegram и БД
-func InitBot(user, pass, db_name, token string) (*Bot, error) {
+func InitBot(db database.DB, token string) (*Bot, error) {
 	var bot Bot
-	engine, err := database.Connect(user, pass, db_name)
+	engine, err := database.Connect(db)
 	if err != nil {
 		return nil, err
 	}
-	defer engine.Close()
+	//defer engine.Close()
 	bot.DB = engine
 
 	bot.TG, err = tgbotapi.NewBotAPI(token)
@@ -109,4 +109,16 @@ func InitUser(db *xorm.Engine, user *tgbotapi.User) (*database.TgUser, error) {
 		tg_user = users[0]
 	}
 	return &tg_user, nil
+}
+
+func (bot *Bot) HandleUpdate(update tgbotapi.Update) error {
+	if update.Message != nil {
+		msg := update.Message
+		user, err := InitUser(bot.DB, msg.From)
+		if err != nil {
+			return err
+		}
+		bot.Debug.Printf("Message [%d] <%s> %s", user.L9Id, user.Name, msg.Text)
+	}
+	return nil
 }
