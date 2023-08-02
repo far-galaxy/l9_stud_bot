@@ -323,8 +323,8 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine) (string, error) {
 			name := GenerateName(t)
 			str += fmt.Sprintf("👤 %s\n", name)
 		}
-		if sublesson.SubGroup != "" {
-			str += fmt.Sprintf("👥 %s\n", sublesson.SubGroup)
+		if sublesson.SubGroup != 0 {
+			str += fmt.Sprintf("👥 %d\n", sublesson.SubGroup)
 		}
 		if sublesson.Comment != "" {
 			str += fmt.Sprintf("💬 %s\n", sublesson.Comment)

@@ -1,14 +1,17 @@
 package ssau_parser
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 	"time"
 
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
 	"github.com/PuerkitoBio/goquery"
 	"golang.org/x/exp/slices"
 )
 
+// Пара, состоящая из занятий
 type Pair struct {
 	Begin        time.Time
 	End          time.Time
@@ -16,6 +19,7 @@ type Pair struct {
 	Lessons      []Lesson
 }
 
+// Отдельные занятия внутри пары
 type Lesson struct {
 	Type      string
 	Name      string
@@ -27,14 +31,16 @@ type Lesson struct {
 	Hash      []byte
 }
 
+// Недельное расписание
 type WeekShedule struct {
 	IsGroup   bool
 	SheduleId int64
 	FullName  string
 	SpecName  string
-	Week      int
-	WeekBegin int
-	Lessons   [][]Pair
+	Week      int               // Номер недели в семестре
+	WeekBegin int               // Номер недели в году начала семестра
+	Lessons   [][]Pair          // Таблица пар в форме недельного расписания
+	Uncovered []database.Lesson // Раскрытый список всех занятий для дальнейшей обработки в БД
 }
 
 // Получить полный номер группы и название специальности (ФИО и место работы для преподавателей)
@@ -58,10 +64,9 @@ func GetSheduleInfo(doc *goquery.Document, sh *WeekShedule) {
 var hourMap = map[int]int{8: 0, 9: 1, 11: 2, 13: 3, 15: 4, 17: 5, 18: 6, 20: 7}
 
 // Парсинг страницы с расписанием
-func Parse(p Page) (*WeekShedule, error) {
-	var sh WeekShedule
+func (sh *WeekShedule) Parse(p Page, uncover bool) error {
 	doc := p.Doc
-	GetSheduleInfo(doc, &sh)
+	GetSheduleInfo(doc, sh)
 
 	var raw_dates []string
 	doc.Find(".schedule__head-date").Each(func(i int, s *goquery.Selection) {
@@ -88,7 +93,7 @@ func Parse(p Page) (*WeekShedule, error) {
 		if t == 0 {
 			begin, err := time.Parse(" 15:04 -07", raw_times[t])
 			if err != nil {
-				return nil, err
+				return err
 			}
 			firstNum = hourMap[begin.Hour()]
 		}
@@ -98,12 +103,12 @@ func Parse(p Page) (*WeekShedule, error) {
 			begin_raw := date + raw_times[t]
 			begin, err := time.Parse(" 02.01.2006 15:04 -07", begin_raw)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			end_raw := date + raw_times[t+1]
 			end, err := time.Parse(" 02.01.2006 15:04 -07", end_raw)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			idx := (len(raw_dates))*t/2 + d
 			lesson := Pair{
@@ -120,7 +125,11 @@ func Parse(p Page) (*WeekShedule, error) {
 	sh.SheduleId = p.ID
 	sh.Week = p.Week
 	sh.Lessons = shedule
-	return &sh, nil
+
+	if uncover {
+		sh.UncoverShedule()
+	}
+	return nil
 }
 
 var types = [4]string{"lect", "lab", "pract", "other"}
@@ -211,4 +220,38 @@ func ParseLesson(s *goquery.Selection, isGroup bool, sheduleId int64) []Lesson {
 	})
 
 	return lessons
+}
+
+// Загрузка, парсинг и раскрытие расписания в одной функции
+// Обязательно наличие IsGroup, SheduleId, Week в объекте
+func (sh *WeekShedule) DownloadById(uncover bool) error {
+	if sh.SheduleId == 0 {
+		return errors.New("schedule id not included")
+	}
+	if sh.Week == 0 {
+		return errors.New("week not included")
+	}
+
+	page, err := DownloadSheduleById(sh.SheduleId, sh.IsGroup, sh.Week)
+	if err != nil {
+		return err
+	}
+	err = sh.Parse(page, uncover)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// Загрузка, парсинг и раскрытие расписания в одной функции по URI и номеру недели
+func (sh *WeekShedule) Download(uri string, week int, uncover bool) error {
+	page, err := DownloadShedule(uri, week)
+	if err != nil {
+		return err
+	}
+	err = sh.Parse(page, uncover)
+	if err != nil {
+		return err
+	}
+	return nil
 }

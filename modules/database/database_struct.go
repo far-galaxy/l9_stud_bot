@@ -21,17 +21,16 @@ type ShedulesInUser struct {
 }
 
 type Group struct {
-	GroupId   int64 `xorm:"pk"`
-	GroupName string
-	SpecName  string
+	GroupId   int64  `xorm:"pk"`
+	GroupName string // Полный номер группы
+	SpecName  string // Шифр и название специальности
 }
 
 type Teacher struct {
-	TeacherId int64 `xorm:"pk"`
-	LastName  string
-	FirstName string
-	MidName   string
-	SpecName  string
+	TeacherId int64  `xorm:"pk"`
+	FirstName string // Фамилия
+	LastName  string // Имя, отчество и прочие окончания
+	SpecName  string // Место работы
 }
 
 type Lesson struct {

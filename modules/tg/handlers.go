@@ -102,7 +102,6 @@ func (bot *Bot) Find(query string) error {
 					TeacherId: elem.Id,
 					LastName:  name[0],
 					FirstName: name[1],
-					MidName:   name[2],
 				})
 			}
 		}

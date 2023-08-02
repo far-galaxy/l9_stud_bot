@@ -3,6 +3,8 @@ package ssau_parser
 import (
 	"log"
 	"testing"
+
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
 )
 
 var queries = []string{
@@ -19,6 +21,13 @@ var urls = []string{
 	"https://l9labs.ru",
 	"http://127.0.0.1:5000",
 	"http://127.0.0.1:5000",
+}
+
+// Вывод некритических ошибок тестирования в консоль
+func handleError(err error) {
+	if err != nil {
+		log.Println(err)
+	}
 }
 
 // TODO: выдумать и прописать упоротые тесты для всего
@@ -75,68 +84,83 @@ func TestDownloadShedule(t *testing.T) {
 
 func TestParse(t *testing.T) {
 	headURL = "http://127.0.0.1:5000"
-	page, err := DownloadSheduleById(802440189, true, 3)
-	if err != nil {
-		log.Println(err)
-		return
+	sh := WeekShedule{
+		SheduleId: 802440189,
+		IsGroup:   true,
+		Week:      3,
 	}
-	_, err = Parse(page)
-	if err != nil {
-		log.Println(err)
-	}
+	err := sh.DownloadById(false)
+	handleError(err)
 
 	// Ошибки в скелете расписания
 	for i := 1; i < 6; i++ {
-		page, err := DownloadSheduleById(123, true, i)
-		if err != nil {
-			log.Println(err)
-			return
+		sh := WeekShedule{
+			SheduleId: 123,
+			IsGroup:   true,
+			Week:      i,
 		}
-		_, err = Parse(page)
-		if err != nil {
-			log.Println(err)
-		}
+		err = sh.DownloadById(false)
+		handleError(err)
 	}
 
 	// Ошибки внутри пар
 	for i := 2; i < 3; i++ {
-		page, err := DownloadSheduleById(62806001, false, i)
-		if err != nil {
-			log.Println(err)
-			return
+		sh := WeekShedule{
+			SheduleId: 62806001,
+			IsGroup:   false,
+			Week:      i,
 		}
-		sh, err := Parse(page)
-		if err != nil {
-			log.Println(err)
-		}
+		err = sh.DownloadById(false)
+		handleError(err)
 		log.Println(sh.FullName)
 	}
 }
 
 func TestSheduleCompare(t *testing.T) {
 	headURL = "http://127.0.0.1:5000"
-	page, err := DownloadSheduleById(802440189, true, 4)
-	if err != nil {
-		log.Println(err)
-		return
+	sh := WeekShedule{
+		SheduleId: 802440189,
+		IsGroup:   true,
+		Week:      4,
 	}
-	sh, err := Parse(page)
-	if err != nil {
-		log.Println(err)
-	}
-	lessons := UncoverShedule(*sh)
+	err := sh.DownloadById(true)
+	handleError(err)
 
-	page, err = DownloadSheduleById(802440189, true, 8)
-	if err != nil {
-		log.Println(err)
-		return
+	new_sh := WeekShedule{
+		SheduleId: 802440189,
+		IsGroup:   true,
+		Week:      8,
 	}
-	sh, err = Parse(page)
-	if err != nil {
-		log.Println(err)
-	}
-	new_lessons := UncoverShedule(*sh)
+	err = new_sh.DownloadById(true)
+	handleError(err)
 
-	add, del := Compare(new_lessons, lessons)
+	add, del := Compare(new_sh.Uncovered, sh.Uncovered)
 	log.Println(add, del)
+}
+
+func TestCheckGroupOrTeacher(t *testing.T) {
+	db, err := database.Connect("test", "TESTpass1!", "testdb")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	// Очистка всех данных для теста
+	_, err = db.Where("groupid > 0").Delete(&database.Group{})
+	handleError(err)
+	_, err = db.Where("teacherid > 0").Delete(&database.Teacher{})
+	handleError(err)
+
+	headURL = "http://127.0.0.1:5000"
+	sh := WeekShedule{
+		SheduleId: 802440189,
+		IsGroup:   true,
+		Week:      4,
+	}
+	err = sh.DownloadById(false)
+	handleError(err)
+	err = checkGroupOrTeacher(db, sh)
+	handleError(err)
+	// Повторяем на предмет наличия
+	err = checkGroupOrTeacher(db, sh)
+	handleError(err)
 }

@@ -8,8 +8,22 @@ import (
 	"xorm.io/xorm"
 )
 
+func UpdateSchedule(db *xorm.Engine, sh WeekShedule) error {
+	err := checkGroupOrTeacher(db, sh)
+	if err != nil {
+		return err
+	}
+
+	first_new := sh.Uncovered[0]
+	_, week := first_new.Begin.ISOWeek()
+	var old []database.Lesson
+	db.Where("WEEK(`Begin`) = ?", week).Asc("Begin").Find(&old)
+	Compare(sh.Uncovered, old)
+	return nil
+}
+
 func UploadShedule(db *xorm.Engine, sh WeekShedule) error {
-	err := addGroupOrTeacher(db, sh)
+	err := checkGroupOrTeacher(db, sh)
 	if err != nil {
 		return err
 	}
@@ -42,7 +56,7 @@ func UploadShedule(db *xorm.Engine, sh WeekShedule) error {
 					gr.IsGroup = false
 					gr.SheduleId = subLesson.TeacherId[0]
 					GetSheduleInfo(doc.Doc, &gr)
-					addGroupOrTeacher(db, gr)
+					checkGroupOrTeacher(db, gr)
 				}
 
 				for _, groupId := range subLesson.GroupId {
@@ -63,7 +77,7 @@ func UploadShedule(db *xorm.Engine, sh WeekShedule) error {
 						gr.IsGroup = true
 						gr.SheduleId = groupId
 						GetSheduleInfo(doc.Doc, &gr)
-						addGroupOrTeacher(db, gr)
+						checkGroupOrTeacher(db, gr)
 					}
 
 					var existsLessons []database.Lesson
@@ -109,7 +123,9 @@ func isTeacherExists(db *xorm.Engine, teacherId int64) (bool, error) {
 	return len(exists) == 1, nil
 }
 
-func addGroupOrTeacher(db *xorm.Engine, sh WeekShedule) error {
+// Проверка наличия группы или преподавателя в БД и добавление при необходимости
+// TODO: Добавить проверку изменений в полях данных
+func checkGroupOrTeacher(db *xorm.Engine, sh WeekShedule) error {
 	if sh.IsGroup {
 		exists, err := isGroupExists(db, sh.SheduleId)
 		if err != nil {
@@ -135,8 +151,8 @@ func addGroupOrTeacher(db *xorm.Engine, sh WeekShedule) error {
 			log.Println(name)
 			teacher := database.Teacher{
 				TeacherId: sh.SheduleId,
-				LastName:  name[0],
-				FirstName: strings.Join(name[1:], " "),
+				FirstName: name[0],
+				LastName:  strings.Join(name[1:], " "),
 				SpecName:  sh.SpecName,
 			}
 			db.InsertOne(teacher)

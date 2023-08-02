@@ -257,8 +257,8 @@ func (bot *Bot) CreateHTMLShedule(week int, shedule [][6][]database.Lesson, date
 				if l[0].Place != "" {
 					html += fmt.Sprintf("<h3>%s</h3>\n", l[0].Place)
 				}
-				if l[0].SubGroup != "" {
-					html += fmt.Sprintf("<h3>%s</h3>\n", l[0].SubGroup)
+				if l[0].SubGroup != 0 {
+					html += fmt.Sprintf("<h3>%d</h3>\n", l[0].SubGroup)
 				}
 				if l[0].Comment != "" {
 					html += fmt.Sprintf("<h3>%s</h3>\n", l[0].Comment)
@@ -278,8 +278,8 @@ func (bot *Bot) CreateHTMLShedule(week int, shedule [][6][]database.Lesson, date
 					if l[1].Place != "" {
 						html += fmt.Sprintf("<h3>%s</h3>\n", l[1].Place)
 					}
-					if l[1].SubGroup != "" {
-						html += fmt.Sprintf("<h3>%s</h3>\n", l[1].SubGroup)
+					if l[1].SubGroup != 0 {
+						html += fmt.Sprintf("<h3>%d</h3>\n", l[1].SubGroup)
 					}
 					if l[1].Comment != "" {
 						html += fmt.Sprintf("<h3>%s</h3>\n", l[1].Comment)

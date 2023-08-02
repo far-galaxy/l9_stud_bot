@@ -11,7 +11,7 @@ import (
 )
 
 // Раскрытие недельного расписания в список занятий для базы данных и сравнения
-func UncoverShedule(sh WeekShedule) []database.Lesson {
+func (sh *WeekShedule) UncoverShedule() {
 	var lessons []database.Lesson
 	for y, line := range sh.Lessons {
 		for x, pair := range line {
@@ -41,7 +41,7 @@ func UncoverShedule(sh WeekShedule) []database.Lesson {
 			}
 		}
 	}
-	return lessons
+	sh.Uncovered = lessons
 }
 
 // Сравнивание списков занятий на предмет добавления и удаления
