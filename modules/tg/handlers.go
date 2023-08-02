@@ -1,7 +1,6 @@
 package tg
 
 import (
-	"log"
 	"strconv"
 	"strings"
 
@@ -10,42 +9,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"xorm.io/builder"
 )
-
-func (bot *Bot) InitUser(id int64, name string) (*database.TgUser, error) {
-	db := bot.DB
-	var users []database.TgUser
-	err := db.Find(&users, &database.TgUser{TgId: id})
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	var tg_user database.TgUser
-	if len(users) == 0 {
-		l9id, err := database.GenerateID(db)
-		if err != nil {
-			return nil, err
-		}
-
-		user := database.User{
-			L9Id: l9id,
-		}
-
-		tg_user = database.TgUser{
-			L9Id:   l9id,
-			Name:   name,
-			TgId:   id,
-			PosTag: "ready",
-		}
-		_, err = db.Insert(user, tg_user)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		tg_user = users[0]
-	}
-	bot.TG_user = tg_user
-	return &tg_user, nil
-}
 
 func (bot *Bot) Start() error {
 	bot.TG_user.PosTag = "ready"
