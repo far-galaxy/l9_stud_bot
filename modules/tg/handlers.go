@@ -270,3 +270,19 @@ func (bot *Bot) Etc(user *database.TgUser) {
 	msg := tgbotapi.NewMessage(user.TgId, "Oй!")
 	bot.TG.Send(msg)
 }
+
+func (bot *Bot) Cancel(user *database.TgUser, query *tgbotapi.CallbackQuery) error {
+	user.PosTag = database.Ready
+	_, err := bot.DB.Update(user)
+	if err != nil {
+		return err
+	}
+	callback := tgbotapi.NewCallback(query.ID, "Действие отменено")
+	_, err = bot.TG.Request(callback)
+	if err != nil {
+		bot.Debug.Println(err)
+	}
+	delete := tgbotapi.NewDeleteMessage(query.From.ID, query.Message.MessageID)
+	_, err = bot.TG.Request(delete)
+	return err
+}

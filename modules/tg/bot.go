@@ -141,6 +141,9 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update) (tgbotapi.Message, error) {
 			return nilMsg, err
 		}
 		bot.Debug.Printf("Callback [%d] <%s> %s", user.L9Id, user.Name, query.Data)
+		if query.Data == "cancel" {
+			return nilMsg, bot.Cancel(user, query)
+		}
 		switch user.PosTag {
 		case database.NotStarted:
 			err = bot.Start(user)
@@ -155,7 +158,10 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update) (tgbotapi.Message, error) {
 			return nilMsg, err
 		}
 		callback := tgbotapi.NewCallback(query.ID, query.Data)
-		bot.TG.Request(callback)
+		_, err = bot.TG.Request(callback)
+		if err != nil {
+			return nilMsg, err
+		}
 	}
 	return nilMsg, nil
 }

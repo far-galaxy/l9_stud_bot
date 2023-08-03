@@ -104,7 +104,7 @@ func TestHandleUpdate(t *testing.T) {
 		},
 	}
 	var messages []tgbotapi.Message
-
+	ssau_parser.HeadURL = "http://127.0.0.1:5000/prod"
 	// Бот общается с ботом
 	for i, query := range dialog {
 		if i == len(dialog)-1 {
@@ -127,6 +127,19 @@ func TestHandleUpdate(t *testing.T) {
 		},
 	}
 	_, err := bot.HandleUpdate(update)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Галя, отмена!
+	update = tgbotapi.Update{
+		CallbackQuery: &tgbotapi.CallbackQuery{
+			From:    &user,
+			Message: &messages[4],
+			Data:    "cancel",
+		},
+	}
+	_, err = bot.HandleUpdate(update)
 	if err != nil {
 		log.Fatal(err)
 	}

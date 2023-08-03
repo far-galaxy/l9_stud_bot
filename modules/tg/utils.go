@@ -175,8 +175,3 @@ func (bot *Bot) DeleteMsg(query *tgbotapi.CallbackQuery) {
 	delete := tgbotapi.NewDeleteMessage(query.From.ID, query.Message.MessageID)
 	bot.TG.Request(delete)
 }
-
-func (bot *Bot) UpdateUserDB(user *database.TgUser) error {
-	_, err := bot.DB.ID(user.L9Id).Update(user)
-	return err
-}
