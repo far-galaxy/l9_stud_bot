@@ -33,7 +33,7 @@ func prepareDB() *xorm.Engine {
 func TestCheckGroupOrTeacher(t *testing.T) {
 	db := prepareDB()
 
-	headURL = "http://127.0.0.1:5000"
+	HeadURL = "http://127.0.0.1:5000"
 	sh := WeekShedule{
 		SheduleId: 802440189,
 		IsGroup:   true,
@@ -61,7 +61,7 @@ func TestCheckGroupOrTeacher(t *testing.T) {
 
 func TestUpdateSchedule(t *testing.T) {
 	db := prepareDB()
-	headURL = "http://127.0.0.1:5000"
+	HeadURL = "http://127.0.0.1:5000"
 	sh := WeekShedule{
 		SheduleId: 802440189,
 		IsGroup:   true,

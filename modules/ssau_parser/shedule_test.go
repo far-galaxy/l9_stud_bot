@@ -6,7 +6,7 @@ import (
 )
 
 func TestDownload(t *testing.T) {
-	headURL = "http://127.0.0.1:5000"
+	HeadURL = "http://127.0.0.1:5000"
 	sh := WeekShedule{}
 	err := sh.Download("/rasp?groupId=802440189", 4, false)
 	handleError(err)
@@ -34,7 +34,7 @@ func TestDownload(t *testing.T) {
 }
 
 func TestSheduleCompare(t *testing.T) {
-	headURL = "http://127.0.0.1:5000"
+	HeadURL = "http://127.0.0.1:5000"
 	sh := WeekShedule{
 		SheduleId: 802440189,
 		IsGroup:   true,

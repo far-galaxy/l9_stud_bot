@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -85,8 +86,11 @@ func TestInitUser(t *testing.T) {
 var dialog = []string{
 	"/start",
 	"2305",
+	"Батурин",
+	"230",
 	"Балякин",
-	//"230",
+	"aaa",
+	"aaa",
 }
 
 func TestHandleUpdate(t *testing.T) {
@@ -99,7 +103,10 @@ func TestHandleUpdate(t *testing.T) {
 			From: &user,
 		},
 	}
-	for _, query := range dialog {
+	for i, query := range dialog {
+		if i == len(dialog)-1 {
+			ssau_parser.HeadURL = "https://sasau.ru"
+		}
 		update.Message.Text = query
 		err := bot.HandleUpdate(update)
 		if err != nil {

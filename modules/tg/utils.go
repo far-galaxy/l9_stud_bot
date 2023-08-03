@@ -10,10 +10,13 @@ import (
 )
 
 // Создание ряда кнопок из списка групп
-func GenerateGroupsArray(groups []database.Group) []tgbotapi.InlineKeyboardButton {
+func GenerateGroupsArray(groups []database.Group, isAdd bool) []tgbotapi.InlineKeyboardButton {
 	var grKeys []tgbotapi.InlineKeyboardButton
 	for _, gr := range groups {
-		grKeys = append(grKeys, tgbotapi.NewInlineKeyboardButtonData(gr.GroupName, strconv.FormatInt(gr.GroupId, 10)))
+		grKeys = append(grKeys, tgbotapi.NewInlineKeyboardButtonData(
+			gr.GroupName,
+			fmt.Sprintf("%t_group_%d", isAdd, gr.GroupId),
+		))
 	}
 	return grKeys
 }
@@ -28,11 +31,14 @@ func GenerateName(t database.Teacher) string {
 }
 
 // Создание ряда кнопок из списка преподавателей
-func GenerateTeachersArray(teachers []database.Teacher) []tgbotapi.InlineKeyboardButton {
+func GenerateTeachersArray(teachers []database.Teacher, isAdd bool) []tgbotapi.InlineKeyboardButton {
 	var teacherKeys []tgbotapi.InlineKeyboardButton
 	for _, t := range teachers {
 		name := fmt.Sprintf("%s %s", t.FirstName, t.ShortName)
-		teacherKeys = append(teacherKeys, tgbotapi.NewInlineKeyboardButtonData(name, strconv.FormatInt(t.TeacherId, 10)))
+		teacherKeys = append(teacherKeys, tgbotapi.NewInlineKeyboardButtonData(
+			name,
+			fmt.Sprintf("%t_staff_%d", isAdd, t.TeacherId),
+		))
 	}
 	return teacherKeys
 }

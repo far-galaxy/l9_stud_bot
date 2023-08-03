@@ -115,23 +115,13 @@ func (bot *Bot) Find(user *database.TgUser, query string) error {
 
 		// Если получено несколько групп
 	} else if len(allGroups) != 0 {
-		if user.PosTag == database.Add {
-			user.PosTag = database.SelAddGroup
-		} else {
-			user.PosTag = database.SelSeeGroup
-		}
 		msg := tgbotapi.NewMessage(user.TgId, "Вот что я нашёл\nВыбери нужную группу")
-		msg.ReplyMarkup = GenerateKeyboard(GenerateGroupsArray(allGroups))
+		msg.ReplyMarkup = GenerateKeyboard(GenerateGroupsArray(allGroups, user.PosTag == database.Add))
 		bot.TG.Send(msg)
 		// Если получено несколько преподавателей
 	} else if len(allTeachers) != 0 {
-		if user.PosTag == database.Add {
-			user.PosTag = database.SelAddStaff
-		} else {
-			user.PosTag = database.SelSeeStaff
-		}
 		msg := tgbotapi.NewMessage(user.TgId, "Вот что я нашёл\nВыбери нужного преподавателя")
-		msg.ReplyMarkup = GenerateKeyboard(GenerateTeachersArray(allTeachers))
+		msg.ReplyMarkup = GenerateKeyboard(GenerateTeachersArray(allTeachers, user.PosTag == database.Add))
 		bot.TG.Send(msg)
 		// Если ничего не получено
 	} else {
@@ -262,6 +252,7 @@ func (bot *Bot) Find(user *database.TgUser, query string) error {
 		return nil
 	}
 */
+
 func (bot *Bot) Etc(user *database.TgUser) {
 	msg := tgbotapi.NewMessage(user.TgId, "Oй!")
 	bot.TG.Send(msg)

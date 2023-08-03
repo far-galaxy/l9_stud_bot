@@ -35,7 +35,7 @@ func TestSearchInRasp(t *testing.T) {
 	}
 	// Проверка ошибок на стороне сайта
 	for _, url := range urls {
-		headURL = url
+		HeadURL = url
 		pingQuery(queries[0], t)
 	}
 }
@@ -63,7 +63,7 @@ var weeks = []int{
 
 func TestDownloadShedule(t *testing.T) {
 	// headURL = "https://ssau.ru"
-	headURL = "http://127.0.0.1:5000"
+	HeadURL = "http://127.0.0.1:5000"
 	for _, uri := range groupUri {
 		for _, week := range weeks {
 			if _, err := DownloadShedule(uri, week); err != nil {
@@ -77,7 +77,7 @@ func TestDownloadShedule(t *testing.T) {
 	if _, err := DownloadSheduleById(59915001, false, 1); err != nil {
 		log.Println(err)
 	}
-	headURL = "http://127.0.0.1:5000/oops/"
+	HeadURL = "http://127.0.0.1:5000/oops/"
 	if _, err := DownloadSheduleById(59915001, false, 1); err != nil {
 		log.Println(err)
 	}

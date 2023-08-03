@@ -125,10 +125,22 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update) error {
 			err = bot.Start(user)
 		case database.Ready:
 			err = bot.Find(user, msg.Text)
+		default:
+			bot.Etc(user)
 		}
 		if err != nil {
 			return err
 		}
+	}
+	if update.CallbackQuery != nil {
+		query := update.CallbackQuery
+		user, err := InitUser(bot.DB, query.From)
+		if err != nil {
+			return err
+		}
+		bot.Debug.Printf("Callback [%d] <%s> %s", user.L9Id, user.Name, query.Data)
+		callback := tgbotapi.NewCallback(query.ID, query.Data)
+		bot.TG.Request(callback)
 	}
 	return nil
 }

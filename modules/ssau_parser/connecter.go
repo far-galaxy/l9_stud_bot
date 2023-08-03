@@ -29,14 +29,14 @@ type Page struct {
 }
 
 // Адрес основного сайта (прод или тестовый)
-var headURL = "https://ssau.ru"
+var HeadURL = "https://ssau.ru"
 
 // Поиск расписания группы или преподавателя через ssau.ru/rasp/search
 func SearchInRasp(query string) (SearchResults, error) {
 	client := http.Client{}
 
 	// Сначала заходим на сам сайт и получаем токены, чтобы нас посчитали человеком
-	req, err := http.NewRequest("GET", headURL+"/rasp", nil)
+	req, err := http.NewRequest("GET", HeadURL+"/rasp", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func SearchInRasp(query string) (SearchResults, error) {
 	parm.Add("text", query)
 
 	// Теперь можно обращаться к подобию API
-	req, err = http.NewRequest("POST", headURL+"/rasp/search", strings.NewReader(parm.Encode()))
+	req, err = http.NewRequest("POST", HeadURL+"/rasp/search", strings.NewReader(parm.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +112,7 @@ func DownloadShedule(uri string, week int) (Page, error) {
 	page.Week = week
 
 	client := http.Client{}
-	req, err := http.NewRequest("GET", fmt.Sprintf("%s%s&selectedWeek=%d", headURL, uri, week), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("%s%s&selectedWeek=%d", HeadURL, uri, week), nil)
 	if err != nil {
 		return page, err
 	}
