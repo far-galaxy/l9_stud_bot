@@ -28,7 +28,7 @@ func main() {
 	}
 
 	for update := range *bot.Updates {
-		err := bot.HandleUpdate(update)
+		_, err := bot.HandleUpdate(update)
 		if err != nil {
 			log.Println(err)
 		}

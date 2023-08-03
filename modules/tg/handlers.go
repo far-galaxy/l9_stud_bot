@@ -28,7 +28,7 @@ func (bot *Bot) Start(user *database.TgUser) error {
 }
 
 // Поиск расписания по запросу
-func (bot *Bot) Find(user *database.TgUser, query string) error {
+func (bot *Bot) Find(user *database.TgUser, query string) (tgbotapi.Message, error) {
 	// Поиск в БД
 	var groups []database.Group
 	bot.DB.Where(builder.Like{"GroupName", query}).Find(&groups)
@@ -81,7 +81,9 @@ func (bot *Bot) Find(user *database.TgUser, query string) error {
 					tgbotapi.NewKeyboardButton("Моё расписание"),
 				})
 			msg.ReplyMarkup = keyboard
-			bot.TG.Send(msg)
+			user.PosTag = database.Ready
+			bot.DB.Update(user)
+			return bot.TG.Send(msg)
 		} else {
 			var sheduleId int64
 			var isGroup bool
@@ -103,27 +105,24 @@ func (bot *Bot) Find(user *database.TgUser, query string) error {
 					shedule.SheduleId,
 				),
 			)
-			bot.TG.Send(msg)
+			return bot.TG.Send(msg)
 			/*
 				err := bot.GetSummary([]database.ShedulesInUser{shedule}, false)
 				if err != nil {
 					return err
 				}*/
 		}
-		user.PosTag = database.Ready
-		err := bot.UpdateUserDB(user)
-		return err
 
 		// Если получено несколько групп
 	} else if len(allGroups) != 0 {
 		msg := tgbotapi.NewMessage(user.TgId, "Вот что я нашёл\nВыбери нужную группу")
 		msg.ReplyMarkup = GenerateKeyboard(GenerateGroupsArray(allGroups, user.PosTag == database.Add))
-		bot.TG.Send(msg)
+		return bot.TG.Send(msg)
 		// Если получено несколько преподавателей
 	} else if len(allTeachers) != 0 {
 		msg := tgbotapi.NewMessage(user.TgId, "Вот что я нашёл\nВыбери нужного преподавателя")
 		msg.ReplyMarkup = GenerateKeyboard(GenerateTeachersArray(allTeachers, user.PosTag == database.Add))
-		bot.TG.Send(msg)
+		return bot.TG.Send(msg)
 		// Если ничего не получено
 	} else {
 		var msg tgbotapi.MessageConfig
@@ -141,17 +140,16 @@ func (bot *Bot) Find(user *database.TgUser, query string) error {
 			)
 		}
 
-		bot.TG.Send(msg)
+		return bot.TG.Send(msg)
 	}
-	user.PosTag = database.Ready
-	_, err := bot.DB.Update(user)
-	return err
 }
 
 // Получить расписание из кнопки
-// TODO: проверять валидность данных кнопки
 func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery) error {
 	data := strings.Split(query.Data, "_")
+	if len(data) != 3 {
+		return fmt.Errorf("wrong button format: %s", query.Data)
+	}
 	isGroup := data[1] == "group"
 	isAdd := data[0] == "true"
 	groupId, err := strconv.ParseInt(data[2], 0, 64)

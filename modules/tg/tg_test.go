@@ -103,14 +103,31 @@ func TestHandleUpdate(t *testing.T) {
 			From: &user,
 		},
 	}
+	var messages []tgbotapi.Message
+
+	// Бот общается с ботом
 	for i, query := range dialog {
 		if i == len(dialog)-1 {
 			ssau_parser.HeadURL = "https://sasau.ru"
 		}
 		update.Message.Text = query
-		err := bot.HandleUpdate(update)
+		msg, err := bot.HandleUpdate(update)
 		if err != nil {
 			log.Fatal(err)
 		}
+		messages = append(messages, msg)
+	}
+
+	// Бот нажимает на кнопки за пользователя
+	update = tgbotapi.Update{
+		CallbackQuery: &tgbotapi.CallbackQuery{
+			From:    &user,
+			Message: &messages[3],
+			Data:    *messages[3].ReplyMarkup.InlineKeyboard[0][0].CallbackData,
+		},
+	}
+	_, err := bot.HandleUpdate(update)
+	if err != nil {
+		log.Fatal(err)
 	}
 }
