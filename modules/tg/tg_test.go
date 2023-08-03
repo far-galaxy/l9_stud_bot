@@ -3,6 +3,7 @@ package tg
 import (
 	"log"
 	"os"
+	"strconv"
 	"testing"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
@@ -13,6 +14,12 @@ var TestDB = database.DB{
 	User:   "test",
 	Pass:   "TESTpass1!",
 	Schema: "testdb",
+}
+
+var TestUser = tgbotapi.User{
+	ID:        12345,
+	FirstName: "Grzegorz",
+	LastName:  "Brzbrz",
 }
 
 func TestCheckEnv(t *testing.T) {
@@ -56,17 +63,12 @@ func TestInitUser(t *testing.T) {
 	bot := initTestBot()
 
 	// Я новенький
-	user := tgbotapi.User{
-		ID:        12345,
-		FirstName: "Grzegorz",
-		LastName:  "Brzbrz",
-	}
-	_, err := InitUser(bot.DB, &user)
+	_, err := InitUser(bot.DB, &TestUser)
 	if err != nil {
 		log.Fatal(err)
 	}
 	// Я уже Смешарик
-	_, err = InitUser(bot.DB, &user)
+	_, err = InitUser(bot.DB, &TestUser)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -75,14 +77,12 @@ func TestInitUser(t *testing.T) {
 func TestHandleUpdate(t *testing.T) {
 	bot := initTestBot()
 
+	user := TestUser
+	user.ID, _ = strconv.ParseInt(os.Getenv("TELEGRAM_TEST_USER"), 0, 64)
 	update := tgbotapi.Update{
 		Message: &tgbotapi.Message{
-			From: &tgbotapi.User{
-				ID:        12345,
-				FirstName: "Grzegorz",
-				LastName:  "Brzbrz",
-			},
-			Text: "start",
+			From: &user,
+			Text: "/start",
 		},
 	}
 	err := bot.HandleUpdate(update)

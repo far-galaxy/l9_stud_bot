@@ -13,9 +13,9 @@ import (
 )
 
 type Bot struct {
-	TG      *tgbotapi.BotAPI
-	DB      *xorm.Engine
-	TG_user database.TgUser
+	TG *tgbotapi.BotAPI
+	DB *xorm.Engine
+	// TG_user database.TgUser
 	Week    int
 	WkPath  string
 	Debug   *log.Logger
@@ -24,6 +24,7 @@ type Bot struct {
 
 var env_keys = []string{
 	"TELEGRAM_APITOKEN",
+	"TELEGRAM_TEST_USER",
 }
 
 func CheckEnv() error {
@@ -99,7 +100,7 @@ func InitUser(db *xorm.Engine, user *tgbotapi.User) (*database.TgUser, error) {
 			L9Id:   l9id,
 			Name:   name,
 			TgId:   id,
-			PosTag: "ready",
+			PosTag: database.NotStarted,
 		}
 		_, err = db.Insert(user, tg_user)
 		if err != nil {
@@ -119,6 +120,12 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update) error {
 			return err
 		}
 		bot.Debug.Printf("Message [%d] <%s> %s", user.L9Id, user.Name, msg.Text)
+		if user.PosTag == database.NotStarted {
+			err = bot.Start(user)
+			if err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

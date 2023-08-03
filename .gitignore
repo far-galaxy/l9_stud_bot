@@ -1,6 +1,8 @@
 __pycache__
 config.json
 logs
+stuff
+shedules
 *.wpr
 *test.py
 *.exe

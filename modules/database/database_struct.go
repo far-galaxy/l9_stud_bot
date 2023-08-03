@@ -6,11 +6,18 @@ type User struct {
 	L9Id int64 `xorm:"pk"`
 }
 
+type Position string
+
+const (
+	NotStarted Position = "not_started"
+	Ready      Position = "ready"
+)
+
 type TgUser struct {
 	L9Id   int64 `xorm:"pk"`
 	TgId   int64
 	Name   string
-	PosTag string
+	PosTag Position
 }
 
 type ShedulesInUser struct {
