@@ -2,6 +2,7 @@ package tg
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
@@ -142,31 +143,45 @@ func (bot *Bot) Find(user *database.TgUser, query string) error {
 
 		bot.TG.Send(msg)
 	}
-
+	user.PosTag = database.Ready
 	_, err := bot.DB.Update(user)
 	return err
 }
 
-/*
-	func (bot *Bot) SeeShedule(query *tgbotapi.CallbackQuery) error {
-		isGroup := bot.TG_user.PosTag == "confirm_see_group"
-		groupId, err := strconv.ParseInt(query.Data, 0, 64)
-		if err != nil {
-			return err
-		}
+// Получить расписание из кнопки
+// TODO: проверять валидность данных кнопки
+func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery) error {
+	data := strings.Split(query.Data, "_")
+	isGroup := data[1] == "group"
+	isAdd := data[0] == "true"
+	groupId, err := strconv.ParseInt(data[2], 0, 64)
+	if err != nil {
+		return err
+	}
+	if !isAdd {
 		shedule := database.ShedulesInUser{
 			IsTeacher: !isGroup,
 			SheduleId: groupId,
 		}
+		msg := tgbotapi.NewEditMessageText(
+			query.Message.Chat.ID,
+			query.Message.MessageID,
+			fmt.Sprintf(
+				"Тут должно было быть расписание, но его пока не завезли\n%d",
+				shedule.SheduleId,
+			),
+		)
+		bot.TG.Request(msg)
+	}
+	/*
 		err = bot.GetSummary([]database.ShedulesInUser{shedule}, false)
 		if err != nil {
 			return err
-		}
-		bot.TG_user.PosTag = "ready"
-		err = bot.UpdateUserDB()
-		return err
-	}
+		}*/
+	return err
+}
 
+/*
 	func (bot *Bot) HandleSummary(query *tgbotapi.CallbackQuery) error {
 		data := strings.Split(query.Data, "_")
 		shedule, dt, err := ParseQuery(data)

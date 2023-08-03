@@ -139,6 +139,17 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update) error {
 			return err
 		}
 		bot.Debug.Printf("Callback [%d] <%s> %s", user.L9Id, user.Name, query.Data)
+		switch user.PosTag {
+		case database.NotStarted:
+			err = bot.Start(user)
+		case database.Ready:
+			err = bot.GetShedule(user, query)
+		default:
+			bot.Etc(user)
+		}
+		if err != nil {
+			return err
+		}
 		callback := tgbotapi.NewCallback(query.ID, query.Data)
 		bot.TG.Request(callback)
 	}
