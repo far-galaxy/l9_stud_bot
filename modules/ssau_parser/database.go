@@ -2,6 +2,7 @@ package ssau_parser
 
 import (
 	"strings"
+	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
 	"xorm.io/xorm"
@@ -10,10 +11,12 @@ import (
 // Согласование недельного расписания с БД
 // Возвращает соответственно добавленные и удалённые занятия
 func UpdateSchedule(db *xorm.Engine, sh WeekShedule) ([]database.Lesson, []database.Lesson, error) {
-	if err := checkGroupOrTeacher(db, sh); err != nil {
+	if _, err := CheckGroupOrTeacher(db, sh); err != nil {
 		return nil, nil, err
 	}
-
+	if len(sh.Uncovered) == 0 {
+		return nil, nil, nil
+	}
 	first_new := sh.Uncovered[0]
 	_, week := first_new.Begin.ISOWeek()
 	var old []database.Lesson
@@ -31,6 +34,28 @@ func UpdateSchedule(db *xorm.Engine, sh WeekShedule) ([]database.Lesson, []datab
 		}
 		if _, err := db.In("lessonid", ids).Delete(&database.Lesson{}); err != nil {
 			return nil, nil, err
+		}
+	}
+	// Обновляем время обновления
+	if len(add) > 0 || len(del) > 0 {
+		if sh.IsGroup {
+			gr := database.Group{GroupId: sh.SheduleId}
+			if _, err := db.Get(&gr); err != nil {
+				return nil, nil, err
+			}
+			gr.LastUpd = time.Now()
+			if _, err := db.Update(gr); err != nil {
+				return nil, nil, err
+			}
+		} else {
+			var t database.Teacher
+			if err := db.Find(&t, &database.Teacher{TeacherId: sh.SheduleId}); err != nil {
+				return nil, nil, err
+			}
+			t.LastUpd = time.Now()
+			if _, err := db.Update(t); err != nil {
+				return nil, nil, err
+			}
 		}
 	}
 	return add, del, nil
@@ -57,12 +82,13 @@ func isTeacherExists(db *xorm.Engine, teacherId int64) (bool, error) {
 }
 
 // Проверка наличия группы или преподавателя в БД и добавление при необходимости
+// Возвращает истину, если группы/преподавателя раньше не было
 // TODO: Добавить проверку изменений в полях данных
-func checkGroupOrTeacher(db *xorm.Engine, sh WeekShedule) error {
+func CheckGroupOrTeacher(db *xorm.Engine, sh WeekShedule) (bool, error) {
 	if sh.IsGroup {
 		exists, err := isGroupExists(db, sh.SheduleId)
 		if err != nil {
-			return err
+			return false, err
 		}
 
 		if !exists {
@@ -72,11 +98,12 @@ func checkGroupOrTeacher(db *xorm.Engine, sh WeekShedule) error {
 				SpecName:  sh.SpecName,
 			}
 			db.InsertOne(group)
+			return true, nil
 		}
 	} else {
 		exists, err := isTeacherExists(db, sh.SheduleId)
 		if err != nil {
-			return err
+			return false, err
 		}
 
 		if !exists {
@@ -84,10 +111,11 @@ func checkGroupOrTeacher(db *xorm.Engine, sh WeekShedule) error {
 			teacher.TeacherId = sh.SheduleId
 			teacher.SpecName = sh.SpecName
 			db.InsertOne(teacher)
+			return true, nil
 		}
 
 	}
-	return nil
+	return false, nil
 }
 
 func ParseTeacherName(fullName string) database.Teacher {

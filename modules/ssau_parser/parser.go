@@ -63,6 +63,7 @@ func GetSheduleInfo(doc *goquery.Document, sh *WeekShedule) {
 var hourMap = map[int]int{8: 0, 9: 1, 11: 2, 13: 3, 15: 4, 17: 5, 18: 6, 20: 7}
 
 // Парсинг страницы с расписанием
+// TODO: находить окна
 func (sh *WeekShedule) Parse(p Page, uncover bool) error {
 	doc := p.Doc
 	GetSheduleInfo(doc, sh)
@@ -206,6 +207,10 @@ func ParseLesson(s *goquery.Selection, isGroup bool, sheduleId int64) []Lesson {
 				subgroupNum, _ := strconv.Atoi(strings.TrimSpace(subgroup))
 				lesson.SubGroup = append(lesson.SubGroup, subgroupNum)
 			} else {
+				lesson.SubGroup = append(lesson.SubGroup, 0)
+			}
+		} else if isGroup && len(groupId) > 1 {
+			for range groupId {
 				lesson.SubGroup = append(lesson.SubGroup, 0)
 			}
 		}

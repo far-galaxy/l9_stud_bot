@@ -2,6 +2,7 @@ package database
 
 import "time"
 
+// Пользователь системы (задел под сайт)
 type User struct {
 	L9Id int64 `xorm:"pk"`
 }
@@ -18,6 +19,7 @@ const (
 	SelSeeStaff Position = "select_see_staff" // Выбирает преподавателя для автономной карточки
 )
 
+// Пользователь Telegram
 type TgUser struct {
 	L9Id   int64 `xorm:"pk"`
 	TgId   int64
@@ -25,27 +27,33 @@ type TgUser struct {
 	PosTag Position
 }
 
+// Подключённое к пользователю расписание
 type ShedulesInUser struct {
 	UID       int64 `xorm:"pk autoincr"` // Не забывать про автоинкремент!!!
 	L9Id      int64
-	IsTeacher bool
+	IsGroup   bool
 	SheduleId int64
 }
 
+// Учебная группа
 type Group struct {
 	GroupId   int64  `xorm:"pk"`
 	GroupName string // Полный номер группы
 	SpecName  string // Шифр и название специальности
+	LastUpd   time.Time
 }
 
+// Преподаватель
 type Teacher struct {
 	TeacherId int64  `xorm:"pk"`
 	FirstName string // Фамилия
 	LastName  string // Имя, отчество и прочие окончания
 	ShortName string // Инициалы
 	SpecName  string // Место работы
+	LastUpd   time.Time
 }
 
+// Занятие
 type Lesson struct {
 	LessonId     int64 `xorm:"pk autoincr"`
 	NumInShedule int

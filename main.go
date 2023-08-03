@@ -5,10 +5,12 @@ import (
 	"os"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/tg"
 )
 
 func main() {
+	ssau_parser.HeadURL = "http://127.0.0.1:5000/prod"
 	tg.CheckEnv()
 
 	//bot := new(tg.Bot)

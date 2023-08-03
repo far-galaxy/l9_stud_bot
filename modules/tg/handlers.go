@@ -94,23 +94,21 @@ func (bot *Bot) Find(user *database.TgUser, query string) (tgbotapi.Message, err
 				sheduleId = allTeachers[0].TeacherId
 				isGroup = false
 			}
-			shedule := database.ShedulesInUser{
-				IsTeacher: !isGroup,
+			shedule := ssau_parser.WeekShedule{
+				IsGroup:   isGroup,
 				SheduleId: sheduleId,
 			}
-			msg := tgbotapi.NewMessage(
-				user.TgId,
-				fmt.Sprintf(
-					"Тут должно было быть расписание, но его пока не завезли\n%d",
-					shedule.SheduleId,
-				),
-			)
-			return bot.TG.Send(msg)
-			/*
-				err := bot.GetSummary([]database.ShedulesInUser{shedule}, false)
+			not_exists, _ := ssau_parser.CheckGroupOrTeacher(bot.DB, shedule)
+			if not_exists {
+				msg := tgbotapi.NewMessage(user.TgId, "Загружаю расписание...\nЭто займёт некоторое время")
+				bot.TG.Send(msg)
+				err := bot.LoadShedule(shedule)
 				if err != nil {
-					return err
-				}*/
+					bot.Debug.Println(err)
+				}
+			}
+			bot.GetSummary(user, []database.ShedulesInUser{Swap(shedule)}, false)
+			return tgbotapi.Message{}, nil
 		}
 
 		// Если получено несколько групп
@@ -158,7 +156,7 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery)
 	}
 	if !isAdd {
 		shedule := database.ShedulesInUser{
-			IsTeacher: !isGroup,
+			IsGroup:   isGroup,
 			SheduleId: groupId,
 		}
 		msg := tgbotapi.NewEditMessageText(

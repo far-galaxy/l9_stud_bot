@@ -41,10 +41,10 @@ func TestCheckGroupOrTeacher(t *testing.T) {
 	}
 	err := sh.DownloadById(false)
 	handleError(err)
-	err = checkGroupOrTeacher(db, sh)
+	_, err = CheckGroupOrTeacher(db, sh)
 	handleError(err)
 	// Повторяем на предмет наличия
-	err = checkGroupOrTeacher(db, sh)
+	_, err = CheckGroupOrTeacher(db, sh)
 	handleError(err)
 
 	// Проверяем преподавателя
@@ -55,7 +55,7 @@ func TestCheckGroupOrTeacher(t *testing.T) {
 	}
 	err = sh.DownloadById(false)
 	handleError(err)
-	err = checkGroupOrTeacher(db, sh)
+	_, err = CheckGroupOrTeacher(db, sh)
 	handleError(err)
 }
 

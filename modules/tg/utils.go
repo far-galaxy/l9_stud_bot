@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -61,24 +62,24 @@ func GenerateKeyboard(array []tgbotapi.InlineKeyboardButton) tgbotapi.InlineKeyb
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: markup}
 }
 
-func SummaryKeyboard(clickedButton string, sheduleId int64, isTeacher bool, dt int) tgbotapi.InlineKeyboardMarkup {
-	tail := GenerateButtonTail(sheduleId, 0, isTeacher)
+func SummaryKeyboard(clickedButton string, sheduleId int64, isGroup bool, dt int) tgbotapi.InlineKeyboardMarkup {
+	tail := GenerateButtonTail(sheduleId, 0, isGroup)
 
 	near := []tgbotapi.InlineKeyboardButton{
-		tgbotapi.NewInlineKeyboardButtonData("Краткая сводка", "near"+tail),
+		tgbotapi.NewInlineKeyboardButtonData("Краткая сводка", "sh_near"+tail),
 	}
 	day := []tgbotapi.InlineKeyboardButton{
-		tgbotapi.NewInlineKeyboardButtonData("День", "day"+tail),
+		tgbotapi.NewInlineKeyboardButtonData("День", "sh_day"+tail),
 	}
 	week := []tgbotapi.InlineKeyboardButton{
-		tgbotapi.NewInlineKeyboardButtonData("Неделя", "week"+tail),
+		tgbotapi.NewInlineKeyboardButtonData("Неделя", "sh_week"+tail),
 	}
 
-	update := GenerateButtonTail(sheduleId, dt, isTeacher)
+	update := GenerateButtonTail(sheduleId, dt, isGroup)
 	var arrows []tgbotapi.InlineKeyboardButton
-	if clickedButton == "day" || clickedButton == "week" {
-		prev_arrow := GenerateButtonTail(sheduleId, dt-1, isTeacher)
-		next_arrow := GenerateButtonTail(sheduleId, dt+1, isTeacher)
+	if clickedButton == "sh_day" || clickedButton == "sh_week" {
+		prev_arrow := GenerateButtonTail(sheduleId, dt-1, isGroup)
+		next_arrow := GenerateButtonTail(sheduleId, dt+1, isGroup)
 		arrows = []tgbotapi.InlineKeyboardButton{
 			tgbotapi.NewInlineKeyboardButtonData("⏮", clickedButton+prev_arrow),
 			tgbotapi.NewInlineKeyboardButtonData("🔄", clickedButton+update),
@@ -95,11 +96,11 @@ func SummaryKeyboard(clickedButton string, sheduleId int64, isTeacher bool, dt i
 
 	var markup [][]tgbotapi.InlineKeyboardButton
 	switch clickedButton {
-	case "day":
+	case "sh_day":
 		markup = [][]tgbotapi.InlineKeyboardButton{
 			arrows, near, week,
 		}
-	case "week":
+	case "sh_week":
 		markup = [][]tgbotapi.InlineKeyboardButton{
 			arrows, near, day,
 		}
@@ -114,11 +115,11 @@ func SummaryKeyboard(clickedButton string, sheduleId int64, isTeacher bool, dt i
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: markup}
 }
 
-func GenerateButtonTail(sheduleId int64, dt int, isTeacher bool) string {
+func GenerateButtonTail(sheduleId int64, dt int, isGroup bool) string {
 	var tail string
 	if sheduleId == 0 {
 		tail = fmt.Sprintf("_personal_%d_0", dt)
-	} else if isTeacher {
+	} else if !isGroup {
 		tail = fmt.Sprintf("_teacher_%d_%d", dt, sheduleId)
 	} else {
 		tail = fmt.Sprintf("_group_%d_%d", dt, sheduleId)
@@ -126,8 +127,7 @@ func GenerateButtonTail(sheduleId int64, dt int, isTeacher bool) string {
 	return tail
 }
 
-/*
-func (bot *Bot) EditOrSend(str string, markup tgbotapi.InlineKeyboardMarkup, editMsg ...tgbotapi.Message) {
+func (bot *Bot) EditOrSend(id int64, str string, markup tgbotapi.InlineKeyboardMarkup, editMsg ...tgbotapi.Message) {
 	if len(editMsg) > 0 {
 		msg := tgbotapi.NewEditMessageText(
 			editMsg[0].Chat.ID,
@@ -137,23 +137,26 @@ func (bot *Bot) EditOrSend(str string, markup tgbotapi.InlineKeyboardMarkup, edi
 		msg.ReplyMarkup = &markup
 		bot.TG.Request(msg)
 	} else {
-		msg := tgbotapi.NewMessage(bot.TG_user.TgId, str)
-		msg.ReplyMarkup = markup
-		bot.TG.Send(msg)
+		msg := tgbotapi.NewMessage(id, str)
+		//msg.ReplyMarkup = &markup
+		_, err := bot.TG.Send(msg)
+		if err != nil {
+			bot.Debug.Println(err)
+		}
 	}
-}*/
+}
 
 func ParseQuery(data []string) ([]database.ShedulesInUser, int, error) {
-	isGroup := data[1] == "group"
-	sheduleId, err := strconv.ParseInt(data[3], 0, 64)
+	isGroup := data[2] == "group"
+	sheduleId, err := strconv.ParseInt(data[4], 0, 64)
 	if err != nil {
 		return nil, 0, err
 	}
 	shedule := database.ShedulesInUser{
-		IsTeacher: !isGroup,
+		IsGroup:   !isGroup,
 		SheduleId: sheduleId,
 	}
-	dt, err := strconv.ParseInt(data[2], 0, 0)
+	dt, err := strconv.ParseInt(data[3], 0, 0)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -174,4 +177,12 @@ func KeywordContains(str string, keywords []string) bool {
 func (bot *Bot) DeleteMsg(query *tgbotapi.CallbackQuery) {
 	delete := tgbotapi.NewDeleteMessage(query.From.ID, query.Message.MessageID)
 	bot.TG.Request(delete)
+}
+
+// Меняем шило на мыло
+func Swap(sh ssau_parser.WeekShedule) database.ShedulesInUser {
+	return database.ShedulesInUser{
+		IsGroup:   sh.IsGroup,
+		SheduleId: sh.SheduleId,
+	}
 }
