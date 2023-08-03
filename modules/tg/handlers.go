@@ -1,12 +1,18 @@
 package tg
 
 import (
+	"fmt"
+	"strings"
+
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"xorm.io/builder"
 )
 
+// Приветственное сообщение
 func (bot *Bot) Start(user *database.TgUser) error {
-	user.PosTag = "ready"
+	user.PosTag = database.Ready
 	_, err := bot.DB.Update(user)
 	if err != nil {
 		return err
@@ -20,106 +26,138 @@ func (bot *Bot) Start(user *database.TgUser) error {
 	return err
 }
 
-/*
-	func (bot *Bot) Find(query string) error {
-		var groups []database.Group
-		bot.DB.Where(builder.Like{"GroupName", query}).Find(&groups)
+// Поиск расписания по запросу
+func (bot *Bot) Find(user *database.TgUser, query string) error {
+	// Поиск в БД
+	var groups []database.Group
+	bot.DB.Where(builder.Like{"GroupName", query}).Find(&groups)
 
-		var teachers []database.Teacher
-		bot.DB.Where(builder.Like{"LastName", query}).Find(&teachers)
+	var teachers []database.Teacher
+	bot.DB.Where(builder.Like{"FirstName", query}).Find(&teachers)
 
-		list, _ := ssau_parser.SearchInRasp(query)
+	// Поиск на сайте
+	list, siteErr := ssau_parser.SearchInRasp(query)
 
-		allGroups := groups
-		allTeachers := teachers
+	allGroups := groups
+	allTeachers := teachers
 
-		for _, elem := range list {
-			if strings.Contains(elem.Url, "group") {
-				exists := false
-				for _, group := range groups {
-					if elem.Id == group.GroupId {
-						exists = true
-						break
-					}
-				}
-				if !exists {
-					allGroups = append(allGroups, database.Group{GroupId: elem.Id, GroupName: elem.Text})
+	// Добавляем результаты поиска на сайте к результатам из БД
+	for _, elem := range list {
+		if strings.Contains(elem.Url, "group") {
+			exists := false
+			for _, group := range groups {
+				if elem.Id == group.GroupId {
+					exists = true
+					break
 				}
 			}
-			if strings.Contains(elem.Url, "staff") {
-				exists := false
-				for _, teacher := range teachers {
-					if elem.Id == teacher.TeacherId {
-						exists = true
-						break
-					}
-				}
-				if !exists {
-					name := strings.Split(elem.Text, " ")
-					allTeachers = append(allTeachers, database.Teacher{
-						TeacherId: elem.Id,
-						LastName:  name[0],
-						FirstName: name[1],
-					})
-				}
+			if !exists {
+				allGroups = append(allGroups, database.Group{GroupId: elem.Id, GroupName: elem.Text})
 			}
 		}
+		if strings.Contains(elem.Url, "staff") {
+			exists := false
+			for _, teacher := range teachers {
+				if elem.Id == teacher.TeacherId {
+					exists = true
+					break
+				}
+			}
+			if !exists {
+				teacher := ssau_parser.ParseTeacherName(elem.Text)
+				teacher.TeacherId = elem.Id
+				allTeachers = append(allTeachers, teacher)
+			}
+		}
+	}
 
-		if len(allGroups) == 1 || len(allTeachers) == 1 {
-			if bot.TG_user.PosTag == "add" {
-				msg := tgbotapi.NewMessage(bot.TG_user.TgId, "Подключено!")
-				keyboard := tgbotapi.NewReplyKeyboard([]tgbotapi.KeyboardButton{tgbotapi.NewKeyboardButton("Главное меню")})
-				msg.ReplyMarkup = keyboard
-				bot.TG.Send(msg)
+	// Если получен единственный результат, сразу выдать (подключить) расписание
+	if len(allGroups) == 1 || len(allTeachers) == 1 {
+		if user.PosTag == database.Add {
+			msg := tgbotapi.NewMessage(user.TgId, "Подключено!")
+			keyboard := tgbotapi.NewReplyKeyboard(
+				[]tgbotapi.KeyboardButton{
+					tgbotapi.NewKeyboardButton("Моё расписание"),
+				})
+			msg.ReplyMarkup = keyboard
+			bot.TG.Send(msg)
+		} else {
+			var sheduleId int64
+			var isGroup bool
+			if len(allGroups) == 1 {
+				sheduleId = allGroups[0].GroupId
+				isGroup = true
 			} else {
-				var sheduleId int64
-				var isGroup bool
-				if len(allGroups) == 1 {
-					sheduleId = allGroups[0].GroupId
-					isGroup = true
-				} else {
-					sheduleId = allTeachers[0].TeacherId
-					isGroup = false
-				}
-				shedule := database.ShedulesInUser{
-					IsTeacher: !isGroup,
-					SheduleId: sheduleId,
-				}
+				sheduleId = allTeachers[0].TeacherId
+				isGroup = false
+			}
+			shedule := database.ShedulesInUser{
+				IsTeacher: !isGroup,
+				SheduleId: sheduleId,
+			}
+			msg := tgbotapi.NewMessage(
+				user.TgId,
+				fmt.Sprintf(
+					"Тут должно было быть расписание, но его пока не завезли\n%d",
+					shedule.SheduleId,
+				),
+			)
+			bot.TG.Send(msg)
+			/*
 				err := bot.GetSummary([]database.ShedulesInUser{shedule}, false)
 				if err != nil {
 					return err
-				}
-			}
-			bot.TG_user.PosTag = "ready"
-			err := bot.UpdateUserDB()
-			return err
-		} else if len(allGroups) != 0 {
-			if bot.TG_user.PosTag == "add" {
-				bot.TG_user.PosTag = "confirm_add_group"
-			} else {
-				bot.TG_user.PosTag = "confirm_see_group"
-			}
-			msg := tgbotapi.NewMessage(bot.TG_user.TgId, "Вот что я нашёл.\nВыбери свою группу")
-			msg.ReplyMarkup = GenerateKeyboard(GenerateGroupsArray(allGroups), query)
-			bot.TG.Send(msg)
-		} else if len(allTeachers) != 0 {
-			if bot.TG_user.PosTag == "add" {
-				bot.TG_user.PosTag = "confirm_add_teacher"
-			} else {
-				bot.TG_user.PosTag = "confirm_see_teacher"
-			}
-			msg := tgbotapi.NewMessage(bot.TG_user.TgId, "Вот что я нашёл.\nВыбери нужного преподавателя")
-			msg.ReplyMarkup = GenerateKeyboard(GenerateTeachersArray(allTeachers), query)
-			bot.TG.Send(msg)
+				}*/
+		}
+		user.PosTag = database.Ready
+		err := bot.UpdateUserDB(user)
+		return err
+
+		// Если получено несколько групп
+	} else if len(allGroups) != 0 {
+		if user.PosTag == database.Add {
+			user.PosTag = database.SelAddGroup
 		} else {
-			msg := tgbotapi.NewMessage(bot.TG_user.TgId, "К сожалению, я ничего не нашёл ):\nПроверь свой запрос")
-			bot.TG.Send(msg)
+			user.PosTag = database.SelSeeGroup
+		}
+		msg := tgbotapi.NewMessage(user.TgId, "Вот что я нашёл\nВыбери нужную группу")
+		msg.ReplyMarkup = GenerateKeyboard(GenerateGroupsArray(allGroups))
+		bot.TG.Send(msg)
+		// Если получено несколько преподавателей
+	} else if len(allTeachers) != 0 {
+		if user.PosTag == database.Add {
+			user.PosTag = database.SelAddStaff
+		} else {
+			user.PosTag = database.SelSeeStaff
+		}
+		msg := tgbotapi.NewMessage(user.TgId, "Вот что я нашёл\nВыбери нужного преподавателя")
+		msg.ReplyMarkup = GenerateKeyboard(GenerateTeachersArray(allTeachers))
+		bot.TG.Send(msg)
+		// Если ничего не получено
+	} else {
+		var msg tgbotapi.MessageConfig
+		if siteErr != nil {
+			msg = tgbotapi.NewMessage(
+				user.TgId,
+				"К сожалению, у меня ничего не нашлось, а на сайте ssau.ru/rasp произошла какая-то ошибка :(\n"+
+					"Повтори попытку позже",
+			)
+			bot.Debug.Printf("sasau error: %s", siteErr)
+		} else {
+			msg = tgbotapi.NewMessage(
+				user.TgId,
+				"К сожалению, я ничего не нашёл ):\nПроверь свой запрос",
+			)
 		}
 
-		_, err := bot.DB.Update(bot.TG_user)
-		return err
+		bot.TG.Send(msg)
 	}
 
+	_, err := bot.DB.Update(user)
+	return err
+}
+
+/*
 	func (bot *Bot) SeeShedule(query *tgbotapi.CallbackQuery) error {
 		isGroup := bot.TG_user.PosTag == "confirm_see_group"
 		groupId, err := strconv.ParseInt(query.Data, 0, 64)

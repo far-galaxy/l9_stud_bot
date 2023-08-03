@@ -120,11 +120,14 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update) error {
 			return err
 		}
 		bot.Debug.Printf("Message [%d] <%s> %s", user.L9Id, user.Name, msg.Text)
-		if user.PosTag == database.NotStarted {
+		switch user.PosTag {
+		case database.NotStarted:
 			err = bot.Start(user)
-			if err != nil {
-				return err
-			}
+		case database.Ready:
+			err = bot.Find(user, msg.Text)
+		}
+		if err != nil {
+			return err
 		}
 	}
 	return nil

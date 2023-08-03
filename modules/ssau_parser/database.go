@@ -1,7 +1,6 @@
 package ssau_parser
 
 import (
-	"log"
 	"strings"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
@@ -81,17 +80,26 @@ func checkGroupOrTeacher(db *xorm.Engine, sh WeekShedule) error {
 		}
 
 		if !exists {
-			name := strings.Split(sh.FullName, " ")
-			log.Println(name)
-			teacher := database.Teacher{
-				TeacherId: sh.SheduleId,
-				FirstName: name[0],
-				LastName:  strings.Join(name[1:], " "),
-				SpecName:  sh.SpecName,
-			}
+			teacher := ParseTeacherName(sh.FullName)
+			teacher.TeacherId = sh.SheduleId
+			teacher.SpecName = sh.SpecName
 			db.InsertOne(teacher)
 		}
 
 	}
 	return nil
+}
+
+func ParseTeacherName(fullName string) database.Teacher {
+	name := strings.Split(fullName, " ")
+	var short_name []string
+	for _, a := range name[1:] {
+		short_name = append(short_name, a[:2])
+	}
+	teacher := database.Teacher{
+		FirstName: name[0],
+		LastName:  strings.Join(name[1:], " "),
+		ShortName: strings.Join(short_name, ". ") + ".",
+	}
+	return teacher
 }

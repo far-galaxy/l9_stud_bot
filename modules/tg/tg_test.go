@@ -47,6 +47,14 @@ func initTestBot() *Bot {
 	if err != nil {
 		log.Fatal(err)
 	}
+	_, err = bot.DB.Where("teacherid >= 0").Delete(&database.Teacher{})
+	if err != nil {
+		log.Fatal(err)
+	}
+	_, err = bot.DB.Where("groupid >= 0").Delete(&database.Group{})
+	if err != nil {
+		log.Fatal(err)
+	}
 	return bot
 }
 func TestInitBot(t *testing.T) {
@@ -74,6 +82,13 @@ func TestInitUser(t *testing.T) {
 	}
 }
 
+var dialog = []string{
+	"/start",
+	"2305",
+	"Балякин",
+	//"230",
+}
+
 func TestHandleUpdate(t *testing.T) {
 	bot := initTestBot()
 
@@ -82,11 +97,13 @@ func TestHandleUpdate(t *testing.T) {
 	update := tgbotapi.Update{
 		Message: &tgbotapi.Message{
 			From: &user,
-			Text: "/start",
 		},
 	}
-	err := bot.HandleUpdate(update)
-	if err != nil {
-		log.Fatal(err)
+	for _, query := range dialog {
+		update.Message.Text = query
+		err := bot.HandleUpdate(update)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
