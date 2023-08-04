@@ -31,16 +31,16 @@ func handleError(err error) {
 func TestSearchInRasp(t *testing.T) {
 	// Проверка запросов
 	for _, query := range queries {
-		pingQuery(query, t)
+		pingQuery(query)
 	}
 	// Проверка ошибок на стороне сайта
 	for _, url := range urls {
 		HeadURL = url
-		pingQuery(queries[0], t)
+		pingQuery(queries[0])
 	}
 }
 
-func pingQuery(query string, t *testing.T) {
+func pingQuery(query string) {
 	if list, err := SearchInRasp(query); err != nil {
 		log.Println(err)
 	} else {

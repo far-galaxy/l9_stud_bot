@@ -14,7 +14,7 @@ func TestDownload(t *testing.T) {
 	err = sh.Download("/oops", 4, false)
 	handleError(err)
 	// Ошибка во время парсинга
-	err = sh.Download("/rasp?groupId=123", 3, false)
+	err = sh.Download("/rasp?groupId=123456789", 1, false)
 	handleError(err)
 
 	// Тестирование DownloadById с отсутствующими полями
@@ -36,17 +36,17 @@ func TestDownload(t *testing.T) {
 func TestSheduleCompare(t *testing.T) {
 	HeadURL = "http://127.0.0.1:5000"
 	sh := WeekShedule{
-		SheduleId: 802440189,
+		SheduleId: 123456789,
 		IsGroup:   true,
-		Week:      4,
+		Week:      6,
 	}
 	err := sh.DownloadById(true)
 	handleError(err)
 
 	new_sh := WeekShedule{
-		SheduleId: 802440189,
+		SheduleId: 123456789,
 		IsGroup:   true,
-		Week:      8,
+		Week:      7,
 	}
 	err = new_sh.DownloadById(true)
 	handleError(err)

@@ -104,7 +104,8 @@ func Diff(jeden []database.Lesson, dzwa []database.Lesson) []database.Lesson {
 // Получение хэша занятия для быстрого сравнения
 func Hash(s database.Lesson) string {
 	var b bytes.Buffer
-	gob.NewEncoder(&b).Encode(s)
-	hash := fmt.Sprintf("%x", md5.Sum(b.Bytes()))
-	return hash
+	if err := gob.NewEncoder(&b).Encode(s); err != nil {
+		return "0x0"
+	}
+	return fmt.Sprintf("%x", md5.Sum(b.Bytes()))
 }

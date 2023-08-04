@@ -2,7 +2,6 @@ package ssau_parser
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -53,7 +52,7 @@ func SearchInRasp(query string) (SearchResults, error) {
 	}
 	csrf, exists := doc.Find("meta[name='csrf-token']").Attr("content")
 	if !exists {
-		return nil, errors.New("missed csrf")
+		return nil, fmt.Errorf("missed csrf: %s", req.URL)
 	}
 
 	parm := url.Values{}
@@ -90,7 +89,7 @@ func SearchInRasp(query string) (SearchResults, error) {
 		}
 
 	} else {
-		return nil, fmt.Errorf("responce: %s", resp.Status)
+		return nil, fmt.Errorf("responce %s: %s", resp.Status, req.URL)
 	}
 
 	return list, nil
@@ -124,7 +123,7 @@ func DownloadShedule(uri string, week int) (Page, error) {
 	}
 
 	if resp.StatusCode != 200 {
-		return page, fmt.Errorf("responce: %s", resp.Status)
+		return page, fmt.Errorf("responce %s: %s", resp.Status, req.URL)
 	}
 
 	page.Doc, err = goquery.NewDocumentFromReader(resp.Body)

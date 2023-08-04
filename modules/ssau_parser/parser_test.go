@@ -16,9 +16,9 @@ func TestParse(t *testing.T) {
 	handleError(err)
 
 	// Ошибки в скелете расписания
-	for i := 1; i < 6; i++ {
+	for i := 1; i < 5; i++ {
 		sh := WeekShedule{
-			SheduleId: 123,
+			SheduleId: 123456789,
 			IsGroup:   true,
 			Week:      i,
 		}
