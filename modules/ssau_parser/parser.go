@@ -46,24 +46,12 @@ type WeekShedule struct {
 func GetSheduleInfo(doc *goquery.Document, sh *WeekShedule) {
 	sh.SpecName = strings.TrimSpace(doc.Find(".info-block__description div").First().Text())
 	sh.FullName = strings.TrimSpace(doc.Find(".info-block__title").First().Text())
-
-	begin := doc.Find(".info-block__semester div").Last().Text()
-	begin = strings.TrimSpace(begin)
-	begin = strings.TrimPrefix(begin, "Начало семестра: ")
-
-	startWeekTime, err := time.Parse("02.01.2006", begin)
-	if err != nil {
-		sh.WeekBegin = 0
-	} else {
-		_, sh.WeekBegin = startWeekTime.ISOWeek()
-	}
 }
 
 // Соотнесение часа начала пары с его порядковым номером
 var hourMap = map[int]int{8: 0, 9: 1, 11: 2, 13: 3, 15: 4, 17: 5, 18: 6, 20: 7}
 
 // Парсинг страницы с расписанием
-// TODO: находить окна
 func (sh *WeekShedule) Parse(p Page, uncover bool) error {
 	doc := p.Doc
 	GetSheduleInfo(doc, sh)
@@ -120,6 +108,28 @@ func (sh *WeekShedule) Parse(p Page, uncover bool) error {
 			time_line = append(time_line, lesson)
 		}
 		shedule = append(shedule, time_line)
+	}
+	// Ищем окна
+	// TODO: искать и более длинные окна
+	if len(shedule) > 2 {
+		for y, line := range shedule[1 : len(shedule)-1] {
+			for x, pair := range line {
+				if len(pair.Lessons) == 0 &&
+					len(shedule[y][x].Lessons) != 0 &&
+					len(shedule[y+2][x].Lessons) != 0 {
+					window := Lesson{
+						Type: "window",
+						Name: "Окно",
+					}
+					if p.IsGroup {
+						window.GroupId = []int64{p.ID}
+					} else {
+						window.TeacherId = []int64{p.ID}
+					}
+					shedule[y+1][x].Lessons = []Lesson{window}
+				}
+			}
+		}
 	}
 	sh.IsGroup = p.IsGroup
 	sh.SheduleId = p.ID

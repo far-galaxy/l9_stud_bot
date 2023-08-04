@@ -8,9 +8,9 @@ import (
 func TestParse(t *testing.T) {
 	HeadURL = "http://127.0.0.1:5000"
 	sh := WeekShedule{
-		SheduleId: 802440189,
+		SheduleId: 111111111,
 		IsGroup:   true,
-		Week:      3,
+		Week:      1,
 	}
 	err := sh.DownloadById(false)
 	handleError(err)

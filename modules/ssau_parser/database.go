@@ -20,7 +20,9 @@ func UpdateSchedule(db *xorm.Engine, sh WeekShedule) ([]database.Lesson, []datab
 	first_new := sh.Uncovered[0]
 	_, week := first_new.Begin.ISOWeek()
 	var old []database.Lesson
-	db.Where("WEEK(`Begin`) = ?", week).Asc("Begin").Find(&old)
+	if err := db.Where("WEEK(`Begin`) = ?", week).Asc("Begin").Find(&old); err != nil {
+		return nil, nil, err
+	}
 	add, del := Compare(sh.Uncovered, old)
 	if len(add) > 0 {
 		if _, err := db.Insert(add); err != nil {
@@ -48,8 +50,8 @@ func UpdateSchedule(db *xorm.Engine, sh WeekShedule) ([]database.Lesson, []datab
 				return nil, nil, err
 			}
 		} else {
-			var t database.Teacher
-			if err := db.Find(&t, &database.Teacher{TeacherId: sh.SheduleId}); err != nil {
+			t := database.Teacher{TeacherId: sh.SheduleId}
+			if _, err := db.Get(&t); err != nil {
 				return nil, nil, err
 			}
 			t.LastUpd = time.Now()
@@ -97,7 +99,9 @@ func CheckGroupOrTeacher(db *xorm.Engine, sh WeekShedule) (bool, error) {
 				GroupName: sh.FullName,
 				SpecName:  sh.SpecName,
 			}
-			db.InsertOne(group)
+			if _, err := db.InsertOne(group); err != nil {
+				return false, err
+			}
 			return true, nil
 		}
 	} else {
@@ -110,7 +114,9 @@ func CheckGroupOrTeacher(db *xorm.Engine, sh WeekShedule) (bool, error) {
 			teacher := ParseTeacherName(sh.FullName)
 			teacher.TeacherId = sh.SheduleId
 			teacher.SpecName = sh.SpecName
-			db.InsertOne(teacher)
+			if _, err := db.InsertOne(teacher); err != nil {
+				return false, err
+			}
 			return true, nil
 		}
 

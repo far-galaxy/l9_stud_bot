@@ -35,9 +35,9 @@ func TestCheckGroupOrTeacher(t *testing.T) {
 
 	HeadURL = "http://127.0.0.1:5000"
 	sh := WeekShedule{
-		SheduleId: 802440189,
+		SheduleId: 123456789,
 		IsGroup:   true,
-		Week:      4,
+		Week:      6,
 	}
 	err := sh.DownloadById(false)
 	handleError(err)
@@ -63,16 +63,27 @@ func TestUpdateSchedule(t *testing.T) {
 	db := prepareDB()
 	HeadURL = "http://127.0.0.1:5000"
 	sh := WeekShedule{
-		SheduleId: 802440189,
+		SheduleId: 123456789,
 		IsGroup:   true,
-		Week:      4,
+		Week:      6,
 	}
 	err := sh.DownloadById(true)
 	handleError(err)
 	_, _, err = UpdateSchedule(db, sh)
 	handleError(err)
 
-	sh.Week = 8
+	sh.Week = 7
+	err = sh.DownloadById(true)
+	handleError(err)
+	_, _, err = UpdateSchedule(db, sh)
+	handleError(err)
+
+	// Проверяем преподавателя
+	sh = WeekShedule{
+		SheduleId: 62806001,
+		IsGroup:   false,
+		Week:      4,
+	}
 	err = sh.DownloadById(true)
 	handleError(err)
 	_, _, err = UpdateSchedule(db, sh)
