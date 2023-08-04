@@ -123,8 +123,10 @@ func (sh *WeekShedule) Parse(p Page, uncover bool) error {
 					}
 					if p.IsGroup {
 						window.GroupId = []int64{p.ID}
+						window.SubGroup = []int{0}
 					} else {
 						window.TeacherId = []int64{p.ID}
+						window.SubGroup = []int{0}
 					}
 					shedule[y+1][x].Lessons = []Lesson{window}
 				}

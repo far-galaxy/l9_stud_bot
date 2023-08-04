@@ -136,11 +136,13 @@ func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule) error {
 		SheduleId: shedule.SheduleId,
 		IsGroup:   shedule.IsGroup,
 	}
-	// TODO: вынести количество недель в переменную, либо автоматически определять конец
 	for week := 1; week < 21; week++ {
 		sh.Week = week
 		err := sh.DownloadById(true)
 		if err != nil {
+			if strings.Contains(err.Error(), "404") {
+				break
+			}
 			return err
 		}
 		_, _, err = ssau_parser.UpdateSchedule(bot.DB, sh)
