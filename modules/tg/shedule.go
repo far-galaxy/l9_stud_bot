@@ -28,6 +28,21 @@ func (bot *Bot) GetPersonalSummary(user *database.TgUser, msg ...tgbotapi.Messag
 	}
 }
 
+var month = []string{
+	"января",
+	"февраля",
+	"марта",
+	"апреля",
+	"мая",
+	"июня",
+	"июля",
+	"августа",
+	"сентября",
+	"октября",
+	"ноября",
+	"декабря",
+}
+
 // Получить краткую сводку
 func (bot *Bot) GetSummary(
 	user *database.TgUser,
@@ -46,21 +61,20 @@ func (bot *Bot) GetSummary(
 		pairs := GroupPairs(lessons)
 		firstPair = pairs[0]
 		log.Println(firstPair, secondPair)
-
+		// TODO: Добавить дни недели в даты
 		str := "📝Краткая сводка:\n\n"
 		if pairs[0][0].Begin.Day() != now.Day() {
 			str += "❗️Сегодня пар нет\nБлижайшие занятия "
 			if firstPair[0].Begin.Sub(now).Hours() < 48 {
 				str += "завтра\n"
 			} else {
-				// TODO: добавить прописные названия месяцев
-				str += fmt.Sprintf("%s\n\n", firstPair[0].Begin.Format("02.01"))
-			} /*
-				day, err := bot.GetDayShedule(pairs)
-				if err != nil {
-					return err
-				}
-				str += day*/
+				str += fmt.Sprintf("%d %s\n\n", firstPair[0].Begin.Day(), month[firstPair[0].Begin.Month()-1])
+			}
+			day, err := bot.StrDayShedule(pairs)
+			if err != nil {
+				return err
+			}
+			str += day
 		} else {
 			if firstPair[0].Begin.Before(now) {
 				str += "Сейчас:\n\n"
@@ -154,7 +168,7 @@ func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule) error {
 	return nil
 }
 
-// Создать условие группы/преподавателя
+// Создать условие поиска группы/преподавателя
 func CreateCondition(shedules []database.ShedulesInUser) string {
 	var groups []string
 	var teachers []string
@@ -182,6 +196,7 @@ func CreateCondition(shedules []database.ShedulesInUser) string {
 	return condition
 }
 
+// Группировка занятий по парам
 func GroupPairs(lessons []database.Lesson) [][]database.Lesson {
 	var shedule [][]database.Lesson
 	var pair []database.Lesson
@@ -200,6 +215,7 @@ func GroupPairs(lessons []database.Lesson) [][]database.Lesson {
 	return shedule
 }
 
+// Конвертация занятий с текст
 func PairToStr(pair []database.Lesson, db *xorm.Engine) (string, error) {
 	var str string
 	beginStr := pair[0].Begin.Format("15:04")
@@ -219,6 +235,8 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine) (string, error) {
 			type_emoji = "📙"
 		case "mil":
 			type_emoji = "🗿"
+		case "window":
+			type_emoji = "🏝"
 		default:
 			type_emoji = "📙"
 		}
@@ -246,5 +264,23 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine) (string, error) {
 	}
 
 	str += "------------------------------------------\n"
+	return str, nil
+}
+
+// Текст расписания на день
+func (bot *Bot) StrDayShedule(lessons [][]database.Lesson) (string, error) {
+	var str string
+	day := lessons[0][0].Begin.Day()
+	for _, pair := range lessons {
+		if pair[0].Begin.Day() == day {
+			line, err := PairToStr(pair, bot.DB)
+			if err != nil {
+				return "", err
+			}
+			str += line
+		} else {
+			break
+		}
+	}
 	return str, nil
 }

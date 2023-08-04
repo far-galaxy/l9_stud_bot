@@ -159,21 +159,8 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery)
 			IsGroup:   isGroup,
 			SheduleId: groupId,
 		}
-		msg := tgbotapi.NewEditMessageText(
-			query.Message.Chat.ID,
-			query.Message.MessageID,
-			fmt.Sprintf(
-				"Тут должно было быть расписание, но его пока не завезли\n%d",
-				shedule.SheduleId,
-			),
-		)
-		bot.TG.Request(msg)
+		bot.GetSummary(user, []database.ShedulesInUser{shedule}, false, *query.Message)
 	}
-	/*
-		err = bot.GetSummary([]database.ShedulesInUser{shedule}, false)
-		if err != nil {
-			return err
-		}*/
 	return err
 }
 
