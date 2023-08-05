@@ -134,13 +134,14 @@ func (bot *Bot) EditOrSend(id int64, str string, markup tgbotapi.InlineKeyboardM
 			editMsg[0].MessageID,
 			str,
 		)
-		msg.ReplyMarkup = &markup
-		bot.TG.Request(msg)
+		//msg.ReplyMarkup = &markup
+		if _, err := bot.TG.Request(msg); err != nil {
+			bot.Debug.Println(err)
+		}
 	} else {
 		msg := tgbotapi.NewMessage(id, str)
 		//msg.ReplyMarkup = &markup
-		_, err := bot.TG.Send(msg)
-		if err != nil {
+		if _, err := bot.TG.Send(msg); err != nil {
 			bot.Debug.Println(err)
 		}
 	}

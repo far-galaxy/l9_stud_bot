@@ -19,12 +19,32 @@ type DB struct {
 	Schema string
 }
 
-func Connect(db DB) (*xorm.Engine, error) {
+type LogFiles struct {
+	DebugFile *os.File
+	TgLogFile *os.File
+	DBLogFile *os.File
+}
+
+func OpenLogs() (files LogFiles) {
+	return LogFiles{
+		DebugFile: CreateLog("messages"),
+		TgLogFile: CreateLog("tg"),
+		DBLogFile: CreateLog("sql"),
+	}
+}
+
+func (files *LogFiles) CloseAll() {
+	files.DebugFile.Close()
+	files.TgLogFile.Close()
+	files.DBLogFile.Close()
+}
+
+func Connect(db DB, logger *os.File) (*xorm.Engine, error) {
 	engine, err := xorm.NewEngine("mysql", fmt.Sprintf("%s:%s@tcp(localhost:3306)/%s?charset=utf8", db.User, db.Pass, db.Schema))
 	if err != nil {
 		return nil, err
 	}
-	sqlLogger := xlog.NewSimpleLogger(CreateLog("sql"))
+	sqlLogger := xlog.NewSimpleLogger(logger)
 	engine.SetLogger(sqlLogger)
 	engine.ShowSQL(true)
 	engine.SetMapper(names.SameMapper{})
@@ -63,13 +83,13 @@ func CreateLog(name string) *os.File {
 		new := fmt.Sprintf("./logs/%s.before.%s.log", name, time.Now().Format("06-02-01-15-04-05"))
 		err := os.Rename(fileName, new)
 		if err != nil {
-			log.Fatalf("failed rename %s file to %s", fileName, new)
+			log.Fatal(err)
 		}
 	}
 	logFile, err := os.Create(fileName)
 	if err != nil {
-		log.Fatalf("failed open %s.log file", name)
+		log.Fatalf("failed open %s.log file: %s", name, err)
 	}
-	defer logFile.Close()
+	//defer logFile.Close()
 	return logFile
 }

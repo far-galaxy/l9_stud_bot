@@ -13,6 +13,7 @@ import (
 	"xorm.io/xorm"
 )
 
+/*
 func (bot *Bot) GetPersonalSummary(user *database.TgUser, msg ...tgbotapi.Message) {
 	var shedules []database.ShedulesInUser
 	bot.DB.ID(user.L9Id).Find(&shedules)
@@ -21,12 +22,12 @@ func (bot *Bot) GetPersonalSummary(user *database.TgUser, msg ...tgbotapi.Messag
 		bot.Etc(user)
 		return
 	} else {
-		err := bot.GetSummary(user, shedules, true, msg...)
+		err := bot.GetSummary(msg.Time(), user, shedules, true, msg...)
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
-}
+}*/
 
 var month = []string{
 	"января",
@@ -45,12 +46,13 @@ var month = []string{
 
 // Получить краткую сводку
 func (bot *Bot) GetSummary(
+	now time.Time,
 	user *database.TgUser,
 	shedules []database.ShedulesInUser,
 	isPersonal bool,
 	editMsg ...tgbotapi.Message) error {
 
-	now, _ := time.Parse("2006-01-02 15:04 -07", "2023-03-06 07:20 +04") //time.Now().Add(time.Hour * time.Duration(24) * (-1) * 30 * 4)
+	//now, _ := time.Parse("2006-01-02 15:04 -07", "2023-03-06 07:20 +04") //time.Now().Add(time.Hour * time.Duration(24) * (-1) * 30 * 4)
 
 	lessons, err := bot.GetLessons(shedules, now)
 	if err != nil {
@@ -65,7 +67,8 @@ func (bot *Bot) GetSummary(
 		str := "📝Краткая сводка:\n\n"
 		if pairs[0][0].Begin.Day() != now.Day() {
 			str += "❗️Сегодня пар нет\nБлижайшие занятия "
-			if firstPair[0].Begin.Sub(now).Hours() < 48 {
+			dt := firstPair[0].Begin.Sub(now).Hours()
+			if dt < 35 {
 				str += "завтра\n"
 			} else {
 				str += fmt.Sprintf("%d %s\n\n", firstPair[0].Begin.Day(), month[firstPair[0].Begin.Month()-1])

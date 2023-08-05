@@ -23,8 +23,10 @@ func TestCreateLog(t *testing.T) {
 }
 
 func TestConnect(t *testing.T) {
-	_, err := Connect(TestDB)
+	logs := OpenLogs()
+	defer logs.CloseAll()
+	_, err := Connect(TestDB, logs.DBLogFile)
 	handleError(err)
-	_, err = Connect(TestDB)
+	_, err = Connect(TestDB, logs.DBLogFile)
 	handleError(err)
 }

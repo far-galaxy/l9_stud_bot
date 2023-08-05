@@ -12,12 +12,14 @@ import (
 func main() {
 	ssau_parser.HeadURL = "http://127.0.0.1:5000/prod"
 	tg.CheckEnv()
-
+	logs := database.OpenLogs()
+	defer logs.CloseAll()
 	//bot := new(tg.Bot)
 	// bot.Week = 5
 	// bot.WkPath = os.Getenv("WK_PATH")
 	// bot.Debug = log.New(io.MultiWriter(os.Stderr, database.CreateLog("messages")), "", log.LstdFlags)
 	bot, err := tg.InitBot(
+		logs,
 		database.DB{
 			User:   os.Getenv("MYSQL_USER"),
 			Pass:   os.Getenv("MYSQL_PASS"),

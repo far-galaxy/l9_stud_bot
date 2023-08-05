@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
@@ -28,7 +29,7 @@ func (bot *Bot) Start(user *database.TgUser) error {
 }
 
 // Поиск расписания по запросу
-func (bot *Bot) Find(user *database.TgUser, query string) (tgbotapi.Message, error) {
+func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbotapi.Message, error) {
 	// Поиск в БД
 	var groups []database.Group
 	bot.DB.Where(builder.Like{"GroupName", query}).Find(&groups)
@@ -107,7 +108,7 @@ func (bot *Bot) Find(user *database.TgUser, query string) (tgbotapi.Message, err
 					bot.Debug.Println(err)
 				}
 			}
-			bot.GetSummary(user, []database.ShedulesInUser{Swap(shedule)}, false)
+			bot.GetSummary(now, user, []database.ShedulesInUser{Swap(shedule)}, false)
 			return tgbotapi.Message{}, nil
 		}
 
@@ -159,7 +160,7 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery)
 			IsGroup:   isGroup,
 			SheduleId: groupId,
 		}
-		bot.GetSummary(user, []database.ShedulesInUser{shedule}, false, *query.Message)
+		bot.GetSummary(query.Message.Time(), user, []database.ShedulesInUser{shedule}, false, *query.Message)
 	}
 	return err
 }
@@ -236,17 +237,6 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery)
 			callback := tgbotapi.NewCallback(query.ID, msg)
 			bot.TG.Request(callback)
 		}
-		return nil
-	}
-
-	func (bot *Bot) Cancel(query *tgbotapi.CallbackQuery) error {
-		bot.TG_user.PosTag = "ready"
-		err := bot.UpdateUserDB()
-		if err != nil {
-			return err
-		}
-		bot.DeleteMsg(query)
-
 		return nil
 	}
 */

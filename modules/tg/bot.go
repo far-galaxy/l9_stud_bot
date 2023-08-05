@@ -41,9 +41,9 @@ func CheckEnv() error {
 }
 
 // Полная инициализация бота со стороны Telegram и БД
-func InitBot(db database.DB, token string) (*Bot, error) {
+func InitBot(files database.LogFiles, db database.DB, token string) (*Bot, error) {
 	var bot Bot
-	engine, err := database.Connect(db)
+	engine, err := database.Connect(db, files.DBLogFile)
 	if err != nil {
 		return nil, err
 	}
@@ -56,13 +56,15 @@ func InitBot(db database.DB, token string) (*Bot, error) {
 	}
 	bot.TG.Debug = true
 	//logger := log.New(io.MultiWriter(os.Stdout, database.CreateLog("tg")), "", log.LstdFlags)
-	logger := log.New(database.CreateLog("tg"), "", log.LstdFlags)
-	tgbotapi.SetLogger(logger)
+	logger := log.New(files.TgLogFile, "", log.LstdFlags)
+	err = tgbotapi.SetLogger(logger)
+	if err != nil {
+		return nil, err
+	}
 	bot.GetUpdates()
 
 	log.Printf("Authorized on account %s", bot.TG.Self.UserName)
-
-	bot.Debug = log.New(io.MultiWriter(os.Stderr, database.CreateLog("messages")), "", log.LstdFlags)
+	bot.Debug = log.New(io.MultiWriter(os.Stderr, files.DebugFile), "", log.LstdFlags)
 
 	return &bot, nil
 }
@@ -126,7 +128,7 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update) (tgbotapi.Message, error) {
 		case database.NotStarted:
 			err = bot.Start(user)
 		case database.Ready:
-			return bot.Find(user, msg.Text)
+			return bot.Find(msg.Time(), user, msg.Text)
 		default:
 			bot.Etc(user)
 		}

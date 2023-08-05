@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"testing"
+	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
@@ -36,11 +37,11 @@ func TestCheckEnv(t *testing.T) {
 	}
 }
 
-func initTestBot() *Bot {
+func initTestBot(files database.LogFiles) *Bot {
 	if err := CheckEnv(); err != nil {
 		log.Fatal(err)
 	}
-	bot, err := InitBot(TestDB, os.Getenv("TELEGRAM_APITOKEN"))
+	bot, err := InitBot(files, TestDB, os.Getenv("TELEGRAM_APITOKEN"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -56,20 +57,28 @@ func initTestBot() *Bot {
 	if err != nil {
 		log.Fatal(err)
 	}
+	_, err = bot.DB.Where("lessonid >= 0").Delete(&database.Lesson{})
+	if err != nil {
+		log.Fatal(err)
+	}
 	return bot
 }
 func TestInitBot(t *testing.T) {
-	initTestBot()
+	files := database.OpenLogs()
+	defer files.CloseAll()
+	initTestBot(files)
 
 	// Тестируем неправильный токен
-	_, err := InitBot(TestDB, os.Getenv("TELEGRAM_APITOKEN")+"oops")
+	_, err := InitBot(files, TestDB, os.Getenv("TELEGRAM_APITOKEN")+"oops")
 	if err != nil {
 		log.Println(err)
 	}
 }
 
 func TestInitUser(t *testing.T) {
-	bot := initTestBot()
+	files := database.OpenLogs()
+	defer files.CloseAll()
+	bot := initTestBot(files)
 
 	// Я новенький
 	_, err := InitUser(bot.DB, &TestUser)
@@ -85,22 +94,26 @@ func TestInitUser(t *testing.T) {
 
 var dialog = []string{
 	"/start",
-	"2305",
+	"1000",
 	"Батурин",
-	"230",
+	"100",
 	"Балякин",
 	"aaa",
 	"aaa",
 }
 
 func TestHandleUpdate(t *testing.T) {
-	bot := initTestBot()
+	files := database.OpenLogs()
+	defer files.CloseAll()
+	bot := initTestBot(files)
 
 	user := TestUser
 	user.ID, _ = strconv.ParseInt(os.Getenv("TELEGRAM_TEST_USER"), 0, 64)
+	now, _ := time.Parse("2006-01-02 15:04 -07", "2023-03-06 11:20 +04")
 	update := tgbotapi.Update{
 		Message: &tgbotapi.Message{
 			From: &user,
+			Date: int(now.Unix()),
 		},
 	}
 	var messages []tgbotapi.Message
@@ -128,7 +141,7 @@ func TestHandleUpdate(t *testing.T) {
 	}
 	_, err := bot.HandleUpdate(update)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
 	}
 
 	// Галя, отмена!
@@ -141,6 +154,41 @@ func TestHandleUpdate(t *testing.T) {
 	}
 	_, err = bot.HandleUpdate(update)
 	if err != nil {
-		log.Fatal(err)
+		log.Println(err)
+	}
+}
+
+var times = []string{
+	"2023-03-06 11:40 +04",
+	"2023-03-06 11:40 +04",
+	"2023-03-06 13:10 +04",
+	"2023-03-06 13:35 +04",
+	"2023-03-06 15:20 +04",
+	"2023-03-06 16:55 +04",
+	"2023-03-07 16:55 +04",
+}
+
+func TestSummary(t *testing.T) {
+	files := database.OpenLogs()
+	defer files.CloseAll()
+	bot := initTestBot(files)
+
+	user := TestUser
+	user.ID, _ = strconv.ParseInt(os.Getenv("TELEGRAM_TEST_USER"), 0, 64)
+	update := tgbotapi.Update{
+		Message: &tgbotapi.Message{
+			From: &user,
+		},
+	}
+	ssau_parser.HeadURL = "http://127.0.0.1:5000/prod"
+	// Ещё немного общения в разное время
+	for _, te := range times {
+		now, _ := time.Parse("2006-01-02 15:04 -07", te)
+		update.Message.Text = dialog[1]
+		update.Message.Date = int(now.Unix())
+		_, err := bot.HandleUpdate(update)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
