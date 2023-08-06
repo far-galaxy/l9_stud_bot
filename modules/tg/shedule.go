@@ -30,21 +30,6 @@ func (bot *Bot) GetPersonalSummary(user *database.TgUser, msg ...tgbotapi.Messag
 	}
 }*/
 
-var month = []string{
-	"января",
-	"февраля",
-	"марта",
-	"апреля",
-	"мая",
-	"июня",
-	"июля",
-	"августа",
-	"сентября",
-	"октября",
-	"ноября",
-	"декабря",
-}
-
 // Получить краткую сводку
 func (bot *Bot) GetSummary(
 	now time.Time,
@@ -67,7 +52,6 @@ func (bot *Bot) GetSummary(
 		pairs := GroupPairs(lessons)
 		firstPair = pairs[0]
 		log.Println(firstPair, secondPair)
-		// TODO: Добавить дни недели в даты
 		str := "📝Краткая сводка:\n\n"
 		if pairs[0][0].Begin.Day() != now.Day() {
 			str += "❗️Сегодня пар нет\nБлижайшие занятия "
@@ -143,6 +127,69 @@ func (bot *Bot) GetSummary(
 		msg := tgbotapi.NewMessage(user.TgId, "Ой! Занятий не обнаружено ):")
 		return bot.TG.Send(msg)
 	}
+}
+
+// ПОлучить расписание на день
+func (bot *Bot) GetDaySummary(
+	now time.Time,
+	user *database.TgUser,
+	shedules []database.ShedulesInUser,
+	dt int,
+	isPersonal bool,
+	editMsg ...tgbotapi.Message,
+) (
+	tgbotapi.Message,
+	error,
+) {
+	nilMsg := tgbotapi.Message{}
+	day := time.Date(now.Year(), now.Month(), now.Day()+dt, 0, 0, 0, 0, now.Location())
+	lessons, err := bot.GetLessons(shedules, day)
+	if err != nil {
+		return nilMsg, err
+	}
+	if len(lessons) != 0 {
+		pairs := GroupPairs(lessons)
+		var str string
+		firstPair := pairs[0][0].Begin
+		dayStr := fmt.Sprintf(
+			"%s, <b>%d %s</b>",
+			weekdays[int(day.Weekday())],
+			day.Day(),
+			month[day.Month()-1],
+		)
+
+		var shId int64
+		if isPersonal {
+			shId = 0
+		} else {
+			shId = shedules[0].SheduleId
+		}
+		markup := SummaryKeyboard(
+			"sh_day",
+			shId,
+			shedules[0].IsGroup,
+			dt,
+		)
+
+		if firstPair.Day() != day.Day() {
+			str = fmt.Sprintf("В %s, занятий нет", dayStr)
+			return bot.EditOrSend(user.TgId, str, markup, editMsg...)
+		}
+		str = fmt.Sprintf("Расписание на %s\n\n", dayStr)
+
+		// TODO: придумать скачки для пустых дней
+		//dt += int(firstPair.Sub(day).Hours()) / 24
+		day, err := bot.StrDayShedule(pairs)
+		if err != nil {
+			return nilMsg, err
+		}
+		str += day
+		return bot.EditOrSend(user.TgId, str, markup, editMsg...)
+	} else {
+		msg := tgbotapi.NewMessage(user.TgId, "Ой! Пар не обнаружено ):")
+		return bot.TG.Send(msg)
+	}
+
 }
 
 // Получить список ближайших занятий (для краткой сводки или расписания на день)

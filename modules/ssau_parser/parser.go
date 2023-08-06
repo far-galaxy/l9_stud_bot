@@ -111,6 +111,7 @@ func (sh *WeekShedule) Parse(p Page, uncover bool) error {
 	}
 	// Ищем окна
 	// TODO: искать и более длинные окна
+	// TODO: оставлять только первую пару военки
 	if len(shedule) > 2 {
 		for y, line := range shedule[1 : len(shedule)-1] {
 			for x, pair := range line {

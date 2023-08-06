@@ -176,7 +176,7 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 
 func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQuery, now ...time.Time) error {
 	data := strings.Split(query.Data, "_")
-	shedule, _, err := ParseQuery(data)
+	shedule, dt, err := ParseQuery(data)
 	if err != nil {
 		return err
 	}
@@ -191,17 +191,16 @@ func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQue
 				bot.GetPersonalSummary(*query.Message)
 			}*/
 	} else {
+		if len(now) == 0 {
+			now[0] = time.Now()
+		}
 		switch data[1] {
-		/*
-			case "day":
-				bot.GetDaySummary(shedule, dt, false, *query.Message)
-			case "week":
-				bot.GetWeekSummary(shedule, dt, false, *query.Message)
+		case "day":
+			_, err = bot.GetDaySummary(now[0], user, shedule, dt, false, *query.Message)
+		/*	case "week":
+			bot.GetWeekSummary(shedule, dt, false, *query.Message)
 		*/
 		default:
-			if len(now) == 0 {
-				now[0] = time.Now()
-			}
 			_, err = bot.GetSummary(now[0], user, shedule, false, *query.Message)
 		}
 	}

@@ -71,9 +71,9 @@ func SummaryKeyboard(clickedButton string, sheduleId int64, isGroup bool, dt int
 	day := []tgbotapi.InlineKeyboardButton{
 		tgbotapi.NewInlineKeyboardButtonData("День", "sh_day"+tail),
 	}
-	week := []tgbotapi.InlineKeyboardButton{
+	/*week := []tgbotapi.InlineKeyboardButton{
 		tgbotapi.NewInlineKeyboardButtonData("Неделя", "sh_week"+tail),
-	}
+	}*/
 
 	update := GenerateButtonTail(sheduleId, dt, isGroup)
 	var arrows []tgbotapi.InlineKeyboardButton
@@ -98,7 +98,7 @@ func SummaryKeyboard(clickedButton string, sheduleId int64, isGroup bool, dt int
 	switch clickedButton {
 	case "sh_day":
 		markup = [][]tgbotapi.InlineKeyboardButton{
-			arrows, near, week,
+			arrows, near, //week,
 		}
 	case "sh_week":
 		markup = [][]tgbotapi.InlineKeyboardButton{
@@ -106,7 +106,7 @@ func SummaryKeyboard(clickedButton string, sheduleId int64, isGroup bool, dt int
 		}
 	default:
 		markup = [][]tgbotapi.InlineKeyboardButton{
-			arrows, //day, week,
+			arrows, day, //week,
 		}
 	}
 	/*if sheduleId == 0 {
@@ -144,6 +144,7 @@ func (bot *Bot) EditOrSend(
 		msg.ParseMode = tgbotapi.ModeHTML
 		if _, err := bot.TG.Request(msg); err != nil {
 			if strings.Contains(err.Error(), "message is not modified") {
+				bot.Debug.Println("Message no modified")
 				return tgbotapi.Message{}, nil
 			}
 			return tgbotapi.Message{}, err
@@ -197,4 +198,28 @@ func Swap(sh ssau_parser.WeekShedule) database.ShedulesInUser {
 		IsGroup:   sh.IsGroup,
 		SheduleId: sh.SheduleId,
 	}
+}
+
+var month = []string{
+	"января",
+	"февраля",
+	"марта",
+	"апреля",
+	"мая",
+	"июня",
+	"июля",
+	"августа",
+	"сентября",
+	"октября",
+	"ноября",
+	"декабря",
+}
+var weekdays = []string{
+	"воскресенье",
+	"понедельник",
+	"вторник",
+	"среду",
+	"четверг",
+	"пятницу",
+	"субботу",
 }
