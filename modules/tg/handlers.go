@@ -30,12 +30,17 @@ func (bot *Bot) Start(user *database.TgUser) error {
 
 // Поиск расписания по запросу
 func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbotapi.Message, error) {
+	nilMsg := tgbotapi.Message{}
 	// Поиск в БД
 	var groups []database.Group
-	bot.DB.Where(builder.Like{"GroupName", query}).Find(&groups)
+	if err := bot.DB.Where(builder.Like{"GroupName", query}).Find(&groups); err != nil {
+		return nilMsg, err
+	}
 
 	var teachers []database.Teacher
-	bot.DB.Where(builder.Like{"FirstName", query}).Find(&teachers)
+	if err := bot.DB.Where(builder.Like{"FirstName", query}).Find(&teachers); err != nil {
+		return nilMsg, err
+	}
 
 	// Поиск на сайте
 	list, siteErr := ssau_parser.SearchInRasp(query)
@@ -83,7 +88,9 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 				})
 			msg.ReplyMarkup = keyboard
 			user.PosTag = database.Ready
-			bot.DB.Update(user)
+			if _, err := bot.DB.Update(user); err != nil {
+				return nilMsg, err
+			}
 			return bot.TG.Send(msg)
 		} else {
 			var sheduleId int64
@@ -108,8 +115,7 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 					bot.Debug.Println(err)
 				}
 			}
-			bot.GetSummary(now, user, []database.ShedulesInUser{Swap(shedule)}, false)
-			return tgbotapi.Message{}, nil
+			return bot.GetSummary(now, user, []database.ShedulesInUser{Swap(shedule)}, false)
 		}
 
 		// Если получено несколько групп
@@ -144,7 +150,7 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 }
 
 // Получить расписание из кнопки
-func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery) error {
+func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery, now ...time.Time) error {
 	data := strings.Split(query.Data, "_")
 	if len(data) != 3 {
 		return fmt.Errorf("wrong button format: %s", query.Data)
@@ -160,19 +166,22 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery)
 			IsGroup:   isGroup,
 			SheduleId: groupId,
 		}
-		bot.GetSummary(query.Message.Time(), user, []database.ShedulesInUser{shedule}, false, *query.Message)
+		if len(now) == 0 {
+			now[0] = time.Now()
+		}
+		_, err = bot.GetSummary(now[0], user, []database.ShedulesInUser{shedule}, false, *query.Message)
 	}
 	return err
 }
 
-/*
-	func (bot *Bot) HandleSummary(query *tgbotapi.CallbackQuery) error {
-		data := strings.Split(query.Data, "_")
-		shedule, dt, err := ParseQuery(data)
-		if err != nil {
-			return err
-		}
-		if data[1] == "personal" {
+func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQuery, now ...time.Time) error {
+	data := strings.Split(query.Data, "_")
+	shedule, _, err := ParseQuery(data)
+	if err != nil {
+		return err
+	}
+	if data[2] == "personal" {
+		/*
 			switch data[0] {
 			case "day":
 				bot.GetPersonalDaySummary(int(dt), *query.Message)
@@ -180,20 +189,26 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery)
 				bot.GetPersonalWeekSummary(int(dt), *query.Message)
 			default:
 				bot.GetPersonalSummary(*query.Message)
-			}
-		} else {
-			switch data[0] {
+			}*/
+	} else {
+		switch data[1] {
+		/*
 			case "day":
 				bot.GetDaySummary(shedule, dt, false, *query.Message)
 			case "week":
 				bot.GetWeekSummary(shedule, dt, false, *query.Message)
-			default:
-				bot.GetSummary(shedule, false, *query.Message)
+		*/
+		default:
+			if len(now) == 0 {
+				now[0] = time.Now()
 			}
+			_, err = bot.GetSummary(now[0], user, shedule, false, *query.Message)
 		}
-		return nil
 	}
+	return err
+}
 
+/*
 	func (bot *Bot) Confirm(query *tgbotapi.CallbackQuery) error {
 		isGroup := bot.TG_user.PosTag == "confirm_add_group"
 		groupId, err := strconv.ParseInt(query.Data, 0, 64)
@@ -241,9 +256,9 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery)
 	}
 */
 
-func (bot *Bot) Etc(user *database.TgUser) {
+func (bot *Bot) Etc(user *database.TgUser) (tgbotapi.Message, error) {
 	msg := tgbotapi.NewMessage(user.TgId, "Oй!")
-	bot.TG.Send(msg)
+	return bot.TG.Send(msg)
 }
 
 func (bot *Bot) Cancel(user *database.TgUser, query *tgbotapi.CallbackQuery) error {
@@ -252,10 +267,12 @@ func (bot *Bot) Cancel(user *database.TgUser, query *tgbotapi.CallbackQuery) err
 	if err != nil {
 		return err
 	}
-	callback := tgbotapi.NewCallback(query.ID, "Действие отменено")
-	_, err = bot.TG.Request(callback)
-	if err != nil {
-		bot.Debug.Println(err)
+	if query.ID != "" {
+		callback := tgbotapi.NewCallback(query.ID, "Действие отменено")
+		_, err = bot.TG.Request(callback)
+		if err != nil {
+			return err
+		}
 	}
 	delete := tgbotapi.NewDeleteMessage(query.From.ID, query.Message.MessageID)
 	_, err = bot.TG.Request(delete)

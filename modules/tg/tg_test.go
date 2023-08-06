@@ -139,7 +139,7 @@ func TestHandleUpdate(t *testing.T) {
 			Data:    *messages[3].ReplyMarkup.InlineKeyboard[0][0].CallbackData,
 		},
 	}
-	_, err := bot.HandleUpdate(update)
+	_, err := bot.HandleUpdate(update, now)
 	if err != nil {
 		log.Println(err)
 	}
@@ -152,7 +152,7 @@ func TestHandleUpdate(t *testing.T) {
 			Data:    "cancel",
 		},
 	}
-	_, err = bot.HandleUpdate(update)
+	_, err = bot.HandleUpdate(update, now)
 	if err != nil {
 		log.Println(err)
 	}
@@ -182,13 +182,38 @@ func TestSummary(t *testing.T) {
 	}
 	ssau_parser.HeadURL = "http://127.0.0.1:5000/prod"
 	// Ещё немного общения в разное время
+	var messages []tgbotapi.Message
 	for _, te := range times {
 		now, _ := time.Parse("2006-01-02 15:04 -07", te)
 		update.Message.Text = dialog[1]
 		update.Message.Date = int(now.Unix())
-		_, err := bot.HandleUpdate(update)
+		msg, err := bot.HandleUpdate(update)
 		if err != nil {
 			log.Fatal(err)
 		}
+		messages = append(messages, msg)
 	}
+
+	// Обновляем карточку за пользователя
+	now, _ := time.Parse("2006-01-02 15:04 -07", times[2])
+	update = tgbotapi.Update{
+		CallbackQuery: &tgbotapi.CallbackQuery{
+			From:    &user,
+			Message: &messages[1],
+			Data:    *messages[1].ReplyMarkup.InlineKeyboard[0][0].CallbackData,
+		},
+	}
+	_, err := bot.HandleUpdate(update, now)
+	if err != nil {
+		log.Println(err)
+	}
+	/* Оставим это на всякий случай
+	log.Println("Нажми на кнопку - получишь результат!")
+	bot.GetUpdates()
+	upd := <-*bot.Updates
+	now, _ = time.Parse("2006-01-02 15:04 -07", "2023-03-07 16:55 +04")
+	_, err = bot.HandleUpdate(upd, now)
+	if err != nil {
+		log.Fatal(err)
+	}*/
 }

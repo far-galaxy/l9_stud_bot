@@ -50,13 +50,16 @@ func (bot *Bot) GetSummary(
 	user *database.TgUser,
 	shedules []database.ShedulesInUser,
 	isPersonal bool,
-	editMsg ...tgbotapi.Message) error {
+	editMsg ...tgbotapi.Message,
+) (
+	tgbotapi.Message,
+	error,
+) {
 
-	//now, _ := time.Parse("2006-01-02 15:04 -07", "2023-03-06 07:20 +04") //time.Now().Add(time.Hour * time.Duration(24) * (-1) * 30 * 4)
-
+	nilMsg := tgbotapi.Message{}
 	lessons, err := bot.GetLessons(shedules, now)
 	if err != nil {
-		return err
+		return nilMsg, err
 	}
 	if len(lessons) != 0 {
 		var firstPair, secondPair []database.Lesson
@@ -71,11 +74,15 @@ func (bot *Bot) GetSummary(
 			if dt < 35 {
 				str += "завтра\n"
 			} else {
-				str += fmt.Sprintf("%d %s\n\n", firstPair[0].Begin.Day(), month[firstPair[0].Begin.Month()-1])
+				str += fmt.Sprintf(
+					"%d %s\n\n",
+					firstPair[0].Begin.Day(),
+					month[firstPair[0].Begin.Month()-1],
+				)
 			}
 			day, err := bot.StrDayShedule(pairs)
 			if err != nil {
-				return err
+				return nilMsg, err
 			}
 			str += day
 		} else {
@@ -86,7 +93,7 @@ func (bot *Bot) GetSummary(
 			}
 			firstStr, err := PairToStr(firstPair, bot.DB)
 			if err != nil {
-				return err
+				return nilMsg, err
 			}
 			str += firstStr
 			if len(pairs) > 1 {
@@ -95,7 +102,7 @@ func (bot *Bot) GetSummary(
 					str += "\nПосле неё:\n\n"
 					secondStr, err := PairToStr(secondPair, bot.DB)
 					if err != nil {
-						return err
+						return nilMsg, err
 					}
 					str += secondStr
 				} else {
@@ -106,29 +113,27 @@ func (bot *Bot) GetSummary(
 			}
 
 		}
-		/*
-			var shId int64
-			if isPersonal {
-				shId = 0
-			} else {
-				shId = shedules[0].SheduleId
-			}
 
+		var shId int64
+		if isPersonal {
+			shId = 0
+		} else {
+			shId = shedules[0].SheduleId
+		}
 
-			markup := SummaryKeyboard(
-				// TODO: создать тип таких префиксов
-				"sh_near",
-				shId,
-				shedules[0].IsGroup,
-				0,
-			)*/
-		bot.EditOrSend(user.TgId, str, tgbotapi.NewInlineKeyboardMarkup(), editMsg...)
+		markup := SummaryKeyboard(
+			// TODO: создать тип таких префиксов
+			"sh_near",
+			shId,
+			shedules[0].IsGroup,
+			0,
+		)
+		return bot.EditOrSend(user.TgId, str, markup, editMsg...)
 
 	} else {
-		msg := tgbotapi.NewMessage(user.TgId, "Ой! Пар не обнаружено ):")
-		bot.TG.Send(msg)
+		msg := tgbotapi.NewMessage(user.TgId, "Ой! Занятий не обнаружено ):")
+		return bot.TG.Send(msg)
 	}
-	return nil
 }
 
 // Получить список ближайших занятий (для краткой сводки или расписания на день)
@@ -222,7 +227,12 @@ func GroupPairs(lessons []database.Lesson) [][]database.Lesson {
 func PairToStr(pair []database.Lesson, db *xorm.Engine) (string, error) {
 	var str string
 	beginStr := pair[0].Begin.Format("15:04")
-	endStr := pair[0].End.Format("15:04")
+	var endStr string
+	if pair[0].Type == "mil" {
+		endStr = "∞"
+	} else {
+		endStr = pair[0].End.Format("15:04")
+	}
 	str = fmt.Sprintf("📆 %s - %s\n", beginStr, endStr)
 
 	for i, sublesson := range pair {
@@ -237,7 +247,7 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine) (string, error) {
 		case "other":
 			type_emoji = "📙"
 		case "mil":
-			type_emoji = "🗿"
+			type_emoji = "🫡"
 		case "window":
 			type_emoji = "🏝"
 		default:

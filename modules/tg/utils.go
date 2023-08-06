@@ -106,7 +106,7 @@ func SummaryKeyboard(clickedButton string, sheduleId int64, isGroup bool, dt int
 		}
 	default:
 		markup = [][]tgbotapi.InlineKeyboardButton{
-			arrows, day, week,
+			arrows, //day, week,
 		}
 	}
 	/*if sheduleId == 0 {
@@ -127,23 +127,31 @@ func GenerateButtonTail(sheduleId int64, dt int, isGroup bool) string {
 	return tail
 }
 
-func (bot *Bot) EditOrSend(id int64, str string, markup tgbotapi.InlineKeyboardMarkup, editMsg ...tgbotapi.Message) {
+func (bot *Bot) EditOrSend(
+	id int64,
+	str string,
+	markup tgbotapi.InlineKeyboardMarkup,
+	editMsg ...tgbotapi.Message) (
+	tgbotapi.Message,
+	error) {
 	if len(editMsg) > 0 {
 		msg := tgbotapi.NewEditMessageText(
 			editMsg[0].Chat.ID,
 			editMsg[0].MessageID,
 			str,
 		)
-		//msg.ReplyMarkup = &markup
+		msg.ReplyMarkup = &markup
 		if _, err := bot.TG.Request(msg); err != nil {
-			bot.Debug.Println(err)
+			if strings.Contains(err.Error(), "message is not modified") {
+				return tgbotapi.Message{}, nil
+			}
+			return tgbotapi.Message{}, err
 		}
+		return tgbotapi.Message{}, nil
 	} else {
 		msg := tgbotapi.NewMessage(id, str)
-		//msg.ReplyMarkup = &markup
-		if _, err := bot.TG.Send(msg); err != nil {
-			bot.Debug.Println(err)
-		}
+		msg.ReplyMarkup = &markup
+		return bot.TG.Send(msg)
 	}
 }
 
@@ -154,7 +162,7 @@ func ParseQuery(data []string) ([]database.ShedulesInUser, int, error) {
 		return nil, 0, err
 	}
 	shedule := database.ShedulesInUser{
-		IsGroup:   !isGroup,
+		IsGroup:   isGroup,
 		SheduleId: sheduleId,
 	}
 	dt, err := strconv.ParseInt(data[3], 0, 0)
@@ -175,10 +183,11 @@ func KeywordContains(str string, keywords []string) bool {
 	return false
 }
 
+/*
 func (bot *Bot) DeleteMsg(query *tgbotapi.CallbackQuery) {
 	delete := tgbotapi.NewDeleteMessage(query.From.ID, query.Message.MessageID)
 	bot.TG.Request(delete)
-}
+}*/
 
 // Меняем шило на мыло
 func Swap(sh ssau_parser.WeekShedule) database.ShedulesInUser {

@@ -11,7 +11,9 @@ import (
 
 func main() {
 	ssau_parser.HeadURL = "http://127.0.0.1:5000/prod"
-	tg.CheckEnv()
+	if err := tg.CheckEnv(); err != nil {
+		log.Fatal(err)
+	}
 	logs := database.OpenLogs()
 	defer logs.CloseAll()
 	//bot := new(tg.Bot)

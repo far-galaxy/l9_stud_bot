@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -115,7 +116,7 @@ func InitUser(db *xorm.Engine, user *tgbotapi.User) (*database.TgUser, error) {
 	return &tg_user, nil
 }
 
-func (bot *Bot) HandleUpdate(update tgbotapi.Update) (tgbotapi.Message, error) {
+func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi.Message, error) {
 	nilMsg := tgbotapi.Message{}
 	if update.Message != nil {
 		msg := update.Message
@@ -130,7 +131,7 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update) (tgbotapi.Message, error) {
 		case database.Ready:
 			return bot.Find(msg.Time(), user, msg.Text)
 		default:
-			bot.Etc(user)
+			return bot.Etc(user)
 		}
 		if err != nil {
 			return nilMsg, err
@@ -151,18 +152,22 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update) (tgbotapi.Message, error) {
 			err = bot.Start(user)
 		case database.Ready:
 			if !strings.Contains(query.Data, "sh") {
-				err = bot.GetShedule(user, query)
+				err = bot.GetShedule(user, query, now...)
+			} else {
+				err = bot.HandleSummary(user, query, now...)
 			}
 		default:
-			bot.Etc(user)
+			return bot.Etc(user)
 		}
 		if err != nil {
 			return nilMsg, err
 		}
-		callback := tgbotapi.NewCallback(query.ID, query.Data)
-		_, err = bot.TG.Request(callback)
-		if err != nil {
-			return nilMsg, err
+		if query.ID != "" {
+			callback := tgbotapi.NewCallback(query.ID, query.Data)
+			_, err = bot.TG.Request(callback)
+			if err != nil {
+				return nilMsg, err
+			}
 		}
 	}
 	return nilMsg, nil
