@@ -46,7 +46,7 @@ func UpdateSchedule(db *xorm.Engine, sh WeekShedule) ([]database.Lesson, []datab
 				return nil, nil, err
 			}
 			gr.LastUpd = time.Now()
-			if _, err := db.Update(gr); err != nil {
+			if _, err := db.ID(gr.GroupId).Update(gr); err != nil {
 				return nil, nil, err
 			}
 		} else {
@@ -55,7 +55,7 @@ func UpdateSchedule(db *xorm.Engine, sh WeekShedule) ([]database.Lesson, []datab
 				return nil, nil, err
 			}
 			t.LastUpd = time.Now()
-			if _, err := db.Update(t); err != nil {
+			if _, err := db.ID(t.TeacherId).Update(t); err != nil {
 				return nil, nil, err
 			}
 		}
