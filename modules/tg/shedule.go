@@ -10,6 +10,7 @@ import (
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	td "github.com/mergestat/timediff"
 	"xorm.io/xorm"
 )
 
@@ -70,16 +71,19 @@ func (bot *Bot) GetSummary(
 		str := "📝Краткая сводка:\n\n"
 		if pairs[0][0].Begin.Day() != now.Day() {
 			str += "❗️Сегодня пар нет\nБлижайшие занятия "
-			dt := firstPair[0].Begin.Sub(now).Hours()
-			if dt < 35 {
-				str += "завтра\n"
-			} else {
+			str += td.TimeDiff(
+				firstPair[0].Begin,
+				td.WithLocale("ru_RU"),
+				td.WithStartTime(now),
+			)
+			if firstPair[0].Begin.Sub(now).Hours() > 36 {
 				str += fmt.Sprintf(
-					"%d %s\n\n",
+					", <b>%d %s</b>",
 					firstPair[0].Begin.Day(),
 					month[firstPair[0].Begin.Month()-1],
 				)
 			}
+			str += "\n\n"
 			day, err := bot.StrDayShedule(pairs)
 			if err != nil {
 				return nilMsg, err
@@ -89,7 +93,12 @@ func (bot *Bot) GetSummary(
 			if firstPair[0].Begin.Before(now) {
 				str += "Сейчас:\n\n"
 			} else {
-				str += "Ближайшая пара сегодня:\n\n"
+				dt := td.TimeDiff(
+					firstPair[0].Begin,
+					td.WithLocale("ru_RU"),
+					td.WithStartTime(now),
+				)
+				str += fmt.Sprintf("Ближайшая пара %s:\n\n", dt)
 			}
 			firstStr, err := PairToStr(firstPair, bot.DB)
 			if err != nil {

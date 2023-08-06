@@ -141,6 +141,7 @@ func (bot *Bot) EditOrSend(
 			str,
 		)
 		msg.ReplyMarkup = &markup
+		msg.ParseMode = tgbotapi.ModeHTML
 		if _, err := bot.TG.Request(msg); err != nil {
 			if strings.Contains(err.Error(), "message is not modified") {
 				return tgbotapi.Message{}, nil
@@ -151,6 +152,7 @@ func (bot *Bot) EditOrSend(
 	} else {
 		msg := tgbotapi.NewMessage(id, str)
 		msg.ReplyMarkup = &markup
+		msg.ParseMode = tgbotapi.ModeHTML
 		return bot.TG.Send(msg)
 	}
 }
