@@ -36,7 +36,7 @@ func (bot *Bot) GetPersonal(now time.Time, user *database.TgUser, editMsg ...tgb
 
 	if len(shedules) == 0 {
 		user.PosTag = database.Add
-		if _, err := bot.DB.ID(user.L9Id).Update(&user); err != nil {
+		if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
 			return tgbotapi.Message{}, err
 		}
 

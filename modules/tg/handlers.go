@@ -103,7 +103,7 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 				bot.Debug.Println(err)
 			}
 		}
-
+		// TODO: проверять подключенные ранее расписания
 		if user.PosTag == database.Add {
 			sh := Swap(shedule)
 			sh.L9Id = user.L9Id
@@ -111,7 +111,7 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 				return nilMsg, err
 			}
 			user.PosTag = database.Ready
-			if _, err := bot.DB.ID(user.L9Id).Update(&user); err != nil {
+			if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
 				return nilMsg, err
 			}
 			msg := tgbotapi.NewMessage(
@@ -184,7 +184,7 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 			return err
 		}
 		user.PosTag = database.Ready
-		if _, err = bot.DB.ID(user.L9Id).Update(&user); err != nil {
+		if _, err = bot.DB.ID(user.L9Id).Update(user); err != nil {
 			return err
 		}
 		_, err = bot.GetPersonal(now[0], user)
