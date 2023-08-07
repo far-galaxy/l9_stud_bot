@@ -95,9 +95,9 @@ func TestInitUser(t *testing.T) {
 var dialog = []string{
 	"/start",
 	"1000",
-	"Батурин",
+	"Павлов",
 	"100",
-	"Балякин",
+	"Иванов",
 	"aaa",
 	"aaa",
 }

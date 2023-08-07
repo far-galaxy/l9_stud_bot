@@ -130,7 +130,7 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 			err = bot.Start(user)
 		case database.Ready:
 			if len(now) == 0 {
-				now[0] = msg.Time()
+				now = append(now, msg.Time())
 			}
 			return bot.Find(now[0], user, msg.Text)
 		default:

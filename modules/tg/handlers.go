@@ -167,7 +167,7 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 			SheduleId: groupId,
 		}
 		if len(now) == 0 {
-			now[0] = time.Now()
+			now = append(now, time.Now())
 		}
 		_, err = bot.GetSummary(now[0], user, []database.ShedulesInUser{shedule}, false, *query.Message)
 	}
@@ -192,7 +192,7 @@ func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQue
 			}*/
 	} else {
 		if len(now) == 0 {
-			now[0] = time.Now()
+			now = append(now, time.Now())
 		}
 		switch data[1] {
 		case "day":
