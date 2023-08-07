@@ -51,7 +51,7 @@ func TestCheckGroupOrTeacher(t *testing.T) {
 
 	// Проверяем преподавателя
 	sh = WeekShedule{
-		SheduleId: 62806001,
+		SheduleId: 5,
 		IsGroup:   false,
 		Week:      4,
 	}
@@ -82,7 +82,7 @@ func TestUpdateSchedule(t *testing.T) {
 
 	// Проверяем преподавателя
 	sh = WeekShedule{
-		SheduleId: 62806001,
+		SheduleId: 5,
 		IsGroup:   false,
 		Week:      4,
 	}

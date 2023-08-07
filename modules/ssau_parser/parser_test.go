@@ -29,7 +29,7 @@ func TestParse(t *testing.T) {
 	// Ошибки внутри пар
 	for i := 2; i < 3; i++ {
 		sh := WeekShedule{
-			SheduleId: 62806001,
+			SheduleId: 5,
 			IsGroup:   false,
 			Week:      i,
 		}

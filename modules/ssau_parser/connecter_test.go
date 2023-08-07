@@ -49,8 +49,8 @@ func pingQuery(query string) {
 }
 
 var groupUri = []string{
-	"/rasp?groupId=530996168",
-	"/rasp?staffId=59915001",
+	"/rasp?groupId=100000000",
+	"/rasp?staffId=1",
 	"/aaa",
 	"/aaaaaaaaaaaaaa",
 	"/rasp?groupId=123",
@@ -71,14 +71,14 @@ func TestDownloadShedule(t *testing.T) {
 			}
 		}
 	}
-	if _, err := DownloadSheduleById(530996168, true, 1); err != nil {
+	if _, err := DownloadSheduleById(100000000, true, 1); err != nil {
 		log.Println(err)
 	}
-	if _, err := DownloadSheduleById(59915001, false, 1); err != nil {
+	if _, err := DownloadSheduleById(1, false, 1); err != nil {
 		log.Println(err)
 	}
 	HeadURL = "http://127.0.0.1:5000/oops/"
-	if _, err := DownloadSheduleById(59915001, false, 1); err != nil {
+	if _, err := DownloadSheduleById(100000000, false, 1); err != nil {
 		log.Println(err)
 	}
 }

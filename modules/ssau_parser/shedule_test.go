@@ -8,7 +8,7 @@ import (
 func TestDownload(t *testing.T) {
 	HeadURL = "http://127.0.0.1:5000"
 	sh := WeekShedule{}
-	err := sh.Download("/rasp?groupId=802440189", 4, false)
+	err := sh.Download("/rasp?groupId=100000000", 1, false)
 	handleError(err)
 	// Ошибка в адресе
 	err = sh.Download("/oops", 4, false)
@@ -26,7 +26,7 @@ func TestDownload(t *testing.T) {
 	handleError(err)
 
 	sh = WeekShedule{
-		SheduleId: 802440189,
+		SheduleId: 123456789,
 		IsGroup:   false,
 	}
 	err = sh.DownloadById(true)
