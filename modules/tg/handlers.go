@@ -15,8 +15,7 @@ import (
 // Приветственное сообщение
 func (bot *Bot) Start(user *database.TgUser) error {
 	user.PosTag = database.Ready
-	// TODO: исправить первичный ключ во всех обновлениях
-	_, err := bot.DB.Update(user)
+	_, err := bot.DB.ID(user.L9Id).Update(user)
 	if err != nil {
 		return err
 	}
@@ -112,7 +111,7 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 				return nilMsg, err
 			}
 			user.PosTag = database.Ready
-			if _, err := bot.DB.Update(user); err != nil {
+			if _, err := bot.DB.ID(user.L9Id).Update(&user); err != nil {
 				return nilMsg, err
 			}
 			msg := tgbotapi.NewMessage(
@@ -185,7 +184,7 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 			return err
 		}
 		user.PosTag = database.Ready
-		if _, err = bot.DB.Update(&user); err != nil {
+		if _, err = bot.DB.ID(user.L9Id).Update(&user); err != nil {
 			return err
 		}
 		_, err = bot.GetPersonal(now[0], user)
@@ -282,7 +281,7 @@ func (bot *Bot) Etc(user *database.TgUser) (tgbotapi.Message, error) {
 
 func (bot *Bot) Cancel(user *database.TgUser, query *tgbotapi.CallbackQuery) error {
 	user.PosTag = database.Ready
-	_, err := bot.DB.Update(user)
+	_, err := bot.DB.ID(user.L9Id).Update(user)
 	if err != nil {
 		return err
 	}
