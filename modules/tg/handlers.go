@@ -15,6 +15,7 @@ import (
 // Приветственное сообщение
 func (bot *Bot) Start(user *database.TgUser) error {
 	user.PosTag = database.Ready
+	// TODO: исправить первичный ключ во всех обновлениях
 	_, err := bot.DB.Update(user)
 	if err != nil {
 		return err
@@ -24,6 +25,7 @@ func (bot *Bot) Start(user *database.TgUser) error {
 		`Привет! У меня можно посмотреть в удобном формате <b>ближайшие пары</b>, расписание <b>по дням</b> и даже <b>по неделям</b>!
 Просто напиши мне <b>номер группы</b> или <b>фамилию преподавателя</b>`)
 	msg.ParseMode = tgbotapi.ModeHTML
+	msg.ReplyMarkup = GeneralKeyboard()
 	_, err = bot.TG.Send(msg)
 	return err
 }
@@ -80,41 +82,48 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 
 	// Если получен единственный результат, сразу выдать (подключить) расписание
 	if len(allGroups) == 1 || len(allTeachers) == 1 {
+		var sheduleId int64
+		var isGroup bool
+		if len(allGroups) == 1 {
+			sheduleId = allGroups[0].GroupId
+			isGroup = true
+		} else {
+			sheduleId = allTeachers[0].TeacherId
+			isGroup = false
+		}
+		shedule := ssau_parser.WeekShedule{
+			IsGroup:   isGroup,
+			SheduleId: sheduleId,
+		}
+		not_exists, _ := ssau_parser.CheckGroupOrTeacher(bot.DB, shedule)
+		if not_exists {
+			msg := tgbotapi.NewMessage(user.TgId, "Загружаю расписание...\nЭто займёт некоторое время")
+			bot.TG.Send(msg)
+			err := bot.LoadShedule(shedule)
+			if err != nil {
+				bot.Debug.Println(err)
+			}
+		}
+
 		if user.PosTag == database.Add {
-			msg := tgbotapi.NewMessage(user.TgId, "Подключено!")
-			keyboard := tgbotapi.NewReplyKeyboard(
-				[]tgbotapi.KeyboardButton{
-					tgbotapi.NewKeyboardButton("Моё расписание"),
-				})
-			msg.ReplyMarkup = keyboard
+			sh := Swap(shedule)
+			sh.L9Id = user.L9Id
+			if _, err := bot.DB.InsertOne(&sh); err != nil {
+				return nilMsg, err
+			}
 			user.PosTag = database.Ready
 			if _, err := bot.DB.Update(user); err != nil {
 				return nilMsg, err
 			}
+			msg := tgbotapi.NewMessage(
+				user.TgId,
+				"Расписание успешно подключено!\n"+
+					"Теперь его можно открыть по кнопке <b>Моё расписание</b>👇",
+			)
+			msg.ParseMode = tgbotapi.ModeHTML
+			msg.ReplyMarkup = GeneralKeyboard()
 			return bot.TG.Send(msg)
 		} else {
-			var sheduleId int64
-			var isGroup bool
-			if len(allGroups) == 1 {
-				sheduleId = allGroups[0].GroupId
-				isGroup = true
-			} else {
-				sheduleId = allTeachers[0].TeacherId
-				isGroup = false
-			}
-			shedule := ssau_parser.WeekShedule{
-				IsGroup:   isGroup,
-				SheduleId: sheduleId,
-			}
-			not_exists, _ := ssau_parser.CheckGroupOrTeacher(bot.DB, shedule)
-			if not_exists {
-				msg := tgbotapi.NewMessage(user.TgId, "Загружаю расписание...\nЭто займёт некоторое время")
-				bot.TG.Send(msg)
-				err := bot.LoadShedule(shedule)
-				if err != nil {
-					bot.Debug.Println(err)
-				}
-			}
 			return bot.GetSummary(now, user, []database.ShedulesInUser{Swap(shedule)}, false)
 		}
 
@@ -161,15 +170,25 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 	if err != nil {
 		return err
 	}
+	shedule := database.ShedulesInUser{
+		IsGroup:   isGroup,
+		SheduleId: groupId,
+	}
 	if !isAdd {
-		shedule := database.ShedulesInUser{
-			IsGroup:   isGroup,
-			SheduleId: groupId,
-		}
 		if len(now) == 0 {
 			now = append(now, time.Now())
 		}
 		_, err = bot.GetSummary(now[0], user, []database.ShedulesInUser{shedule}, false, *query.Message)
+	} else {
+		shedule.L9Id = user.L9Id
+		if _, err = bot.DB.InsertOne(&shedule); err != nil {
+			return err
+		}
+		user.PosTag = database.Ready
+		if _, err = bot.DB.Update(&user); err != nil {
+			return err
+		}
+		_, err = bot.GetPersonal(now[0], user)
 	}
 	return err
 }
@@ -180,20 +199,21 @@ func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQue
 	if err != nil {
 		return err
 	}
+	if len(now) == 0 {
+		now = append(now, time.Now())
+	}
 	if data[2] == "personal" {
-		/*
-			switch data[0] {
-			case "day":
-				bot.GetPersonalDaySummary(int(dt), *query.Message)
-			case "week":
-				bot.GetPersonalWeekSummary(int(dt), *query.Message)
-			default:
-				bot.GetPersonalSummary(*query.Message)
-			}*/
-	} else {
-		if len(now) == 0 {
-			now = append(now, time.Now())
+		switch data[1] {
+		case "day":
+			var shedules []database.ShedulesInUser
+			bot.DB.ID(user.L9Id).Find(&shedules)
+			_, err = bot.GetDaySummary(now[0], user, shedules, dt, true, *query.Message)
+		/*case "week":
+		bot.GetPersonalWeekSummary(int(dt), *query.Message)*/
+		default:
+			_, err = bot.GetPersonal(now[0], user, *query.Message)
 		}
+	} else {
 		switch data[1] {
 		case "day":
 			_, err = bot.GetDaySummary(now[0], user, shedule, dt, false, *query.Message)

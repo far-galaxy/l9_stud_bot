@@ -132,6 +132,11 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 			if len(now) == 0 {
 				now = append(now, msg.Time())
 			}
+			if msg.Text == "Моё расписание" {
+				return bot.GetPersonal(now[0], user)
+			}
+			return bot.Find(now[0], user, msg.Text)
+		case database.Add:
 			return bot.Find(now[0], user, msg.Text)
 		default:
 			return bot.Etc(user)

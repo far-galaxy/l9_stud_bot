@@ -30,6 +30,29 @@ func (bot *Bot) GetPersonalSummary(user *database.TgUser, msg ...tgbotapi.Messag
 	}
 }*/
 
+func (bot *Bot) GetPersonal(now time.Time, user *database.TgUser, editMsg ...tgbotapi.Message) (tgbotapi.Message, error) {
+	var shedules []database.ShedulesInUser
+	bot.DB.ID(user.L9Id).Find(&shedules)
+
+	if len(shedules) == 0 {
+		user.PosTag = database.Add
+		if _, err := bot.DB.Update(user); err != nil {
+			return tgbotapi.Message{}, err
+		}
+
+		msg := tgbotapi.NewMessage(
+			user.TgId,
+			"У тебя пока никакого расписания не подключено\n"+
+				"Введи <b>номер группы</b> или <b>фамилию преподавателя</b>",
+		)
+		msg.ReplyMarkup = tgbotapi.ReplyKeyboardRemove{RemoveKeyboard: true}
+		msg.ParseMode = tgbotapi.ModeHTML
+		return bot.TG.Send(msg)
+	} else {
+		return bot.GetSummary(now, user, shedules, true, editMsg...)
+	}
+}
+
 // Получить краткую сводку
 func (bot *Bot) GetSummary(
 	now time.Time,
