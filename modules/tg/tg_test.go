@@ -217,3 +217,41 @@ func TestSummary(t *testing.T) {
 		log.Fatal(err)
 	}*/
 }
+
+func TestGetWeekLessons(t *testing.T) {
+	ssau_parser.HeadURL = "http://127.0.0.1:5000/prod"
+	files := database.OpenLogs()
+	defer files.CloseAll()
+	bot := initTestBot(files)
+	bot.Week = 5
+	bot.WkPath = "C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltoimage.exe"
+	user := database.TgUser{}
+	user.TgId, _ = strconv.ParseInt(os.Getenv("TELEGRAM_TEST_USER"), 0, 64)
+	shedules := []ssau_parser.WeekShedule{
+		{
+			SheduleId: 100000000,
+			IsGroup:   true,
+			Week:      1,
+		},
+		{
+			SheduleId: 3,
+			IsGroup:   false,
+			Week:      1,
+		},
+	}
+	now, _ := time.Parse("2006-01-02 15:04 -07", times[2])
+	for _, sh := range shedules {
+		err := sh.DownloadById(true)
+		if err != nil {
+			log.Fatal(err)
+		}
+		_, _, err = ssau_parser.UpdateSchedule(bot.DB, sh)
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = bot.CreateWeekImg(now, &user, []database.ShedulesInUser{Swap(sh)}, 0, false)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+}

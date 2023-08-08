@@ -18,8 +18,6 @@ func main() {
 	logs := database.OpenLogs()
 	defer logs.CloseAll()
 	//bot := new(tg.Bot)
-	// bot.Week = 5
-	// bot.WkPath = os.Getenv("WK_PATH")
 	// bot.Debug = log.New(io.MultiWriter(os.Stderr, database.CreateLog("messages")), "", log.LstdFlags)
 	bot, err := tg.InitBot(
 		logs,
@@ -33,6 +31,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	bot.Week = 5
+	bot.WkPath = os.Getenv("WK_PATH")
 	now, _ := time.Parse("2006-01-02 15:04 -07", "2023-02-06 11:20 +04")
 	for update := range *bot.Updates {
 		_, err := bot.HandleUpdate(update, now)

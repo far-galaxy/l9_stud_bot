@@ -216,9 +216,9 @@ func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQue
 		switch data[1] {
 		case "day":
 			_, err = bot.GetDaySummary(now[0], user, shedule, dt, false, *query.Message)
-		/*	case "week":
-			bot.GetWeekSummary(shedule, dt, false, *query.Message)
-		*/
+		case "week":
+			bot.GetWeekSummary(now[0], user, shedule[0], dt, false)
+
 		default:
 			_, err = bot.GetSummary(now[0], user, shedule, false, *query.Message)
 		}

@@ -164,7 +164,7 @@ func ParseTeacherName(fullName string) database.Teacher {
 	teacher := database.Teacher{
 		FirstName: name[0],
 		LastName:  strings.Join(name[1:], " "),
-		ShortName: strings.Join(short_name, ". ") + ".",
+		ShortName: strings.Join(short_name, ".") + ".",
 	}
 	return teacher
 }

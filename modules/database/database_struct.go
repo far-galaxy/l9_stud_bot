@@ -68,3 +68,15 @@ type Lesson struct {
 	SubGroup     int64
 	Hash         string
 }
+
+// Файлы, залитые в Telegream
+type File struct {
+	Id         int64 `xorm:"pk autoincr"`
+	FileId     string
+	TgId       int64
+	IsPersonal bool
+	IsGroup    bool
+	SheduleId  int64
+	Week       int
+	LastUpd    time.Time
+}
