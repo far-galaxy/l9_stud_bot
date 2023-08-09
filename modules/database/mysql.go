@@ -71,6 +71,7 @@ func GenerateID(engine *xorm.Engine) (int64, error) {
 	}
 }
 
+// TODO: изобрести раздорбление логов по дате
 func CreateLog(name string) *os.File {
 	if _, err := os.Stat("logs"); os.IsNotExist(err) {
 		err = os.Mkdir("logs", os.ModePerm)

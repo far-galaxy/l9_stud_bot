@@ -39,7 +39,13 @@ func UpdateSchedule(db *xorm.Engine, sh WeekShedule) ([]database.Lesson, []datab
 	first_new := sh.Uncovered[0]
 	_, week := first_new.Begin.ISOWeek()
 	var old []database.Lesson
-	if err := db.Where("WEEK(`Begin`) = ?", week).Asc("Begin").Find(&old); err != nil {
+	var condition string
+	if sh.IsGroup {
+		condition = "groupid = ?"
+	} else {
+		condition = "teacherid = ?"
+	}
+	if err := db.Where("WEEK(`Begin`) = ? AND "+condition, week, sh.SheduleId).Asc("Begin").Find(&old); err != nil {
 		return nil, nil, err
 	}
 	add, del := Compare(sh.Uncovered, old)

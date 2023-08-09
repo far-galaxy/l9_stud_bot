@@ -134,34 +134,90 @@ func GenerateButtonTail(sheduleId int64, dt int, isGroup bool) string {
 	return tail
 }
 
+// Отправка сообщения или его редактирование, если в editMsg указано сообщение
 func (bot *Bot) EditOrSend(
 	id int64,
 	str string,
+	imageId string,
 	markup tgbotapi.InlineKeyboardMarkup,
-	editMsg ...tgbotapi.Message) (
+	editMsg ...tgbotapi.Message,
+) (
 	tgbotapi.Message,
-	error) {
+	error,
+) {
+	nilMsg := tgbotapi.Message{}
+
 	if len(editMsg) > 0 {
-		msg := tgbotapi.NewEditMessageText(
-			editMsg[0].Chat.ID,
-			editMsg[0].MessageID,
-			str,
-		)
-		msg.ReplyMarkup = &markup
-		msg.ParseMode = tgbotapi.ModeHTML
-		if _, err := bot.TG.Request(msg); err != nil {
-			if strings.Contains(err.Error(), "message is not modified") {
-				bot.Debug.Println("Message no modified")
-				return tgbotapi.Message{}, nil
+		// Редактируем
+		if imageId != "" {
+			// Обновляем фото, если есть
+			// TODO: реализовать нормальное обновление фото, когда нужный метод появится в tgbotapi
+			del := tgbotapi.NewDeleteMessage(
+				editMsg[0].Chat.ID,
+				editMsg[0].MessageID,
+			)
+			if _, err := bot.TG.Request(del); err != nil {
+				return nilMsg, err
 			}
-			return tgbotapi.Message{}, err
+			newMsg := tgbotapi.NewPhoto(
+				editMsg[0].Chat.ID,
+				tgbotapi.FileID(imageId),
+			)
+			newMsg.Caption = str
+			newMsg.ParseMode = tgbotapi.ModeHTML
+			newMsg.ReplyMarkup = &markup
+			return bot.TG.Send(newMsg)
+		} else if len(editMsg[0].Photo) == 0 {
+			// Фото нет и не было, только текст
+			msg := tgbotapi.NewEditMessageText(
+				editMsg[0].Chat.ID,
+				editMsg[0].MessageID,
+				str,
+			)
+			msg.ReplyMarkup = &markup
+			msg.ParseMode = tgbotapi.ModeHTML
+			if _, err := bot.TG.Request(msg); err != nil {
+				if strings.Contains(err.Error(), "message is not modified") {
+					bot.Debug.Println("Message no modified")
+					return nilMsg, nil
+				}
+				return nilMsg, err
+			}
+			return nilMsg, nil
+		} else {
+			// Фото было, но теперь его не будет
+			del := tgbotapi.NewDeleteMessage(
+				editMsg[0].Chat.ID,
+				editMsg[0].MessageID,
+			)
+			if _, err := bot.TG.Request(del); err != nil {
+				return nilMsg, err
+			}
+
+			msg := tgbotapi.NewMessage(id, str)
+			msg.ReplyMarkup = &markup
+			msg.ParseMode = tgbotapi.ModeHTML
+			return bot.TG.Send(msg)
 		}
-		return tgbotapi.Message{}, nil
 	} else {
-		msg := tgbotapi.NewMessage(id, str)
-		msg.ReplyMarkup = &markup
-		msg.ParseMode = tgbotapi.ModeHTML
-		return bot.TG.Send(msg)
+		// Обновлений нет, новое сообщение
+		if imageId != "" {
+			// С фото
+			newMsg := tgbotapi.NewPhoto(
+				id,
+				tgbotapi.FileID(imageId),
+			)
+			newMsg.Caption = str
+			newMsg.ParseMode = tgbotapi.ModeHTML
+			newMsg.ReplyMarkup = &markup
+			return bot.TG.Send(newMsg)
+		} else {
+			// Только текст
+			msg := tgbotapi.NewMessage(id, str)
+			msg.ReplyMarkup = &markup
+			msg.ParseMode = tgbotapi.ModeHTML
+			return bot.TG.Send(msg)
+		}
 	}
 }
 

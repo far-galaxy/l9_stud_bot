@@ -144,7 +144,7 @@ func (bot *Bot) GetSummary(
 			shedules[0].IsGroup,
 			0,
 		)
-		return bot.EditOrSend(user.TgId, str, markup, editMsg...)
+		return bot.EditOrSend(user.TgId, str, "", markup, editMsg...)
 
 	} else {
 		msg := tgbotapi.NewMessage(user.TgId, "Ой! Занятий не обнаружено ):")
@@ -196,7 +196,7 @@ func (bot *Bot) GetDaySummary(
 
 		if firstPair.Day() != day.Day() {
 			str = fmt.Sprintf("В %s, занятий нет", dayStr)
-			return bot.EditOrSend(user.TgId, str, markup, editMsg...)
+			return bot.EditOrSend(user.TgId, str, "", markup, editMsg...)
 		}
 		str = fmt.Sprintf("Расписание на %s\n\n", dayStr)
 
@@ -207,7 +207,7 @@ func (bot *Bot) GetDaySummary(
 			return nilMsg, err
 		}
 		str += day
-		return bot.EditOrSend(user.TgId, str, markup, editMsg...)
+		return bot.EditOrSend(user.TgId, str, "", markup, editMsg...)
 	} else {
 		msg := tgbotapi.NewMessage(user.TgId, "Ой! Пар не обнаружено ):")
 		return bot.TG.Send(msg)
