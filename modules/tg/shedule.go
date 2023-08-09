@@ -91,7 +91,7 @@ func (bot *Bot) GetSummary(
 				)
 			}
 			str += "\n\n"
-			day, err := bot.StrDayShedule(pairs)
+			day, err := bot.StrDayShedule(pairs, shedules[0].IsGroup)
 			if err != nil {
 				return nilMsg, err
 			}
@@ -107,7 +107,7 @@ func (bot *Bot) GetSummary(
 				)
 				str += fmt.Sprintf("Ближайшая пара %s:\n\n", dt)
 			}
-			firstStr, err := PairToStr(firstPair, bot.DB)
+			firstStr, err := PairToStr(firstPair, bot.DB, shedules[0].IsGroup)
 			if err != nil {
 				return nilMsg, err
 			}
@@ -116,7 +116,7 @@ func (bot *Bot) GetSummary(
 				secondPair = pairs[1]
 				if firstPair[0].Begin.Day() == secondPair[0].Begin.Day() {
 					str += "\nПосле неё:\n\n"
-					secondStr, err := PairToStr(secondPair, bot.DB)
+					secondStr, err := PairToStr(secondPair, bot.DB, shedules[0].IsGroup)
 					if err != nil {
 						return nilMsg, err
 					}
@@ -202,7 +202,7 @@ func (bot *Bot) GetDaySummary(
 
 		// TODO: придумать скачки для пустых дней
 		//dt += int(firstPair.Sub(day).Hours()) / 24
-		day, err := bot.StrDayShedule(pairs)
+		day, err := bot.StrDayShedule(pairs, shedules[0].IsGroup)
 		if err != nil {
 			return nilMsg, err
 		}
@@ -303,7 +303,7 @@ func GroupPairs(lessons []database.Lesson) [][]database.Lesson {
 }
 
 // Конвертация занятий с текст
-func PairToStr(pair []database.Lesson, db *xorm.Engine) (string, error) {
+func PairToStr(pair []database.Lesson, db *xorm.Engine, isGroup bool) (string, error) {
 	var str string
 	beginStr := pair[0].Begin.Format("15:04")
 	var endStr string
@@ -313,6 +313,12 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine) (string, error) {
 		endStr = pair[0].End.Format("15:04")
 	}
 	str = fmt.Sprintf("📆 %s - %s\n", beginStr, endStr)
+
+	var groups []database.Lesson
+	if !isGroup {
+		groups = pair[:]
+		pair = pair[:1]
+	}
 
 	for i, sublesson := range pair {
 		var type_emoji string
@@ -336,6 +342,9 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine) (string, error) {
 		if sublesson.Place != "" {
 			str += fmt.Sprintf("🧭 %s\n", sublesson.Place)
 		}
+		if !isGroup {
+			break
+		}
 		if sublesson.TeacherId != 0 {
 			var t database.Teacher
 			_, err := db.ID(sublesson.TeacherId).Get(&t)
@@ -355,17 +364,34 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine) (string, error) {
 		}
 	}
 
+	if !isGroup {
+		for _, gr := range groups {
+			var t database.Group
+			_, err := db.ID(gr.GroupId).Get(&t)
+			if err != nil {
+				return "", err
+			}
+			str += fmt.Sprintf("👥 %s\n", t.GroupName)
+			if gr.SubGroup != 0 {
+				str += fmt.Sprintf("👥 Подгруппа: %d\n", gr.SubGroup)
+			}
+		}
+		if pair[0].Comment != "" {
+			str += fmt.Sprintf("💬 %s\n", pair[0].Comment)
+		}
+	}
+
 	str += "------------------------------------------\n"
 	return str, nil
 }
 
 // Текст расписания на день
-func (bot *Bot) StrDayShedule(lessons [][]database.Lesson) (string, error) {
+func (bot *Bot) StrDayShedule(lessons [][]database.Lesson, isGroup bool) (string, error) {
 	var str string
 	day := lessons[0][0].Begin.Day()
 	for _, pair := range lessons {
 		if pair[0].Begin.Day() == day {
-			line, err := PairToStr(pair, bot.DB)
+			line, err := PairToStr(pair, bot.DB, isGroup)
 			if err != nil {
 				return "", err
 			}

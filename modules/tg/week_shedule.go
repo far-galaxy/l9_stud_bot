@@ -214,7 +214,7 @@ func (bot *Bot) CreateWeekImg(
 		header = fmt.Sprintf("%s %s, %d неделя", teacher.FirstName, teacher.LastName, week-bot.Week)
 	}
 
-	html := bot.CreateHTMLShedule(header, shedule, dates, times)
+	html := bot.CreateHTMLShedule(shedules[0].IsGroup, header, shedule, dates, times)
 
 	path := GeneratePath(shedules[0], isPersonal, user.L9Id)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -335,7 +335,13 @@ var shortWeekdays = [6]string{
 	"сб",
 }
 
-func (bot *Bot) CreateHTMLShedule(header string, shedule [][6][]database.Lesson, dates []time.Time, times []ssau_parser.Pair) string {
+func (bot *Bot) CreateHTMLShedule(
+	isGroup bool,
+	header string,
+	shedule [][6][]database.Lesson,
+	dates []time.Time,
+	times []ssau_parser.Pair,
+) string {
 	html := head
 	html += fmt.Sprintf("<div class=\"note\"><div id=\"week\">%s</div></div>\n", header)
 	html += "<table class=\"rasp\">\n<tr><th class=\"head\" style=\"width: 4rem\">Время</th>\n"
@@ -360,13 +366,18 @@ func (bot *Bot) CreateHTMLShedule(header string, shedule [][6][]database.Lesson,
 
 			if len(l) > 0 && l[0].Type != "window" {
 				html += fmt.Sprintf(lessonHead, l[0].Type, l[0].Name)
-				if l[0].TeacherId != 0 {
+				if isGroup && l[0].TeacherId != 0 {
 					var t database.Teacher
 					bot.DB.ID(l[0].TeacherId).Get(&t)
 					html += fmt.Sprintf("<h5 id=\"prep\">%s %s</h5>\n", t.FirstName, t.ShortName)
 				}
 				if l[0].Place != "" {
 					html += fmt.Sprintf("<h3>%s</h3>\n", l[0].Place)
+				}
+				if !isGroup {
+					var t database.Group
+					bot.DB.ID(l[0].GroupId).Get(&t)
+					html += fmt.Sprintf("<h3>%s</h3>\n", t.GroupName)
 				}
 				if l[0].SubGroup != 0 {
 					html += fmt.Sprintf("<h3>Подгруппа: %d</h3>\n", l[0].SubGroup)
@@ -375,7 +386,7 @@ func (bot *Bot) CreateHTMLShedule(header string, shedule [][6][]database.Lesson,
 					html += fmt.Sprintf("<h3>%s</h3>\n", l[0].Comment)
 				}
 
-				if len(l) == 2 {
+				if len(l) == 2 && isGroup {
 					html += "<hr>\n"
 					if l[0].Name != l[1].Name {
 						html += fmt.Sprintf("<div><p></p></div>\n<h2>%s</h2><hr>", l[1].Name)
@@ -393,6 +404,16 @@ func (bot *Bot) CreateHTMLShedule(header string, shedule [][6][]database.Lesson,
 					}
 					if l[1].Comment != "" {
 						html += fmt.Sprintf("<h3>%s</h3>\n", l[1].Comment)
+					}
+				}
+				if len(l) > 1 && !isGroup {
+					for _, gr := range l[1:] {
+						var t database.Group
+						bot.DB.ID(gr.GroupId).Get(&t)
+						html += fmt.Sprintf("<h3>%s</h3>\n", t.GroupName)
+						if gr.SubGroup != 0 {
+							html += fmt.Sprintf("<h3>Подгруппа: %d</h3>\n<hr>\n", l[1].SubGroup)
+						}
 					}
 				}
 

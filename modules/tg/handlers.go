@@ -97,10 +97,14 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 		not_exists, _ := ssau_parser.CheckGroupOrTeacher(bot.DB, shedule)
 		if not_exists {
 			msg := tgbotapi.NewMessage(user.TgId, "Загружаю расписание...\nЭто займёт некоторое время")
-			bot.TG.Send(msg)
+			Smsg, _ := bot.TG.Send(msg)
 			err := bot.LoadShedule(shedule)
 			if err != nil {
-				bot.Debug.Println(err)
+				return nilMsg, err
+			}
+			del := tgbotapi.NewDeleteMessage(Smsg.Chat.ID, Smsg.MessageID)
+			if _, err := bot.TG.Request(del); err != nil {
+				return nilMsg, err
 			}
 		}
 		// TODO: проверять подключенные ранее расписания
@@ -169,18 +173,32 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 	if err != nil {
 		return err
 	}
-	shedule := database.ShedulesInUser{
+	shedule := ssau_parser.WeekShedule{
 		IsGroup:   isGroup,
 		SheduleId: groupId,
+	}
+	not_exists, _ := ssau_parser.CheckGroupOrTeacher(bot.DB, shedule)
+	if not_exists {
+		msg := tgbotapi.NewMessage(user.TgId, "Загружаю расписание...\nЭто займёт некоторое время")
+		Smsg, _ := bot.TG.Send(msg)
+		if err := bot.LoadShedule(shedule); err != nil {
+			return err
+		}
+		del := tgbotapi.NewDeleteMessage(Smsg.Chat.ID, Smsg.MessageID)
+		if _, err := bot.TG.Request(del); err != nil {
+			return err
+		}
+
 	}
 	if !isAdd {
 		if len(now) == 0 {
 			now = append(now, time.Now())
 		}
-		_, err = bot.GetSummary(now[0], user, []database.ShedulesInUser{shedule}, false, *query.Message)
+		_, err = bot.GetSummary(now[0], user, []database.ShedulesInUser{Swap(shedule)}, false, *query.Message)
 	} else {
-		shedule.L9Id = user.L9Id
-		if _, err = bot.DB.InsertOne(&shedule); err != nil {
+		sh := Swap(shedule)
+		sh.L9Id = user.L9Id
+		if _, err = bot.DB.InsertOne(&sh); err != nil {
 			return err
 		}
 		user.PosTag = database.Ready
