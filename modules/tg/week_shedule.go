@@ -63,7 +63,9 @@ func (bot *Bot) GetWeekSummary(
 	}
 
 	if !has || image.LastUpd.Before(lastUpd) {
-		// TODO: удалять старые фото
+		if _, err := bot.DB.Delete(&image); err != nil {
+			return err
+		}
 		var shedules []database.ShedulesInUser
 		if isPersonal {
 			shedules = append(shedules, database.ShedulesInUser{L9Id: user.L9Id})
@@ -121,7 +123,17 @@ func (bot *Bot) CreateWeekImg(
 		return err
 	}
 	if len(lessons) == 0 {
-		return fmt.Errorf("no lessons: %d, week %d", shedules[0].SheduleId, week)
+		// TODO: сделать костыль поизящнее и предупреждать, если неделя пустая
+		next, err := bot.GetWeekLessons(shedules, week-bot.Week+1)
+		if err != nil {
+			return err
+		}
+		if len(next) > 0 {
+			lessons = next
+			week += 1
+		} else {
+			return fmt.Errorf("no lessons: %d, week %d", shedules[0].SheduleId, week)
+		}
 	}
 
 	var dates []time.Time
