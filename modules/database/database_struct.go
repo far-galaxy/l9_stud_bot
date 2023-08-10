@@ -33,6 +33,8 @@ type ShedulesInUser struct {
 	L9Id      int64
 	IsGroup   bool
 	SheduleId int64
+	Subgroup  int64
+	NextNote  bool
 }
 
 // Учебная группа

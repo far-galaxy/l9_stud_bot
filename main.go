@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/notify"
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/tg"
 )
@@ -38,10 +39,22 @@ func main() {
 	}
 	bot.WkPath = os.Getenv("WK_PATH")
 	now, _ := time.Parse("2006-01-02 15:04 -07", "2023-02-06 11:20 +04")
-	for update := range *bot.Updates {
-		_, err := bot.HandleUpdate(update, now)
-		if err != nil {
-			log.Println(err)
+	checkTicker := time.NewTicker(10 * time.Second)
+	defer checkTicker.Stop()
+	for {
+		select {
+		case update := <-*bot.Updates:
+			_, err := bot.HandleUpdate(update, now)
+			if err != nil {
+				log.Println(err)
+			}
+		case <-checkTicker.C:
+			notes, err := notify.CheckNext(bot.DB, now)
+			if err != nil {
+				log.Println(err)
+			}
+			notify.Mailing(bot, notes)
+			return
 		}
 	}
 }
