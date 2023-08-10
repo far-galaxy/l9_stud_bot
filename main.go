@@ -31,6 +31,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	// TODO: загнать первую неделю в переменную среды
 	bot.Week = 5
 	bot.WkPath = os.Getenv("WK_PATH")
 	now, _ := time.Parse("2006-01-02 15:04 -07", "2023-02-06 11:20 +04")

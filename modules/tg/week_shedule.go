@@ -351,7 +351,7 @@ func (bot *Bot) CreateHTMLShedule(
 		html += fmt.Sprintf("<th class=\"head\">%s<p>%s</p></th>", shortWeekdays[i], day)
 	}
 	html += "</tr>\n"
-	// TODO: Проработать преподавательские расписания (с кучей групп)
+
 	for t, tline := range shedule {
 		var begin, end string
 		if times[t].Begin.IsZero() {

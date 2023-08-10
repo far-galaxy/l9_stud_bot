@@ -109,27 +109,42 @@ func (sh *WeekShedule) Parse(p Page, uncover bool) error {
 		}
 		shedule = append(shedule, time_line)
 	}
-	// Ищем окна
-	// TODO: искать и более длинные окна
-	// TODO: оставлять только первую пару военки
+
 	if len(shedule) > 2 {
+		// Ищем окна
 		for y, line := range shedule[1 : len(shedule)-1] {
 			for x, pair := range line {
 				if len(pair.Lessons) == 0 &&
-					len(shedule[y][x].Lessons) != 0 &&
-					len(shedule[y+2][x].Lessons) != 0 {
-					window := Lesson{
-						Type: "window",
-						Name: "Окно",
+					len(shedule[y][x].Lessons) != 0 {
+					for i := y + 2; i < len(shedule); i++ {
+						if len(shedule[i][x].Lessons) != 0 {
+							window := Lesson{
+								Type: "window",
+								Name: "Окно",
+							}
+							if p.IsGroup {
+								window.GroupId = []int64{p.ID}
+								window.SubGroup = []int{0}
+							} else {
+								window.TeacherId = []int64{p.ID}
+								window.SubGroup = []int{0}
+							}
+							shedule[y+1][x].Lessons = []Lesson{window}
+							break
+						}
 					}
-					if p.IsGroup {
-						window.GroupId = []int64{p.ID}
-						window.SubGroup = []int{0}
-					} else {
-						window.TeacherId = []int64{p.ID}
-						window.SubGroup = []int{0}
+				}
+			}
+		}
+		// Оставляем только первую пару военки
+		for y, line := range shedule {
+			for x, pair := range line {
+				if len(pair.Lessons) > 0 && pair.Lessons[0].Type == "mil" {
+					for i := y + 1; i < len(shedule); i++ {
+						if len(shedule[i][x].Lessons) > 0 && shedule[i][x].Lessons[0].Type == "mil" {
+							shedule[i][x].Lessons = []Lesson{}
+						}
 					}
-					shedule[y+1][x].Lessons = []Lesson{window}
 				}
 			}
 		}
