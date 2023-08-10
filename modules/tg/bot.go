@@ -27,6 +27,11 @@ type Bot struct {
 var env_keys = []string{
 	"TELEGRAM_APITOKEN",
 	"TELEGRAM_TEST_USER",
+	"WK_PATH",
+	"MYSQL_USER",
+	"MYSQL_PASS",
+	"MYSQL_DB",
+	"START_WEEK",
 }
 
 func CheckEnv() error {

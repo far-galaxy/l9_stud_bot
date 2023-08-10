@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
@@ -31,8 +32,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	// TODO: загнать первую неделю в переменную среды
-	bot.Week = 5
+	bot.Week, err = strconv.Atoi(os.Getenv("START_WEEK"))
+	if err != nil {
+		log.Fatal(err)
+	}
 	bot.WkPath = os.Getenv("WK_PATH")
 	now, _ := time.Parse("2006-01-02 15:04 -07", "2023-02-06 11:20 +04")
 	for update := range *bot.Updates {
