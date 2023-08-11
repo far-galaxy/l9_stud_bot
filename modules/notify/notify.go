@@ -107,6 +107,7 @@ func CheckNext(db *xorm.Engine, now time.Time) ([]Notify, error) {
 }
 
 func StrNext(db *xorm.Engine, note Notify) (string, error) {
+	// TODO: перескакивать окна
 	// Подкачиваем группы и подгруппы
 	var pair []database.Lesson
 	if !note.IsGroup {
@@ -130,7 +131,7 @@ func StrNext(db *xorm.Engine, note Notify) (string, error) {
 	return str, nil
 }
 
-func Mailing(bot *tg.Bot, notes []Notify) {
+func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 	var ids []int64
 	for _, note := range notes {
 		if note.NotifyType == NextLesson {
@@ -153,10 +154,37 @@ func Mailing(bot *tg.Bot, notes []Notify) {
 				if !slices.Contains(ids, user.TgId) {
 					txt, _ := StrNext(bot.DB, note)
 					msg := tgbotapi.NewMessage(user.TgId, txt)
-					bot.TG.Send(msg)
+					m, err := bot.TG.Send(msg)
+					if err != nil {
+						log.Println(err)
+					}
+					if _, err := bot.DB.InsertOne(database.TempMsg{
+						TgId:      m.Chat.ID,
+						MessageId: m.MessageID,
+						Destroy:   note.Lesson.Begin.Add(15 * time.Minute),
+					}); err != nil {
+						log.Println(err)
+					}
 					ids = append(ids, user.TgId)
 				}
 			}
+		}
+	}
+}
+
+// Удаление временных сообщений
+func ClearTemp(bot *tg.Bot, now time.Time) {
+	var temp []database.TempMsg
+	if err := bot.DB.Where("destroy < ?", now.Format("2006-01-02 15:04:03")).Find(&temp); err != nil {
+		log.Println(err)
+	}
+	for _, msg := range temp {
+		del := tgbotapi.NewDeleteMessage(msg.TgId, msg.MessageId)
+		if _, err := bot.TG.Request(del); err != nil {
+			log.Println(err)
+		}
+		if _, err := bot.DB.Delete(&msg); err != nil {
+			log.Println(err)
 		}
 	}
 }

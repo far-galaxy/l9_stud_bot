@@ -82,3 +82,11 @@ type File struct {
 	Week       int
 	LastUpd    time.Time
 }
+
+// Самоуничтожающиеся сообщения
+type TempMsg struct {
+	ID        int64 `xorm:"pk autoincr"`
+	TgId      int64
+	MessageId int
+	Destroy   time.Time
+}
