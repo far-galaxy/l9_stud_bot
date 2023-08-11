@@ -24,7 +24,7 @@ func (bot *Bot) Start(user *database.TgUser) error {
 		`Привет! У меня можно посмотреть в удобном формате <b>ближайшие пары</b>, расписание <b>по дням</b> и даже <b>по неделям</b>!
 Просто напиши мне <b>номер группы</b> или <b>фамилию преподавателя</b>`)
 	msg.ParseMode = tgbotapi.ModeHTML
-	msg.ReplyMarkup = GeneralKeyboard()
+	msg.ReplyMarkup = GeneralKeyboard(false)
 	_, err = bot.TG.Send(msg)
 	return err
 }
@@ -124,7 +124,7 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 					"Теперь его можно открыть по кнопке <b>Моё расписание</b>👇",
 			)
 			msg.ParseMode = tgbotapi.ModeHTML
-			msg.ReplyMarkup = GeneralKeyboard()
+			msg.ReplyMarkup = GeneralKeyboard(true)
 			return bot.TG.Send(msg)
 		} else {
 			return bot.GetSummary(now, user, []database.ShedulesInUser{Swap(shedule)}, false)

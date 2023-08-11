@@ -139,6 +139,8 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 			}
 			if msg.Text == "Моё расписание" {
 				return bot.GetPersonal(now[0], user)
+			} else if msg.Text == "Настройки" {
+				return bot.GetOptions(user)
 			}
 			return bot.Find(now[0], user, msg.Text)
 		case database.Add:
@@ -164,10 +166,12 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 		case database.NotStarted:
 			err = bot.Start(user)
 		case database.Ready:
-			if !strings.Contains(query.Data, "sh") {
-				err = bot.GetShedule(user, query, now...)
-			} else {
+			if strings.Contains(query.Data, "sh") {
 				err = bot.HandleSummary(user, query, now...)
+			} else if strings.Contains(query.Data, "opt") {
+				err = bot.HandleOptions(user, query)
+			} else {
+				err = bot.GetShedule(user, query, now...)
 			}
 		default:
 			return bot.Etc(user)

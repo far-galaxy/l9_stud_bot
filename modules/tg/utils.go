@@ -10,11 +10,14 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func GeneralKeyboard() tgbotapi.ReplyKeyboardMarkup {
-	return tgbotapi.NewReplyKeyboard(
-		[]tgbotapi.KeyboardButton{
-			tgbotapi.NewKeyboardButton("Моё расписание"),
-		})
+func GeneralKeyboard(options bool) tgbotapi.ReplyKeyboardMarkup {
+	keyboard := []tgbotapi.KeyboardButton{
+		tgbotapi.NewKeyboardButton("Моё расписание"),
+	}
+	if options {
+		keyboard = append(keyboard, tgbotapi.NewKeyboardButton("Настройки"))
+	}
+	return tgbotapi.NewReplyKeyboard(keyboard)
 }
 
 // Создание ряда кнопок из списка групп
