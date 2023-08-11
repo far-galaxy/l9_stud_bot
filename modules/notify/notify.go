@@ -177,13 +177,16 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 		}
 		var txt string
 		var err error
+		var tempTime time.Time
 		switch note.NotifyType {
 		case NextLesson:
 			query.NextNote = true
 			txt, err = StrNext(bot.DB, note)
+			tempTime = note.Lesson.Begin.Add(15 * time.Minute)
 		case NextDay:
 			query.NextDay = true
 			txt, err = StrNextDay(bot, note)
+			tempTime = note.Lesson.Begin.Add(-60 * time.Minute)
 		case NextWeek:
 			query.NextWeek = true
 		}
@@ -207,11 +210,12 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 				if err != nil {
 					log.Println(err)
 				}
-				if _, err := bot.DB.InsertOne(database.TempMsg{
+				temp := database.TempMsg{
 					TgId:      m.Chat.ID,
 					MessageId: m.MessageID,
-					Destroy:   note.Lesson.Begin.Add(15 * time.Minute),
-				}); err != nil {
+					Destroy:   tempTime,
+				}
+				if _, err := bot.DB.InsertOne(temp); err != nil {
 					log.Println(err)
 				}
 				ids = append(ids, user.TgId)
