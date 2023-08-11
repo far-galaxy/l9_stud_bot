@@ -174,12 +174,7 @@ func (bot *Bot) GetDaySummary(
 		pairs := GroupPairs(lessons)
 		var str string
 		firstPair := pairs[0][0].Begin
-		dayStr := fmt.Sprintf(
-			"%s, <b>%d %s</b>",
-			weekdays[int(day.Weekday())],
-			day.Day(),
-			month[day.Month()-1],
-		)
+		dayStr := DayStr(day)
 
 		var shId int64
 		if isPersonal {
@@ -215,6 +210,17 @@ func (bot *Bot) GetDaySummary(
 
 }
 
+// Строка даты формата "среду, 1 января"
+func DayStr(day time.Time) string {
+	dayStr := fmt.Sprintf(
+		"%s, <b>%d %s</b>",
+		weekdays[int(day.Weekday())],
+		day.Day(),
+		month[day.Month()-1],
+	)
+	return dayStr
+}
+
 // Получить список ближайших занятий (для краткой сводки или расписания на день)
 func (bot *Bot) GetLessons(shedules []database.ShedulesInUser, now time.Time) ([]database.Lesson, error) {
 
@@ -225,7 +231,7 @@ func (bot *Bot) GetLessons(shedules []database.ShedulesInUser, now time.Time) ([
 		Where("end > ?", now.Format("2006-01-02 15:04:05")).
 		And(condition).
 		OrderBy("begin").
-		Limit(16).
+		Limit(32).
 		Find(&lessons)
 
 	return lessons, err

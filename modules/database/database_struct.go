@@ -35,6 +35,8 @@ type ShedulesInUser struct {
 	SheduleId int64
 	Subgroup  int64
 	NextNote  bool
+	NextDay   bool
+	NextWeek  bool
 }
 
 // Учебная группа

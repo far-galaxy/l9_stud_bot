@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/tg"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"golang.org/x/exp/slices"
@@ -20,9 +21,9 @@ type Next struct {
 type NotifyType string
 
 const (
-	NextLesson NotifyType = "next"
-	NextDay    NotifyType = "day"
-	NextWeek   NotifyType = "week"
+	NextLesson NotifyType = "nextnote"
+	NextDay    NotifyType = "nextday"
+	NextWeek   NotifyType = "nextweek"
 	Changes    NotifyType = "changes"
 	Military   NotifyType = "mil"
 )
@@ -74,38 +75,44 @@ func CheckNext(db *xorm.Engine, now time.Time) ([]Notify, error) {
 		}
 
 	}
-	/*
-		// Отсеиваем последние пары дня
-		last := ssau_parser.Diff(completed, next)
 
-		var next_day []database.Lesson
-		var next_week []database.Lesson
-		for _, l := range last {
-			var next_lesson []database.Lesson
-			if err := db.
-				Where(
-					"groupid = ? and begin > ?",
-					l.GroupId, now.Format("2006-01-02 15:04:03"),
-				).
-				Limit(1).
-				Find(&next_lesson); err != nil {
-				return nilNext, err
-			}
-			// Разделяем, какие пары на этой неделе, какие на следующей
-			for _, nl := range next_lesson {
-				_, nl_week := nl.Begin.ISOWeek()
-				_, now_week := now.ISOWeek()
-				if nl_week == now_week {
-					next_day = append(next_day, nl)
-				} else {
-					next_week = append(next_week, nl)
-				}
-			}
+	// Отсеиваем последние пары дня
+	last := ssau_parser.Diff(completed, next)
 
-		}*/
+	for _, l := range last {
+		var next_lesson database.Lesson
+		if _, err := db.
+			Where(
+				"groupid = ? and begin > ?",
+				l.GroupId, l.Begin.Format("2006-01-02 15:04:03"),
+			).
+			Asc("begin").
+			Get(&next_lesson); err != nil {
+			return nil, err
+		}
+		// Разделяем, какие пары на этой неделе, какие на следующей
+
+		_, nl_week := next_lesson.Begin.ISOWeek()
+		_, now_week := now.ISOWeek()
+		note := Notify{
+			IsGroup:   true,
+			SheduleId: next_lesson.GroupId,
+			Lesson:    next_lesson,
+		}
+		if nl_week == now_week {
+			note.NotifyType = NextDay
+		} else {
+			note.NotifyType = NextWeek
+		}
+		if !slices.Contains(notify, note) {
+			notify = append(notify, note)
+		}
+
+	}
 	return notify, nil
 }
 
+// Текст уведомления о следующей паре
 func StrNext(db *xorm.Engine, note Notify) (string, error) {
 	// TODO: перескакивать окна
 	// Подкачиваем группы и подгруппы
@@ -131,42 +138,83 @@ func StrNext(db *xorm.Engine, note Notify) (string, error) {
 	return str, nil
 }
 
+// Текст уведомления о следующем дне
+func StrNextDay(bot *tg.Bot, note Notify) (string, error) {
+	begin := note.Lesson.Begin
+	day := time.Date(begin.Year(), begin.Month(), begin.Day(), 0, 0, 0, 0, begin.Location())
+	shedules := []database.ShedulesInUser{
+		{
+			IsGroup:   true,
+			SheduleId: note.Lesson.GroupId,
+		},
+	}
+	lessons, err := bot.GetLessons(shedules, day)
+	if err != nil {
+		return "", err
+	}
+	if len(lessons) != 0 {
+		pairs := tg.GroupPairs(lessons)
+		dayStr, err := bot.StrDayShedule(pairs, shedules[0].IsGroup)
+		if err != nil {
+			return "", err
+		}
+		str := "Сегодня больше ничего нет\n"
+		str += "Следующие занятия в " + tg.DayStr(day) + ":\n\n" + dayStr
+		return str, nil
+	}
+	return "", nil
+}
+
+// Рассылка всех уведомлений
 func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 	var ids []int64
 	for _, note := range notes {
-		if note.NotifyType == NextLesson {
-			var users []database.TgUser
-			query := database.ShedulesInUser{
-				IsGroup:   note.IsGroup,
-				SheduleId: note.SheduleId,
-				NextNote:  true,
-			}
-			if err := bot.DB.
-				UseBool().
-				Table("ShedulesInUser").
-				Cols("tgid").
-				Join("INNER", "tguser", "tguser.l9id = ShedulesInUser.l9id").
-				Where("subgroup in (0, ?)", note.Lesson.SubGroup).
-				Find(&users, &query); err != nil {
-				log.Println(err)
-			}
-			for _, user := range users {
-				if !slices.Contains(ids, user.TgId) {
-					txt, _ := StrNext(bot.DB, note)
-					msg := tgbotapi.NewMessage(user.TgId, txt)
-					m, err := bot.TG.Send(msg)
-					if err != nil {
-						log.Println(err)
-					}
-					if _, err := bot.DB.InsertOne(database.TempMsg{
-						TgId:      m.Chat.ID,
-						MessageId: m.MessageID,
-						Destroy:   note.Lesson.Begin.Add(15 * time.Minute),
-					}); err != nil {
-						log.Println(err)
-					}
-					ids = append(ids, user.TgId)
+
+		var users []database.TgUser
+		query := database.ShedulesInUser{
+			IsGroup:   note.IsGroup,
+			SheduleId: note.SheduleId,
+		}
+		var txt string
+		var err error
+		switch note.NotifyType {
+		case NextLesson:
+			query.NextNote = true
+			txt, err = StrNext(bot.DB, note)
+		case NextDay:
+			query.NextDay = true
+			txt, err = StrNextDay(bot, note)
+		case NextWeek:
+			query.NextWeek = true
+		}
+		if err != nil {
+			log.Println(err)
+		}
+		if err := bot.DB.
+			UseBool(string(note.NotifyType)).
+			Table("ShedulesInUser").
+			Cols("tgid").
+			Join("INNER", "tguser", "tguser.l9id = ShedulesInUser.l9id").
+			Where("subgroup in (0, ?)", note.Lesson.SubGroup).
+			Find(&users, &query); err != nil {
+			log.Println(err)
+		}
+		for _, user := range users {
+			if !slices.Contains(ids, user.TgId) {
+				msg := tgbotapi.NewMessage(user.TgId, txt)
+				msg.ParseMode = tgbotapi.ModeHTML
+				m, err := bot.TG.Send(msg)
+				if err != nil {
+					log.Println(err)
 				}
+				if _, err := bot.DB.InsertOne(database.TempMsg{
+					TgId:      m.Chat.ID,
+					MessageId: m.MessageID,
+					Destroy:   note.Lesson.Begin.Add(15 * time.Minute),
+				}); err != nil {
+					log.Println(err)
+				}
+				ids = append(ids, user.TgId)
 			}
 		}
 	}
