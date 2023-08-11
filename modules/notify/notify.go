@@ -186,6 +186,7 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 		case NextDay:
 			query.NextDay = true
 			txt, err = StrNextDay(bot, note)
+			// TODO: установить время удаления на момент сообщения о начале пар
 			tempTime = note.Lesson.Begin.Add(-60 * time.Minute)
 		case NextWeek:
 			query.NextWeek = true
@@ -193,30 +194,49 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 		if err != nil {
 			log.Println(err)
 		}
+		var condition string
+		if note.Lesson.SubGroup == 0 {
+			condition = "subgroup in (?, 1, 2)"
+		} else {
+			condition = "subgroup in (0, ?)"
+		}
 		if err := bot.DB.
 			UseBool(string(note.NotifyType)).
 			Table("ShedulesInUser").
 			Cols("tgid").
 			Join("INNER", "tguser", "tguser.l9id = ShedulesInUser.l9id").
-			Where("subgroup in (0, ?)", note.Lesson.SubGroup).
+			Where(condition, note.Lesson.SubGroup).
 			Find(&users, &query); err != nil {
 			log.Println(err)
 		}
 		for _, user := range users {
 			if !slices.Contains(ids, user.TgId) {
-				msg := tgbotapi.NewMessage(user.TgId, txt)
-				msg.ParseMode = tgbotapi.ModeHTML
-				m, err := bot.TG.Send(msg)
-				if err != nil {
-					log.Println(err)
-				}
-				temp := database.TempMsg{
-					TgId:      m.Chat.ID,
-					MessageId: m.MessageID,
-					Destroy:   tempTime,
-				}
-				if _, err := bot.DB.InsertOne(temp); err != nil {
-					log.Println(err)
+				if note.NotifyType != NextWeek {
+					msg := tgbotapi.NewMessage(user.TgId, txt)
+					msg.ParseMode = tgbotapi.ModeHTML
+					m, err := bot.TG.Send(msg)
+					if err != nil {
+						log.Println(err)
+					}
+					temp := database.TempMsg{
+						TgId:      m.Chat.ID,
+						MessageId: m.MessageID,
+						Destroy:   tempTime,
+					}
+					if _, err := bot.DB.InsertOne(temp); err != nil {
+						log.Println(err)
+					}
+				} else {
+					if err = bot.GetWeekSummary(
+						note.Lesson.Begin,
+						&user,
+						database.ShedulesInUser{},
+						0,
+						true,
+						"На этой неделе больше ничего нет\n\nВыше расписание на следующую неделю",
+					); err != nil {
+						log.Println(err)
+					}
 				}
 				ids = append(ids, user.TgId)
 			}

@@ -165,7 +165,9 @@ func (bot *Bot) EditOrSend(
 			)
 			newMsg.Caption = str
 			newMsg.ParseMode = tgbotapi.ModeHTML
-			newMsg.ReplyMarkup = &markup
+			if len(markup.InlineKeyboard) != 0 {
+				newMsg.ReplyMarkup = &markup
+			}
 			return bot.TG.Send(newMsg)
 		} else if len(editMsg[0].Photo) == 0 {
 			// Фото нет и не было, только текст
@@ -174,7 +176,9 @@ func (bot *Bot) EditOrSend(
 				editMsg[0].MessageID,
 				str,
 			)
-			msg.ReplyMarkup = &markup
+			if len(markup.InlineKeyboard) != 0 {
+				msg.ReplyMarkup = &markup
+			}
 			msg.ParseMode = tgbotapi.ModeHTML
 			if _, err := bot.TG.Request(msg); err != nil {
 				if strings.Contains(err.Error(), "message is not modified") {
@@ -195,7 +199,9 @@ func (bot *Bot) EditOrSend(
 			}
 
 			msg := tgbotapi.NewMessage(id, str)
-			msg.ReplyMarkup = &markup
+			if len(markup.InlineKeyboard) != 0 {
+				msg.ReplyMarkup = &markup
+			}
 			msg.ParseMode = tgbotapi.ModeHTML
 			return bot.TG.Send(msg)
 		}
@@ -209,12 +215,16 @@ func (bot *Bot) EditOrSend(
 			)
 			newMsg.Caption = str
 			newMsg.ParseMode = tgbotapi.ModeHTML
-			newMsg.ReplyMarkup = &markup
+			if len(markup.InlineKeyboard) != 0 {
+				newMsg.ReplyMarkup = &markup
+			}
 			return bot.TG.Send(newMsg)
 		} else {
 			// Только текст
 			msg := tgbotapi.NewMessage(id, str)
-			msg.ReplyMarkup = &markup
+			if len(markup.InlineKeyboard) != 0 {
+				msg.ReplyMarkup = &markup
+			}
 			msg.ParseMode = tgbotapi.ModeHTML
 			return bot.TG.Send(msg)
 		}

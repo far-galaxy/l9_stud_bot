@@ -249,7 +249,7 @@ func TestGetWeekLessons(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = bot.CreateWeekImg(now, &user, []database.ShedulesInUser{Swap(sh)}, 0, false)
+		err = bot.CreateWeekImg(now, &user, []database.ShedulesInUser{Swap(sh)}, 0, false, "")
 		if err != nil {
 			log.Fatal(err)
 		}

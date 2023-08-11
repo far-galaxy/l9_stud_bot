@@ -23,6 +23,7 @@ func (bot *Bot) GetWeekSummary(
 	shedule database.ShedulesInUser,
 	dw int,
 	isPersonal bool,
+	caption string,
 	editMsg ...tgbotapi.Message,
 ) error {
 	_, week := now.ISOWeek()
@@ -75,7 +76,7 @@ func (bot *Bot) GetWeekSummary(
 		} else {
 			shedules = append(shedules, shedule)
 		}
-		return bot.CreateWeekImg(now, user, shedules, dw, isPersonal, editMsg...)
+		return bot.CreateWeekImg(now, user, shedules, dw, isPersonal, caption, editMsg...)
 	} else {
 		var shId int64
 		if isPersonal {
@@ -83,14 +84,17 @@ func (bot *Bot) GetWeekSummary(
 		} else {
 			shId = shedule.SheduleId
 		}
-		markup := SummaryKeyboard(
-			"sh_week",
-			shId,
-			shedule.IsGroup,
-			dw,
-		)
+		markup := tgbotapi.InlineKeyboardMarkup{}
+		if caption == "" {
+			markup = SummaryKeyboard(
+				"sh_week",
+				shId,
+				shedule.IsGroup,
+				dw,
+			)
+		}
 
-		_, err := bot.EditOrSend(user.TgId, "", image.FileId, markup, editMsg...)
+		_, err := bot.EditOrSend(user.TgId, caption, image.FileId, markup, editMsg...)
 		return err
 	}
 }
@@ -114,6 +118,7 @@ func (bot *Bot) CreateWeekImg(
 	shedules []database.ShedulesInUser,
 	dw int,
 	isPersonal bool,
+	caption string,
 	editMsg ...tgbotapi.Message,
 ) error {
 	_, week := now.ISOWeek()
@@ -270,16 +275,18 @@ func (bot *Bot) CreateWeekImg(
 	} else {
 		shId = shedules[0].SheduleId
 	}
-	markup := SummaryKeyboard(
-		"sh_week",
-		shId,
-		shedules[0].IsGroup,
-		dw,
-	)
 
 	// Качаем фото и сохраняем данные о нём в БД
 	photo := tgbotapi.NewPhoto(user.TgId, photoFileBytes)
-	photo.ReplyMarkup = &markup
+	photo.Caption = caption
+	if caption == "" {
+		photo.ReplyMarkup = SummaryKeyboard(
+			"sh_week",
+			shId,
+			shedules[0].IsGroup,
+			dw,
+		)
+	}
 	resp, err := bot.TG.Send(photo)
 	if err != nil {
 		return err
