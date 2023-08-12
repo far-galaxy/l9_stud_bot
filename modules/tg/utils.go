@@ -11,13 +11,15 @@ import (
 )
 
 func GeneralKeyboard(options bool) tgbotapi.ReplyKeyboardMarkup {
-	keyboard := []tgbotapi.KeyboardButton{
+	keyboard := [][]tgbotapi.KeyboardButton{{
 		tgbotapi.NewKeyboardButton("Моё расписание"),
-	}
+	}}
 	if options {
-		keyboard = append(keyboard, tgbotapi.NewKeyboardButton("Настройки"))
+		keyboard = append(keyboard, []tgbotapi.KeyboardButton{tgbotapi.NewKeyboardButton("Настройки")})
 	}
-	return tgbotapi.NewReplyKeyboard(keyboard)
+	key := tgbotapi.NewReplyKeyboard(keyboard...)
+	key.ResizeKeyboard = true
+	return key
 }
 
 // Создание ряда кнопок из списка групп
