@@ -278,7 +278,7 @@ func Swap(sh ssau_parser.WeekShedule) database.ShedulesInUser {
 	}
 }
 
-var month = []string{
+var Month = []string{
 	"января",
 	"февраля",
 	"марта",

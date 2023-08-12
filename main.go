@@ -38,9 +38,16 @@ func main() {
 		log.Fatal(err)
 	}
 	bot.WkPath = os.Getenv("WK_PATH")
-	now, _ := time.Parse("2006-01-02 15:04 -07", "2023-02-06 09:30 +04")
-	checkTicker := time.NewTicker(5 * time.Second)
-	defer checkTicker.Stop()
+	//now, _ := time.Parse("2006-01-02 15:04 -07", "2023-02-07 07:00 +04")
+	now := time.Now()
+	next := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), (now.Minute() + 1), 0, 0, now.Location())
+	log.Println("Waiting...")
+	time.Sleep(next.Sub(now))
+	mailTicker := time.NewTicker(1 * time.Minute)
+	sheduleTicker := time.NewTicker(1 * time.Minute)
+	log.Println("Started")
+	defer mailTicker.Stop()
+	defer sheduleTicker.Stop()
 	for {
 		select {
 		case update := <-*bot.Updates:
@@ -48,8 +55,9 @@ func main() {
 			if err != nil {
 				log.Println(err)
 			}
-		case <-checkTicker.C:
-			now = now.Add(5 * time.Minute)
+		case <-mailTicker.C:
+			now = time.Now()
+			//now = now.Add(5 * time.Minute)
 			log.Println(now)
 			notes, err := notify.CheckNext(bot.DB, now)
 			if err != nil {
@@ -59,6 +67,10 @@ func main() {
 			notify.Mailing(bot, notes, now)
 			notify.ClearTemp(bot, now)
 			//return
+		case <-sheduleTicker.C:
+			// TODO: установить рабочее окно, чтобы не проверять ночью
+			log.Println("check changes")
+			notify.CheckShedules(bot)
 		}
 	}
 }

@@ -64,23 +64,25 @@ func UpdateSchedule(db *xorm.Engine, sh WeekShedule) ([]database.Lesson, []datab
 		}
 	}
 	// Обновляем время обновления
-	if sh.IsGroup {
-		gr := database.Group{GroupId: sh.SheduleId}
-		if _, err := db.Get(&gr); err != nil {
-			return nil, nil, err
-		}
-		gr.LastUpd = time.Now()
-		if _, err := db.ID(gr.GroupId).Update(gr); err != nil {
-			return nil, nil, err
-		}
-	} else {
-		t := database.Teacher{TeacherId: sh.SheduleId}
-		if _, err := db.Get(&t); err != nil {
-			return nil, nil, err
-		}
-		t.LastUpd = time.Now()
-		if _, err := db.ID(t.TeacherId).Update(t); err != nil {
-			return nil, nil, err
+	if len(add) > 0 || len(del) > 0 {
+		if sh.IsGroup {
+			gr := database.Group{GroupId: sh.SheduleId}
+			if _, err := db.Get(&gr); err != nil {
+				return nil, nil, err
+			}
+			gr.LastUpd = time.Now()
+			if _, err := db.ID(gr.GroupId).Update(gr); err != nil {
+				return nil, nil, err
+			}
+		} else {
+			t := database.Teacher{TeacherId: sh.SheduleId}
+			if _, err := db.Get(&t); err != nil {
+				return nil, nil, err
+			}
+			t.LastUpd = time.Now()
+			if _, err := db.ID(t.TeacherId).Update(t); err != nil {
+				return nil, nil, err
+			}
 		}
 	}
 	return add, del, nil

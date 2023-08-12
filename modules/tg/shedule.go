@@ -87,7 +87,7 @@ func (bot *Bot) GetSummary(
 				str += fmt.Sprintf(
 					", <b>%d %s</b>",
 					firstPair[0].Begin.Day(),
-					month[firstPair[0].Begin.Month()-1],
+					Month[firstPair[0].Begin.Month()-1],
 				)
 			}
 			str += "\n\n"
@@ -216,7 +216,7 @@ func DayStr(day time.Time) string {
 		"%s, <b>%d %s</b>",
 		weekdays[int(day.Weekday())],
 		day.Day(),
-		month[day.Month()-1],
+		Month[day.Month()-1],
 	)
 	return dayStr
 }
@@ -238,27 +238,33 @@ func (bot *Bot) GetLessons(shedules []database.ShedulesInUser, now time.Time) ([
 }
 
 // Загрузка расписания из ssau.ru/rasp
-func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule) error {
+func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule) (
+	[]database.Lesson,
+	[]database.Lesson,
+	error,
+) {
 	sh := ssau_parser.WeekShedule{
 		SheduleId: shedule.SheduleId,
 		IsGroup:   shedule.IsGroup,
 	}
+	var add, del []database.Lesson
 	for week := 1; week < 21; week++ {
 		sh.Week = week
-		err := sh.DownloadById(true)
-		if err != nil {
+		if err := sh.DownloadById(true); err != nil {
 			if strings.Contains(err.Error(), "404") {
 				break
 			}
-			return err
+			return nil, nil, err
 		}
-		_, _, err = ssau_parser.UpdateSchedule(bot.DB, sh)
+		a, d, err := ssau_parser.UpdateSchedule(bot.DB, sh)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
+		add = append(add, a...)
+		del = append(del, d...)
 	}
 
-	return nil
+	return add, del, nil
 }
 
 // Создать условие поиска группы/преподавателя
@@ -308,6 +314,8 @@ func GroupPairs(lessons []database.Lesson) [][]database.Lesson {
 	return shedule
 }
 
+var Icons = map[string]string{"lect": "📗", "pract": "📕", "lab": "📘", "other": "📙", "mil": "🫡", "window": "🏝"}
+
 // Конвертация занятий с текст
 func PairToStr(pair []database.Lesson, db *xorm.Engine, isGroup bool) (string, error) {
 	var str string
@@ -327,23 +335,7 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine, isGroup bool) (string, e
 	}
 
 	for i, sublesson := range pair {
-		var type_emoji string
-		switch sublesson.Type {
-		case "lect":
-			type_emoji = "📗"
-		case "pract":
-			type_emoji = "📕"
-		case "lab":
-			type_emoji = "📘"
-		case "other":
-			type_emoji = "📙"
-		case "mil":
-			type_emoji = "🫡"
-		case "window":
-			type_emoji = "🏝"
-		default:
-			type_emoji = "📙"
-		}
+		type_emoji := Icons[sublesson.Type]
 		str += fmt.Sprintf("%s%s\n", type_emoji, sublesson.Name)
 		if sublesson.Place != "" {
 			str += fmt.Sprintf("🧭 %s\n", sublesson.Place)

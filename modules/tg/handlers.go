@@ -98,7 +98,7 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 		if not_exists {
 			msg := tgbotapi.NewMessage(user.TgId, "Загружаю расписание...\nЭто займёт некоторое время")
 			Smsg, _ := bot.TG.Send(msg)
-			err := bot.LoadShedule(shedule)
+			_, _, err := bot.LoadShedule(shedule)
 			if err != nil {
 				return nilMsg, err
 			}
@@ -186,7 +186,7 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 	if not_exists {
 		msg := tgbotapi.NewMessage(user.TgId, "Загружаю расписание...\nЭто займёт некоторое время")
 		Smsg, _ := bot.TG.Send(msg)
-		if err := bot.LoadShedule(shedule); err != nil {
+		if _, _, err := bot.LoadShedule(shedule); err != nil {
 			return err
 		}
 		del := tgbotapi.NewDeleteMessage(Smsg.Chat.ID, Smsg.MessageID)
