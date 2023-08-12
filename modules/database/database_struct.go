@@ -10,13 +10,10 @@ type User struct {
 type Position string
 
 const (
-	NotStarted  Position = "not_started"      // Только начал диалог с ботом
-	Ready       Position = "ready"            // Готов к дальнейшим действиям
-	Add         Position = "add"              // Подключает личное расписание
-	SelAddGroup Position = "select_add_group" // Выбирает группу в личное расписание
-	SelAddStaff Position = "select_add_staff" // Выбирает преподавателя в личное расписание
-	SelSeeGroup Position = "select_see_group" // Выбирает группу для автономной карточки
-	SelSeeStaff Position = "select_see_staff" // Выбирает преподавателя для автономной карточки
+	NotStarted Position = "not_started" // Только начал диалог с ботом
+	Ready      Position = "ready"       // Готов к дальнейшим действиям
+	Add        Position = "add"         // Подключает личное расписание
+	Set        Position = "set"         // Устанавливает время
 )
 
 // Пользователь Telegram

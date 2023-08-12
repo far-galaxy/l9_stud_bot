@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -145,6 +146,8 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 			return bot.Find(now[0], user, msg.Text)
 		case database.Add:
 			return bot.Find(now[0], user, msg.Text)
+		case database.Set:
+			return bot.SetFirstTime(msg, user)
 		default:
 			return bot.Etc(user)
 		}
@@ -188,4 +191,44 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 		}
 	}
 	return nilMsg, nil
+}
+
+func (bot *Bot) SetFirstTime(msg *tgbotapi.Message, user *database.TgUser) (tgbotapi.Message, error) {
+	nilMsg := tgbotapi.Message{}
+	t, err := strconv.Atoi(msg.Text)
+	if err != nil {
+		msg := tgbotapi.NewMessage(
+			user.TgId,
+			"Ой, время соообщения о начале занятий введено как-то неверно ):",
+		)
+		return bot.TG.Send(msg)
+	}
+	userInfo := database.ShedulesInUser{
+		L9Id: user.L9Id,
+	}
+	if _, err := bot.DB.Get(&userInfo); err != nil {
+		return nilMsg, err
+	}
+	if t <= 10 {
+		msg := tgbotapi.NewMessage(
+			user.TgId,
+			"Ой, установлено слишком малое время. Попробуй ввести большее время",
+		)
+		return bot.TG.Send(msg)
+	} else if t > 240 {
+		msg := tgbotapi.NewMessage(
+			user.TgId,
+			"Ой, установлено слишком большое время. Попробуй ввести меньшее время",
+		)
+		return bot.TG.Send(msg)
+	}
+	userInfo.FirstTime = t / 5 * 5
+	if _, err := bot.DB.ID(userInfo.UID).Update(userInfo); err != nil {
+		return nilMsg, err
+	}
+	user.PosTag = database.Ready
+	if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
+		return nilMsg, err
+	}
+	return bot.GetOptions(user)
 }

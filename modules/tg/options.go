@@ -26,9 +26,17 @@ func (bot *Bot) GetOptions(user *database.TgUser) (tgbotapi.Message, error) {
 
 func OptMarkup(options database.ShedulesInUser) tgbotapi.InlineKeyboardMarkup {
 	markup := [][]tgbotapi.InlineKeyboardButton{
+		{tgbotapi.NewInlineKeyboardButtonData(fmt.Sprintf("%s Начало занятий", bell[options.First]), "opt_first")},
 		{tgbotapi.NewInlineKeyboardButtonData(fmt.Sprintf("%s Следующая пара", bell[options.NextNote]), "opt_lesson")},
 		{tgbotapi.NewInlineKeyboardButtonData(fmt.Sprintf("%s Следующий день", bell[options.NextDay]), "opt_day")},
 		{tgbotapi.NewInlineKeyboardButtonData(fmt.Sprintf("%s Следующая неделя", bell[options.NextWeek]), "opt_week")},
+		{tgbotapi.NewInlineKeyboardButtonData("↩ Закрыть", "cancel")},
+	}
+	if options.First {
+		markup = append(markup[:2], markup[1:]...)
+		markup[1] = []tgbotapi.InlineKeyboardButton{
+			tgbotapi.NewInlineKeyboardButtonData(fmt.Sprintf("⏰ Настроить время (%d)", options.FirstTime), "opt_set"),
+		}
 	}
 	return tgbotapi.NewInlineKeyboardMarkup(markup...)
 }
@@ -41,6 +49,21 @@ func (bot *Bot) HandleOptions(user *database.TgUser, query *tgbotapi.CallbackQue
 		return err
 	}
 	switch query.Data {
+	case "opt_first":
+		options.First = !options.First
+	case "opt_set":
+		user.PosTag = database.Set
+		if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
+			return err
+		}
+		txt := fmt.Sprintf(
+			"Введи время в минутах, за которое мне надо сообщить о начале занятий\n"+
+				"Сейчас установлено %d минут",
+			options.FirstTime,
+		)
+		_, err := bot.EditOrSend(user.TgId, txt, "", tgbotapi.InlineKeyboardMarkup{}, *query.Message)
+		return err
+
 	case "opt_lesson":
 		options.NextNote = !options.NextNote
 	case "opt_day":
