@@ -14,6 +14,7 @@ const (
 	Ready      Position = "ready"       // Готов к дальнейшим действиям
 	Add        Position = "add"         // Подключает личное расписание
 	Set        Position = "set"         // Устанавливает время
+	Delete     Position = "del"         // Отключается от группы
 )
 
 // Пользователь Telegram

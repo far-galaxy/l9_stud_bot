@@ -148,6 +148,9 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 			return bot.Find(now[0], user, msg.Text)
 		case database.Set:
 			return bot.SetFirstTime(msg, user)
+		case database.Delete:
+			return bot.DeleteGroup(user, msg.Text)
+
 		default:
 			return bot.Etc(user)
 		}
@@ -191,6 +194,28 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 		}
 	}
 	return nilMsg, nil
+}
+
+func (bot *Bot) DeleteGroup(user *database.TgUser, text string) (tgbotapi.Message, error) {
+	nilMsg := tgbotapi.Message{}
+	user.PosTag = database.Ready
+	if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
+		return nilMsg, err
+	}
+	var msg tgbotapi.MessageConfig
+	if strings.ToLower(text) == "да" {
+		userInfo := database.ShedulesInUser{
+			L9Id: user.L9Id,
+		}
+		if _, err := bot.DB.Delete(&userInfo); err != nil {
+			return nilMsg, err
+		}
+		msg = tgbotapi.NewMessage(user.TgId, "Группа отключена")
+		msg.ReplyMarkup = GeneralKeyboard(false)
+	} else {
+		msg = tgbotapi.NewMessage(user.TgId, "Действие отменено")
+	}
+	return bot.TG.Send(msg)
 }
 
 func (bot *Bot) SetFirstTime(msg *tgbotapi.Message, user *database.TgUser) (tgbotapi.Message, error) {
