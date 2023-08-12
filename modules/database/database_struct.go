@@ -36,6 +36,7 @@ type ShedulesInUser struct {
 	NextWeek  bool
 	First     bool
 	FirstTime int `xorm:"default 45"`
+	Military  bool
 }
 
 // Учебная группа

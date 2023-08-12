@@ -8,6 +8,7 @@ import (
 )
 
 var bell = map[bool]string{true: "🔔", false: "🔕"}
+var milBell = map[bool]string{true: "🫡 Есть военка", false: "🏖 Нет военки"}
 var optStr = "Настройки уведомлений\nНажми на кнопку, чтобы переключить параметр"
 
 func (bot *Bot) GetOptions(user *database.TgUser) (tgbotapi.Message, error) {
@@ -30,6 +31,7 @@ func OptMarkup(options database.ShedulesInUser) tgbotapi.InlineKeyboardMarkup {
 		{tgbotapi.NewInlineKeyboardButtonData(fmt.Sprintf("%s Следующая пара", bell[options.NextNote]), "opt_lesson")},
 		{tgbotapi.NewInlineKeyboardButtonData(fmt.Sprintf("%s Следующий день", bell[options.NextDay]), "opt_day")},
 		{tgbotapi.NewInlineKeyboardButtonData(fmt.Sprintf("%s Следующая неделя", bell[options.NextWeek]), "opt_week")},
+		{tgbotapi.NewInlineKeyboardButtonData(milBell[options.Military], "opt_mil")},
 		{tgbotapi.NewInlineKeyboardButtonData("↩ Закрыть", "cancel")},
 	}
 	if options.First {
@@ -70,6 +72,8 @@ func (bot *Bot) HandleOptions(user *database.TgUser, query *tgbotapi.CallbackQue
 		options.NextDay = !options.NextDay
 	case "opt_week":
 		options.NextWeek = !options.NextWeek
+	case "opt_mil":
+		options.Military = !options.Military
 	}
 	if _, err := bot.DB.UseBool().ID(options.UID).Update(&options); err != nil {
 		return err

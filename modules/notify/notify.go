@@ -271,10 +271,10 @@ func ClearTemp(bot *tg.Bot, now time.Time) {
 
 var firstMailQuery = `SELECT t.tgId, l.lessonId, u.firsttime
 FROM shedulesinuser u
-JOIN (SELECT lessonid, min(begin) as begin FROM lesson WHERE date(begin) = date('%s')) l 
+JOIN (SELECT lessonid, type, min(begin) as begin FROM lesson WHERE date(begin) = date('%s')) l 
 ON '%s' = DATE_SUB(l.Begin, INTERVAL u.firsttime MINUTE) 
 JOIN tguser t ON u.L9ID = t.L9ID
-WHERE u.first = true;`
+WHERE u.first = true AND (l.type != "mil" OR (l.type = "mil" AND u.military = true));`
 
 // Рассылка сообщений о начале занятий
 func FirstMailing(bot *tg.Bot, now time.Time) {

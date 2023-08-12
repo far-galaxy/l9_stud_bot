@@ -111,6 +111,11 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 		if user.PosTag == database.Add {
 			sh := Swap(shedule)
 			sh.L9Id = user.L9Id
+			sh.FirstTime = 45
+			sh.First = true
+			sh.NextNote = true
+			sh.NextDay = true
+			sh.NextWeek = true
 			if _, err := bot.DB.InsertOne(&sh); err != nil {
 				return nilMsg, err
 			}
@@ -198,6 +203,11 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 	} else {
 		sh := Swap(shedule)
 		sh.L9Id = user.L9Id
+		sh.FirstTime = 45
+		sh.First = true
+		sh.NextNote = true
+		sh.NextDay = true
+		sh.NextWeek = true
 		if _, err = bot.DB.InsertOne(&sh); err != nil {
 			return err
 		}
