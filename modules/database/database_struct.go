@@ -37,6 +37,8 @@ type ShedulesInUser struct {
 	NextNote  bool
 	NextDay   bool
 	NextWeek  bool
+	First     bool
+	FirstTime int `xorm:"default 45"`
 }
 
 // Учебная группа

@@ -1,7 +1,9 @@
 package notify
 
 import (
+	"fmt"
 	"log"
+	"strconv"
 	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
@@ -83,8 +85,8 @@ func CheckNext(db *xorm.Engine, now time.Time) ([]Notify, error) {
 		var next_lesson database.Lesson
 		if _, err := db.
 			Where(
-				"groupid = ? and begin > ?",
-				l.GroupId, l.Begin.Format("2006-01-02 15:04:03"),
+				"groupid = ? and begin >= ?",
+				l.GroupId, l.Begin.Format("2006-01-02 15:04:05"),
 			).
 			Asc("begin").
 			Get(&next_lesson); err != nil {
@@ -194,18 +196,19 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 		if err != nil {
 			log.Println(err)
 		}
-		var condition string
+		// TODO: проработать разные подгруппы
+		/*var condition string
 		if note.Lesson.SubGroup == 0 {
 			condition = "subgroup in (?, 1, 2)"
 		} else {
 			condition = "subgroup in (0, ?)"
-		}
+		}*/
 		if err := bot.DB.
 			UseBool(string(note.NotifyType)).
 			Table("ShedulesInUser").
 			Cols("tgid").
 			Join("INNER", "tguser", "tguser.l9id = ShedulesInUser.l9id").
-			Where(condition, note.Lesson.SubGroup).
+			// Where(condition, note.Lesson.SubGroup).
 			Find(&users, &query); err != nil {
 			log.Println(err)
 		}
@@ -218,14 +221,7 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 					if err != nil {
 						log.Println(err)
 					}
-					temp := database.TempMsg{
-						TgId:      m.Chat.ID,
-						MessageId: m.MessageID,
-						Destroy:   tempTime,
-					}
-					if _, err := bot.DB.InsertOne(temp); err != nil {
-						log.Println(err)
-					}
+					AddTemp(m, tempTime, bot)
 				} else {
 					if err = bot.GetWeekSummary(
 						note.Lesson.Begin,
@@ -244,10 +240,22 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 	}
 }
 
+// Добавить сообщение в список временных
+func AddTemp(m tgbotapi.Message, tempTime time.Time, bot *tg.Bot) {
+	temp := database.TempMsg{
+		TgId:      m.Chat.ID,
+		MessageId: m.MessageID,
+		Destroy:   tempTime,
+	}
+	if _, err := bot.DB.InsertOne(temp); err != nil {
+		log.Println(err)
+	}
+}
+
 // Удаление временных сообщений
 func ClearTemp(bot *tg.Bot, now time.Time) {
 	var temp []database.TempMsg
-	if err := bot.DB.Where("destroy < ?", now.Format("2006-01-02 15:04:03")).Find(&temp); err != nil {
+	if err := bot.DB.Where("destroy <= ?", now.Format("2006-01-02 15:04:05")).Find(&temp); err != nil {
 		log.Println(err)
 	}
 	for _, msg := range temp {
@@ -258,5 +266,50 @@ func ClearTemp(bot *tg.Bot, now time.Time) {
 		if _, err := bot.DB.Delete(&msg); err != nil {
 			log.Println(err)
 		}
+	}
+}
+
+var firstMailQuery = `SELECT t.tgId, l.lessonId, u.firsttime
+FROM shedulesinuser u
+JOIN (SELECT lessonid, min(begin) as begin FROM lesson WHERE date(begin) = date('%s')) l 
+ON '%s' = DATE_SUB(l.Begin, INTERVAL u.firsttime MINUTE) 
+JOIN tguser t ON u.L9ID = t.L9ID
+WHERE u.first = true;`
+
+// Рассылка сообщений о начале занятий
+func FirstMailing(bot *tg.Bot, now time.Time) {
+	now = now.Truncate(time.Minute)
+	nowStr := now.Format("2006-01-02 15:04:05")
+	res, err := bot.DB.Query(fmt.Sprintf(firstMailQuery, nowStr, nowStr))
+	if err != nil {
+		log.Println(err)
+	}
+	for _, r := range res {
+		lid, _ := strconv.ParseInt(string(r["lessonId"]), 0, 64)
+		lesson := database.Lesson{LessonId: lid}
+		if _, err := bot.DB.Get(&lesson); err != nil {
+			log.Println(err)
+		}
+		var str string
+		if now.Hour() > 16 {
+			str = "Добрый вечер 🌆\n"
+		} else if now.Hour() > 11 {
+			str = "Добрый день 🌞\n"
+		} else {
+			str = "Доброе утро 🌅\n"
+		}
+		str += fmt.Sprintf("Через %s минут начнутся занятия\n\nПервая пара:\n", r["firsttime"])
+		pair, err := tg.PairToStr([]database.Lesson{lesson}, bot.DB, true)
+		if err != nil {
+			log.Println(err)
+		}
+		str += pair
+		user, _ := strconv.ParseInt(string(r["tgId"]), 0, 64)
+		mail := tgbotapi.NewMessage(user, str)
+		msg, err := bot.TG.Send(mail)
+		if err != nil {
+			log.Println(err)
+		}
+		AddTemp(msg, lesson.Begin.Add(15*time.Minute), bot)
 	}
 }

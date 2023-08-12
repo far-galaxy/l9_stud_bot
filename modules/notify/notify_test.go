@@ -1,11 +1,14 @@
 package notify
 
 import (
+	"log"
+	"os"
 	"testing"
 	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/tg"
 )
 
 var TestDB = database.DB{
@@ -60,4 +63,26 @@ func TestCheckNext(t *testing.T) {
 	if _, err := CheckNext(db, now); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func TestFirstMailing(t *testing.T) {
+	if err := tg.CheckEnv(); err != nil {
+		log.Fatal(err)
+	}
+	logs := database.OpenLogs()
+	defer logs.CloseAll()
+	bot, err := tg.InitBot(
+		logs,
+		database.DB{
+			User:   os.Getenv("MYSQL_USER"),
+			Pass:   os.Getenv("MYSQL_PASS"),
+			Schema: os.Getenv("MYSQL_DB"),
+		},
+		os.Getenv("TELEGRAM_APITOKEN"),
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	now, _ := time.Parse("2006-01-02 15:04 -07", "2023-02-06 07:15 +04")
+	FirstMailing(bot, now)
 }

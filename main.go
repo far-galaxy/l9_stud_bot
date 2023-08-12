@@ -55,6 +55,7 @@ func main() {
 			if err != nil {
 				log.Println(err)
 			}
+			notify.FirstMailing(bot, now)
 			notify.Mailing(bot, notes, now)
 			notify.ClearTemp(bot, now)
 			//return
