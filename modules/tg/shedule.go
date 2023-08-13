@@ -14,22 +14,6 @@ import (
 	"xorm.io/xorm"
 )
 
-/*
-func (bot *Bot) GetPersonalSummary(user *database.TgUser, msg ...tgbotapi.Message) {
-	var shedules []database.ShedulesInUser
-	bot.DB.ID(user.L9Id).Find(&shedules)
-
-	if len(shedules) == 0 {
-		bot.Etc(user)
-		return
-	} else {
-		err := bot.GetSummary(msg.Time(), user, shedules, true, msg...)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-}*/
-
 func (bot *Bot) GetPersonal(now time.Time, user *database.TgUser, editMsg ...tgbotapi.Message) (tgbotapi.Message, error) {
 	var shedules []database.ShedulesInUser
 	bot.DB.ID(user.L9Id).Find(&shedules)
@@ -43,7 +27,7 @@ func (bot *Bot) GetPersonal(now time.Time, user *database.TgUser, editMsg ...tgb
 		msg := tgbotapi.NewMessage(
 			user.TgId,
 			"У тебя пока никакого расписания не подключено\n"+
-				"Введи <b>номер группы</b> или <b>фамилию преподавателя</b>",
+				"Введи <b>номер группы</b>",
 		)
 		msg.ReplyMarkup = tgbotapi.ReplyKeyboardRemove{RemoveKeyboard: true}
 		msg.ParseMode = tgbotapi.ModeHTML

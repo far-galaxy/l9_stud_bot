@@ -168,10 +168,9 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 		if query.Data == "cancel" {
 			return nilMsg, bot.Cancel(user, query)
 		}
-		switch user.PosTag {
-		case database.NotStarted:
+		if user.PosTag == database.NotStarted {
 			err = bot.Start(user)
-		case database.Ready:
+		} else if user.PosTag == database.Ready || user.PosTag == database.Add {
 			if strings.Contains(query.Data, "sh") {
 				err = bot.HandleSummary(user, query, now...)
 			} else if strings.Contains(query.Data, "opt") {
@@ -179,9 +178,10 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 			} else {
 				err = bot.GetShedule(user, query, now...)
 			}
-		default:
+		} else {
 			return bot.Etc(user)
 		}
+
 		if err != nil {
 			return nilMsg, err
 		}

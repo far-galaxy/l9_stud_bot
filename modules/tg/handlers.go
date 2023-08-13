@@ -109,6 +109,14 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 		}
 		// TODO: проверять подключенные ранее расписания
 		if user.PosTag == database.Add {
+			if !shedule.IsGroup {
+				msg := tgbotapi.NewMessage(
+					user.TgId,
+					"Личное расписание пока не работает с преподавателями :(\n"+
+						"Приносим извинения за временные неудобства",
+				)
+				return bot.TG.Send(msg)
+			}
 			sh := Swap(shedule)
 			sh.L9Id = user.L9Id
 			sh.FirstTime = 45
@@ -201,6 +209,15 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 	if !isAdd {
 		_, err = bot.GetSummary(now[0], user, []database.ShedulesInUser{Swap(shedule)}, false, *query.Message)
 	} else {
+		if !shedule.IsGroup {
+			msg := tgbotapi.NewMessage(
+				user.TgId,
+				"Личное расписание пока не работает с преподавателями :(\n"+
+					"Приносим извинения за временные неудобства",
+			)
+			_, err := bot.TG.Send(msg)
+			return err
+		}
 		sh := Swap(shedule)
 		sh.L9Id = user.L9Id
 		sh.FirstTime = 45

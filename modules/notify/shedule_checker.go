@@ -17,7 +17,8 @@ func CheckShedules(bot *tg.Bot, now time.Time) {
 		log.Println(err)
 	}
 	for _, group := range groups {
-		if now.Sub(group.LastUpd) < 24*time.Hour && group.LastUpd.IsZero() {
+		du := now.Sub(group.LastUpd).Hours()
+		if du < 24 || group.LastUpd.IsZero() {
 			continue
 		}
 		sh := ssau_parser.WeekShedule{
