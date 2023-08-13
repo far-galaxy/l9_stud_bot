@@ -41,6 +41,7 @@ func main() {
 	//now, _ := time.Parse("2006-01-02 15:04 -07", "2023-02-07 07:00 +04")
 	now := time.Now()
 	next := time.Date(now.Year(), now.Month(), now.Day(), now.Hour(), (now.Minute() + 1), 0, 0, now.Location())
+	// TODO: что-то придумать с этим выжиданием
 	log.Println("Waiting...")
 	time.Sleep(next.Sub(now))
 	mailTicker := time.NewTicker(1 * time.Minute)
@@ -51,6 +52,7 @@ func main() {
 	for {
 		select {
 		case update := <-*bot.Updates:
+			now = time.Now().Add(-6 * 30 * 24 * time.Hour)
 			_, err := bot.HandleUpdate(update, now)
 			if err != nil {
 				log.Println(err)

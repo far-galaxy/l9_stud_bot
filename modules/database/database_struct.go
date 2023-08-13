@@ -46,6 +46,7 @@ type Group struct {
 	GroupName string // Полный номер группы
 	SpecName  string // Шифр и название специальности
 	LastUpd   time.Time
+	LastCheck time.Time
 }
 
 // Преподаватель
@@ -56,6 +57,7 @@ type Teacher struct {
 	ShortName string // Инициалы
 	SpecName  string // Место работы
 	LastUpd   time.Time
+	LastCheck time.Time
 }
 
 // Занятие

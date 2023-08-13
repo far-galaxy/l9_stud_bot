@@ -115,6 +115,7 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 					"Личное расписание пока не работает с преподавателями :(\n"+
 						"Приносим извинения за временные неудобства",
 				)
+				msg.ReplyMarkup = GeneralKeyboard(false)
 				return bot.TG.Send(msg)
 			}
 			sh := Swap(shedule)
@@ -215,6 +216,7 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 				"Личное расписание пока не работает с преподавателями :(\n"+
 					"Приносим извинения за временные неудобства",
 			)
+			msg.ReplyMarkup = GeneralKeyboard(false)
 			_, err := bot.TG.Send(msg)
 			return err
 		}
@@ -270,54 +272,6 @@ func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQue
 	}
 	return err
 }
-
-/*
-	func (bot *Bot) Confirm(query *tgbotapi.CallbackQuery) error {
-		isGroup := bot.TG_user.PosTag == "confirm_add_group"
-		groupId, err := strconv.ParseInt(query.Data, 0, 64)
-		if err != nil {
-			return err
-		}
-		var groups []database.ShedulesInUser
-		err = bot.DB.Find(&groups, &database.ShedulesInUser{
-			L9Id:      bot.TG_user.L9Id,
-			SheduleId: groupId,
-			IsTeacher: !isGroup,
-		})
-		if err != nil {
-			return err
-		}
-		if len(groups) == 0 {
-			shInUser := database.ShedulesInUser{
-				L9Id:      bot.TG_user.L9Id,
-				IsTeacher: !isGroup,
-				SheduleId: groupId,
-			}
-			bot.DB.InsertOne(shInUser)
-			bot.DeleteMsg(query)
-			msg := tgbotapi.NewMessage(bot.TG_user.TgId, "Подключено!")
-			keyboard := tgbotapi.NewReplyKeyboard([]tgbotapi.KeyboardButton{tgbotapi.NewKeyboardButton("Главное меню")})
-			msg.ReplyMarkup = keyboard
-			bot.TG.Send(msg)
-
-			bot.TG_user.PosTag = "ready"
-			err = bot.UpdateUserDB()
-			if err != nil {
-				return err
-			}
-		} else {
-			var msg string
-			if isGroup {
-				msg = "Эта группа уже подключена!"
-			} else {
-				msg = "Этот преподаватель уже подключен!"
-			}
-			callback := tgbotapi.NewCallback(query.ID, msg)
-			bot.TG.Request(callback)
-		}
-		return nil
-	}
-*/
 
 func (bot *Bot) Etc(user *database.TgUser) (tgbotapi.Message, error) {
 	msg := tgbotapi.NewMessage(user.TgId, "Oй!")

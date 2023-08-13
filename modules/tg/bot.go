@@ -185,13 +185,13 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 		if err != nil {
 			return nilMsg, err
 		}
-		if query.ID != "" {
+		/*if query.ID != "" {
 			callback := tgbotapi.NewCallback(query.ID, query.Data)
 			_, err = bot.TG.Request(callback)
 			if err != nil {
 				return nilMsg, err
 			}
-		}
+		}*/
 	}
 	return nilMsg, nil
 }

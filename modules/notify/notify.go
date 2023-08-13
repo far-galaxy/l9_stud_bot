@@ -270,8 +270,8 @@ func ClearTemp(bot *tg.Bot, now time.Time) {
 }
 
 var firstMailQuery = `SELECT t.tgId, l.lessonId, u.firsttime
-FROM shedulesinuser u
-JOIN (SELECT lessonid, type, min(begin) as begin FROM lesson WHERE date(begin) = date('%s')) l 
+FROM ShedulesInUser u
+JOIN (SELECT lessonid, type, min(begin) as begin FROM lesson WHERE date(begin) = date('%s') GROUP BY lessoid, type, begin) l 
 ON '%s' = DATE_SUB(l.Begin, INTERVAL u.firsttime MINUTE) 
 JOIN tguser t ON u.L9ID = t.L9ID
 WHERE u.first = true AND (l.type != "mil" OR (l.type = "mil" AND u.military = true));`
