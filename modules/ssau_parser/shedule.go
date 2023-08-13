@@ -86,18 +86,22 @@ func Compare(new []database.Lesson, old []database.Lesson) ([]database.Lesson, [
 
 // Проверка занятий, которые появились в eden и отсутствуют в dzwa
 func Diff(jeden []database.Lesson, dzwa []database.Lesson) []database.Lesson {
+	hashes := make(map[string]bool)
+
+	// Создаем карту хешей из второго списка
+	for _, lesson := range dzwa {
+		hashes[lesson.Hash] = true
+	}
+
 	var diff []database.Lesson
-	for _, n := range jeden {
-		exists := false
-		for _, o := range dzwa {
-			if n.Hash == o.Hash {
-				exists = true
-			}
-		}
-		if !exists {
-			diff = append(diff, n)
+
+	// Проверяем каждый элемент из первого списка
+	for _, lesson := range jeden {
+		if _, found := hashes[lesson.Hash]; !found {
+			diff = append(diff, lesson)
 		}
 	}
+
 	return diff
 }
 

@@ -238,7 +238,7 @@ func (bot *Bot) GetLessons(shedules []database.ShedulesInUser, now time.Time) ([
 }
 
 // Загрузка расписания из ssau.ru/rasp
-func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule) (
+func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule, now time.Time) (
 	[]database.Lesson,
 	[]database.Lesson,
 	error,
@@ -263,7 +263,28 @@ func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule) (
 		add = append(add, a...)
 		del = append(del, d...)
 	}
-
+	// Обновляем время обновления
+	if len(add) > 0 || len(del) > 0 {
+		if sh.IsGroup {
+			gr := database.Group{GroupId: sh.SheduleId}
+			if _, err := bot.DB.Get(&gr); err != nil {
+				return nil, nil, err
+			}
+			gr.LastUpd = now
+			if _, err := bot.DB.ID(gr.GroupId).Update(gr); err != nil {
+				return nil, nil, err
+			}
+		} else {
+			t := database.Teacher{TeacherId: sh.SheduleId}
+			if _, err := bot.DB.Get(&t); err != nil {
+				return nil, nil, err
+			}
+			t.LastUpd = now
+			if _, err := bot.DB.ID(t.TeacherId).Update(t); err != nil {
+				return nil, nil, err
+			}
+		}
+	}
 	return add, del, nil
 }
 

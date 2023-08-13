@@ -137,7 +137,7 @@ func (bot *Bot) CreateWeekImg(
 			lessons = next
 			week += 1
 		} else {
-			return fmt.Errorf("no lessons: %d, week %d", shedules[0].SheduleId, week)
+			return fmt.Errorf("no lessons: %d, week %d", shedules[0].SheduleId, week-bot.Week)
 		}
 	}
 

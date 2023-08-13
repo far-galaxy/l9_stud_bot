@@ -3,6 +3,7 @@ package notify
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
@@ -10,17 +11,20 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func CheckShedules(bot *tg.Bot) {
+func CheckShedules(bot *tg.Bot, now time.Time) {
 	var groups []database.Group
 	if err := bot.DB.Where("groupid >= 0").Find(&groups); err != nil {
 		log.Println(err)
 	}
 	for _, group := range groups {
+		if now.Sub(group.LastUpd) < 24*time.Hour && group.LastUpd.IsZero() {
+			continue
+		}
 		sh := ssau_parser.WeekShedule{
 			IsGroup:   true,
 			SheduleId: group.GroupId,
 		}
-		add, del, err := bot.LoadShedule(sh)
+		add, del, err := bot.LoadShedule(sh, now)
 		if err != nil {
 			log.Println(err)
 		}

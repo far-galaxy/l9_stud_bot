@@ -98,7 +98,7 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 		if not_exists {
 			msg := tgbotapi.NewMessage(user.TgId, "Загружаю расписание...\nЭто займёт некоторое время")
 			Smsg, _ := bot.TG.Send(msg)
-			_, _, err := bot.LoadShedule(shedule)
+			_, _, err := bot.LoadShedule(shedule, now)
 			if err != nil {
 				return nilMsg, err
 			}
@@ -168,6 +168,9 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 
 // Получить расписание из кнопки
 func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery, now ...time.Time) error {
+	if len(now) == 0 {
+		now = append(now, time.Now())
+	}
 	data := strings.Split(query.Data, "_")
 	if len(data) != 3 {
 		return fmt.Errorf("wrong button format: %s", query.Data)
@@ -186,7 +189,7 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 	if not_exists {
 		msg := tgbotapi.NewMessage(user.TgId, "Загружаю расписание...\nЭто займёт некоторое время")
 		Smsg, _ := bot.TG.Send(msg)
-		if _, _, err := bot.LoadShedule(shedule); err != nil {
+		if _, _, err := bot.LoadShedule(shedule, now[0]); err != nil {
 			return err
 		}
 		del := tgbotapi.NewDeleteMessage(Smsg.Chat.ID, Smsg.MessageID)
@@ -196,9 +199,6 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 
 	}
 	if !isAdd {
-		if len(now) == 0 {
-			now = append(now, time.Now())
-		}
 		_, err = bot.GetSummary(now[0], user, []database.ShedulesInUser{Swap(shedule)}, false, *query.Message)
 	} else {
 		sh := Swap(shedule)

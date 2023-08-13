@@ -56,7 +56,7 @@ func main() {
 				log.Println(err)
 			}
 		case <-mailTicker.C:
-			now = time.Now()
+			now = time.Now().Add(-6 * 30 * 24 * time.Hour)
 			//now = now.Add(5 * time.Minute)
 			log.Println(now)
 			notes, err := notify.CheckNext(bot.DB, now)
@@ -68,9 +68,12 @@ func main() {
 			notify.ClearTemp(bot, now)
 			//return
 		case <-sheduleTicker.C:
-			// TODO: установить рабочее окно, чтобы не проверять ночью
-			log.Println("check changes")
-			notify.CheckShedules(bot)
+			now = time.Now().Add(-6 * 30 * 24 * time.Hour)
+			if now.Hour() > 8 && now.Hour() < 20 {
+				log.Println("check changes")
+				notify.CheckShedules(bot, now)
+				log.Println("check end")
+			}
 		}
 	}
 }

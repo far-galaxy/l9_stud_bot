@@ -2,7 +2,6 @@ package ssau_parser
 
 import (
 	"strings"
-	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
 	"xorm.io/xorm"
@@ -39,6 +38,14 @@ func UpdateSchedule(db *xorm.Engine, sh WeekShedule) ([]database.Lesson, []datab
 	first_new := sh.Uncovered[0]
 	_, week := first_new.Begin.ISOWeek()
 	var old []database.Lesson
+	var new []database.Lesson
+	// Удаляем всё, что не относится к данной группе
+	for _, l := range sh.Uncovered {
+		if (sh.IsGroup && l.GroupId == sh.SheduleId) ||
+			(!sh.IsGroup && l.TeacherId == sh.SheduleId) {
+			new = append(new, l)
+		}
+	}
 	var condition string
 	if sh.IsGroup {
 		condition = "groupid = ?"
@@ -48,7 +55,7 @@ func UpdateSchedule(db *xorm.Engine, sh WeekShedule) ([]database.Lesson, []datab
 	if err := db.Where("WEEK(`Begin`) = ? AND "+condition, week, sh.SheduleId).Asc("Begin").Find(&old); err != nil {
 		return nil, nil, err
 	}
-	add, del := Compare(sh.Uncovered, old)
+	add, del := Compare(new, old)
 	if len(add) > 0 {
 		if _, err := db.Insert(add); err != nil {
 			return nil, nil, err
@@ -61,28 +68,6 @@ func UpdateSchedule(db *xorm.Engine, sh WeekShedule) ([]database.Lesson, []datab
 		}
 		if _, err := db.In("lessonid", ids).Delete(&database.Lesson{}); err != nil {
 			return nil, nil, err
-		}
-	}
-	// Обновляем время обновления
-	if len(add) > 0 || len(del) > 0 {
-		if sh.IsGroup {
-			gr := database.Group{GroupId: sh.SheduleId}
-			if _, err := db.Get(&gr); err != nil {
-				return nil, nil, err
-			}
-			gr.LastUpd = time.Now()
-			if _, err := db.ID(gr.GroupId).Update(gr); err != nil {
-				return nil, nil, err
-			}
-		} else {
-			t := database.Teacher{TeacherId: sh.SheduleId}
-			if _, err := db.Get(&t); err != nil {
-				return nil, nil, err
-			}
-			t.LastUpd = time.Now()
-			if _, err := db.ID(t.TeacherId).Update(t); err != nil {
-				return nil, nil, err
-			}
 		}
 	}
 	return add, del, nil
