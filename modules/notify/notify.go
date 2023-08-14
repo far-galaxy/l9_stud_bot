@@ -207,7 +207,7 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 			UseBool(string(note.NotifyType)).
 			Table("ShedulesInUser").
 			Cols("tgid").
-			Join("INNER", "tguser", "tguser.l9id = ShedulesInUser.l9id").
+			Join("INNER", "TgUser", "TgUser.l9id = ShedulesInUser.l9id").
 			// Where(condition, note.Lesson.SubGroup).
 			Find(&users, &query); err != nil {
 			log.Println(err)
@@ -271,9 +271,9 @@ func ClearTemp(bot *tg.Bot, now time.Time) {
 
 var firstMailQuery = `SELECT t.tgId, l.lessonId, u.firsttime
 FROM ShedulesInUser u
-JOIN (SELECT lessonid, type, min(begin) as begin FROM lesson WHERE date(begin) = date('%s') GROUP BY lessoid, type, begin) l 
-ON '%s' = DATE_SUB(l.Begin, INTERVAL u.firsttime MINUTE) 
-JOIN tguser t ON u.L9ID = t.L9ID
+JOIN (SELECT lessonid, groupid, type, min(begin) as begin FROM Lesson WHERE date(begin) = date('%s') GROUP BY lessonid, groupid, type, begin) l 
+ON '%s' = DATE_SUB(l.Begin, INTERVAL u.firsttime MINUTE) AND u.sheduleid = l.groupid
+JOIN TgUser t ON u.L9ID = t.L9ID
 WHERE u.first = true AND (l.type != "mil" OR (l.type = "mil" AND u.military = true));`
 
 // Рассылка сообщений о начале занятий
