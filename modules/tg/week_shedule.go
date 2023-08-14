@@ -29,6 +29,7 @@ func (bot *Bot) GetWeekSummary(
 	_, week := now.ISOWeek()
 	week += dw - bot.Week
 	var image database.File
+	var cols []string
 	if !isPersonal {
 		image = database.File{
 			TgId:       user.TgId,
@@ -37,14 +38,16 @@ func (bot *Bot) GetWeekSummary(
 			SheduleId:  shedule.SheduleId,
 			Week:       week,
 		}
+		cols = []string{"IsPersonal", "IsGroup"}
 	} else {
 		image = database.File{
 			TgId:       user.TgId,
 			IsPersonal: true,
 			Week:       week,
 		}
+		cols = []string{"IsPersonal"}
 	}
-	has, err := bot.DB.UseBool().Get(&image)
+	has, err := bot.DB.UseBool(cols...).Get(&image)
 	if err != nil {
 		return err
 	}

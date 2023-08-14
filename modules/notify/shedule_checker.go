@@ -54,7 +54,7 @@ func CheckShedules(bot *tg.Bot, now time.Time) {
 				UseBool("isgroup").
 				Table("ShedulesInUser").
 				Cols("tgid").
-				Join("INNER", "tguser", "tguser.l9id = ShedulesInUser.l9id").
+				Join("INNER", "TgUser", "TgUser.l9id = ShedulesInUser.l9id").
 				Find(&users, tg.Swap(sh)); err != nil {
 				log.Println(err)
 			}
