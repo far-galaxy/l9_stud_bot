@@ -19,6 +19,13 @@ func (bot *Bot) GetOptions(user *database.TgUser) (tgbotapi.Message, error) {
 	if _, err := bot.DB.Get(&options); err != nil {
 		return nilMsg, err
 	}
+	// Если кто-то хитрожопый нажал на кнопку без подключенной группы
+	if options.UID == 0 {
+		msg := tgbotapi.NewMessage(user.TgId, "У тебя пока не подключено ни одной группы\nНажми на кнопку <b>Моё расписание</b>")
+		msg.ParseMode = tgbotapi.ModeHTML
+		msg.ReplyMarkup = GeneralKeyboard(false)
+		return bot.TG.Send(msg)
+	}
 	markup := OptMarkup(options)
 	msg := tgbotapi.NewMessage(user.TgId, optStr)
 	msg.ReplyMarkup = markup

@@ -140,6 +140,7 @@ func GenerateButtonTail(sheduleId int64, dt int, isGroup bool) string {
 }
 
 // Отправка сообщения или его редактирование, если в editMsg указано сообщение
+// TODO: Обрабатывать старые сообщения, которые уже нельзя редактировать (message can't be deleted for everyone)
 func (bot *Bot) EditOrSend(
 	id int64,
 	str string,
@@ -229,6 +230,8 @@ func (bot *Bot) EditOrSend(
 			msg := tgbotapi.NewMessage(id, str)
 			if len(markup.InlineKeyboard) != 0 {
 				msg.ReplyMarkup = &markup
+			} else {
+				msg.ReplyMarkup = GeneralKeyboard(false)
 			}
 			msg.ParseMode = tgbotapi.ModeHTML
 			return bot.TG.Send(msg)

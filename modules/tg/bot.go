@@ -16,13 +16,14 @@ import (
 )
 
 type Bot struct {
-	TG *tgbotapi.BotAPI
-	DB *xorm.Engine
-	// TG_user database.TgUser
-	Week    int
-	WkPath  string
-	Debug   *log.Logger
-	Updates *tgbotapi.UpdatesChannel
+	TG       *tgbotapi.BotAPI
+	DB       *xorm.Engine
+	TestUser int64
+	HelpTxt  string
+	Week     int
+	WkPath   string
+	Debug    *log.Logger
+	Updates  *tgbotapi.UpdatesChannel
 }
 
 var env_keys = []string{
@@ -131,6 +132,10 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 			return nilMsg, err
 		}
 		bot.Debug.Printf("Message [%d] <%s> %s", user.L9Id, user.Name, msg.Text)
+		if strings.Contains(msg.Text, "/help") {
+			msg := tgbotapi.NewMessage(user.TgId, bot.HelpTxt)
+			return bot.TG.Send(msg)
+		}
 		switch user.PosTag {
 		case database.NotStarted:
 			err = bot.Start(user)
@@ -142,6 +147,36 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 				return bot.GetPersonal(now[0], user)
 			} else if msg.Text == "Настройки" {
 				return bot.GetOptions(user)
+			} else if strings.Contains(msg.Text, "/keyboard") {
+				options := database.ShedulesInUser{
+					L9Id: user.L9Id,
+				}
+				if _, err := bot.DB.Get(&options); err != nil {
+					return nilMsg, err
+				}
+				msg := tgbotapi.NewMessage(user.TgId, "Клавиатура выдана")
+				msg.ReplyMarkup = GeneralKeyboard(options.UID != 0)
+				return bot.TG.Send(msg)
+			} else if strings.Contains(msg.Text, "/scream") && user.TgId == bot.TestUser {
+				var users []database.TgUser
+				if err := bot.DB.Where("tgid > 0").Find(&users); err != nil {
+					return nilMsg, err
+				}
+				msg := tgbotapi.NewMessage(
+					0,
+					strings.TrimPrefix(msg.Text, "/scream"),
+				)
+				for _, u := range users {
+					msg.ChatID = u.TgId
+					if _, err := bot.TG.Send(msg); err != nil {
+						if !strings.Contains(err.Error(), "blocked by user") {
+							bot.Debug.Println(err)
+						}
+					}
+				}
+				msg.ChatID = bot.TestUser
+				msg.Text = "Сообщения отправлены"
+				return bot.TG.Send(msg)
 			}
 			return bot.Find(now[0], user, msg.Text)
 		case database.Add:
@@ -208,6 +243,13 @@ func (bot *Bot) DeleteGroup(user *database.TgUser, text string) (tgbotapi.Messag
 			L9Id: user.L9Id,
 		}
 		if _, err := bot.DB.Delete(&userInfo); err != nil {
+			return nilMsg, err
+		}
+		files := database.File{
+			TgId:       user.L9Id,
+			IsPersonal: true,
+		}
+		if _, err := bot.DB.UseBool("IsPersonal").Delete(&files); err != nil {
 			return nilMsg, err
 		}
 		msg = tgbotapi.NewMessage(user.TgId, "Группа отключена")

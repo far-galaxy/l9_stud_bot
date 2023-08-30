@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
@@ -85,7 +86,7 @@ func CheckNext(db *xorm.Engine, now time.Time) ([]Notify, error) {
 		var next_lesson database.Lesson
 		if _, err := db.
 			Where(
-				"groupid = ? and begin >= ?",
+				"groupid = ? and begin > ?",
 				l.GroupId, l.Begin.Format("2006-01-02 15:04:05"),
 			).
 			Asc("begin").
@@ -219,9 +220,18 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 					msg.ParseMode = tgbotapi.ModeHTML
 					m, err := bot.TG.Send(msg)
 					if err != nil {
-						log.Println(err)
+						// Удаление пользователя, заблокировавшего бота
+						if !strings.Contains(err.Error(), "blocked by user") {
+							bot.DB.Delete(&user)
+							bot.DB.Delete(&database.ShedulesInUser{L9Id: user.L9Id})
+							bot.DB.Delete(&database.User{L9Id: user.L9Id})
+							continue
+						} else {
+							log.Println(err)
+						}
+					} else {
+						AddTemp(m, tempTime, bot)
 					}
-					AddTemp(m, tempTime, bot)
 				} else {
 					if err = bot.GetWeekSummary(
 						note.Lesson.Begin,
@@ -229,9 +239,10 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 						database.ShedulesInUser{},
 						0,
 						true,
-						"На этой неделе больше ничего нет\n\nВыше расписание на следующую неделю",
+						"На этой неделе больше ничего нет\n\nНа фото расписание на следующую неделю",
 					); err != nil {
 						log.Println(err)
+						continue
 					}
 				}
 				ids = append(ids, user.TgId)
@@ -271,7 +282,7 @@ func ClearTemp(bot *tg.Bot, now time.Time) {
 
 var firstMailQuery = `SELECT t.tgId, l.lessonId, u.firsttime
 FROM ShedulesInUser u
-JOIN (SELECT lessonid, groupid, type, min(begin) as begin FROM Lesson WHERE date(begin) = date('%s') GROUP BY lessonid, groupid, type, begin) l 
+JOIN (SELECT lessonid, groupid, type, min(begin) as begin FROM Lesson WHERE date(begin) = date('%s') GROUP BY groupid) l 
 ON '%s' = DATE_SUB(l.Begin, INTERVAL u.firsttime MINUTE) AND u.sheduleid = l.groupid
 JOIN TgUser t ON u.L9ID = t.L9ID
 WHERE u.first = true AND (l.type != "mil" OR (l.type = "mil" AND u.military = true));`
@@ -309,6 +320,7 @@ func FirstMailing(bot *tg.Bot, now time.Time) {
 		msg, err := bot.TG.Send(mail)
 		if err != nil {
 			log.Println(err)
+			continue
 		}
 		AddTemp(msg, lesson.Begin.Add(15*time.Minute), bot)
 	}

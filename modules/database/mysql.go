@@ -21,6 +21,7 @@ type DB struct {
 
 type LogFiles struct {
 	DebugFile *os.File
+	ErrorFile *os.File
 	TgLogFile *os.File
 	DBLogFile *os.File
 }
@@ -28,6 +29,7 @@ type LogFiles struct {
 func OpenLogs() (files LogFiles) {
 	return LogFiles{
 		DebugFile: CreateLog("messages"),
+		ErrorFile: CreateLog("error"),
 		TgLogFile: CreateLog("tg"),
 		DBLogFile: CreateLog("sql"),
 	}
@@ -35,6 +37,7 @@ func OpenLogs() (files LogFiles) {
 
 func (files *LogFiles) CloseAll() {
 	files.DebugFile.Close()
+	files.ErrorFile.Close()
 	files.TgLogFile.Close()
 	files.DBLogFile.Close()
 }

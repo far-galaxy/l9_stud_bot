@@ -10,3 +10,6 @@ shedules
 .vscode
 *.html
 *.pdf
+help.txt
+main
+wkhtmltoimage

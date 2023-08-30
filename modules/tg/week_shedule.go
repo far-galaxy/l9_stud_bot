@@ -245,14 +245,14 @@ func (bot *Bot) CreateWeekImg(
 	}
 
 	input := fmt.Sprintf("./%s/week_%d.html", path, week-bot.Week)
-	output := fmt.Sprintf("./%s/week_%d.png", path, week-bot.Week)
+	output := fmt.Sprintf("./%s/week_%d.jpg", path, week-bot.Week)
 	f, _ := os.Create(input)
 	defer f.Close()
 	f.WriteString(html)
 
 	cmd := exec.CommandContext(context.Background(), bot.WkPath, []string{
 		"--width",
-		"1280",
+		"1600",
 		input,
 		output,
 	}...)
@@ -339,7 +339,7 @@ const head = `<html lang="ru">
 </head>
 
 <style>
-.note div,.rasp div{background-color:#f0f8ff;padding:10px;text-align:center;border-radius:10px}.note,th.head,th.time{font-family:monospace}.subj div #text,.subj p{display:none}html{font-size:1.5rem}body{background:#dc14bd}table{table-layout:fixed;width:100%;border-spacing:5px 5px}.note div{margin:10px 0}.head p,.subj p,hr{margin:0}.rasp div{transition:.3s}th.head{background-color:#0ff;border-radius:10px;padding:5px;font-size:1.05rem}th.subj,th.time{background-color:#f0f8ff;padding:10px;border-radius:10px}th.time{font-size:1.1rem}.subj h2,.subj p{font-size:.85rem}th.subj:not(.lab,.lect,.pract,.other){background-color:#a9a9a9}.subj div{border-radius:10px;padding:5px}.subj p{font-family:monospace;color:#f0f8ff}.subj h2,.subj h3,.subj h5{font-family:monospace;text-align:left;margin:5px}.subj h3{font-size:.65rem}.subj h5{font-size:.7rem;font-weight:400}.lect div{background-color:#7fff00}.pract div{background-color:#dc143c}.lab div{background-color:#8a2be2}.other div{background-color:#ff8c00}.mil div{background-color:#ff8c00}.window div{background-color:blue}
+.subj div,th.head,th.subj,th.time{border-radius:10px}.note,.subj p,th.head,th.time{font-family:monospace}.note div,.rasp div{background-color:#f0f8ff;padding:10px;text-align:center;border-radius:10px}.subj div #text,.subj p{display:none}html{font-size:1.5rem}body{background:#dc14bd}table{table-layout:fixed;width:100%;border-spacing:5px 5px}.note div{margin:10px 0}.head p,.subj p,hr{margin:0}.rasp div{transition:.3s}th.head{background-color:#0ff;padding:5px;font-size:1.05rem}th.subj,th.time{background-color:#f0f8ff;padding:10px}th.time{font-size:1.1rem}.subj h2,.subj p{font-size:.85rem}th.subj:not(.lab,.lect,.pract,.other){background-color:#a9a9a9}.subj div{padding:5px}.subj p{color:#f0f8ff}.subj h2,.subj h3,.subj h5{font-family:monospace;text-align:left;margin:5px}.subj h3{font-size:.65rem}.subj h5{font-size:.7rem;font-weight:400}.lect div{background-color:#7fff00}.pract div{background-color:#dc143c}.lab div{background-color:#8a2be2}.mil div,.other div{background-color:#ff8c00}.window div{background-color:#00f}.cons div{background-color:green}.exam div{background-color:purple}.kurs div{background-color:orange}
 </style>
 
 <body>

@@ -16,7 +16,7 @@ import (
 
 func (bot *Bot) GetPersonal(now time.Time, user *database.TgUser, editMsg ...tgbotapi.Message) (tgbotapi.Message, error) {
 	var shedules []database.ShedulesInUser
-	bot.DB.ID(user.L9Id).Find(&shedules)
+	bot.DB.Where("l9id = ?", user.L9Id).Find(&shedules)
 
 	if len(shedules) == 0 {
 		user.PosTag = database.Add
@@ -131,8 +131,12 @@ func (bot *Bot) GetSummary(
 		return bot.EditOrSend(user.TgId, str, "", markup, editMsg...)
 
 	} else {
-		msg := tgbotapi.NewMessage(user.TgId, "Ой! Занятий не обнаружено ):")
-		return bot.TG.Send(msg)
+		return bot.EditOrSend(
+			user.TgId,
+			"Ой! Занятий не обнаружено ):",
+			"",
+			tgbotapi.InlineKeyboardMarkup{},
+			editMsg...)
 	}
 }
 
@@ -319,7 +323,17 @@ func GroupPairs(lessons []database.Lesson) [][]database.Lesson {
 	return shedule
 }
 
-var Icons = map[string]string{"lect": "📗", "pract": "📕", "lab": "📘", "other": "📙", "mil": "🫡", "window": "🏝"}
+var Icons = map[string]string{
+	"lect":   "📗 Лекция ",
+	"pract":  "📕 Практика ",
+	"lab":    "📘 Лаба ",
+	"other":  "📙 Прочее ",
+	"mil":    "🫡",
+	"window": "🏝",
+	"exam":   "💀 Экзамен",
+	"cons":   "🗨 Консультация",
+	"kurs":   "🤯 Курсовая",
+}
 
 // Конвертация занятий с текст
 func PairToStr(pair []database.Lesson, db *xorm.Engine, isGroup bool) (string, error) {

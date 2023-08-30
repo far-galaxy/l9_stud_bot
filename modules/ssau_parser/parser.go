@@ -160,7 +160,7 @@ func (sh *WeekShedule) Parse(p Page, uncover bool) error {
 	return nil
 }
 
-var types = [4]string{"lect", "lab", "pract", "other"}
+var types = []string{"lect", "lab", "pract", "other", "exam", "cons", "kurs"}
 
 // Парсинг занятия
 func ParseLesson(s *goquery.Selection, isGroup bool, sheduleId int64) []Lesson {
