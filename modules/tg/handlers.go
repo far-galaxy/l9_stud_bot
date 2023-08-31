@@ -241,7 +241,22 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 		if _, err = bot.DB.ID(user.L9Id).Update(user); err != nil {
 			return err
 		}
-		_, err = bot.GetPersonal(now[0], user, *query.Message)
+		del := tgbotapi.NewDeleteMessage(user.TgId, query.Message.MessageID)
+		if _, err := bot.TG.Request(del); err != nil {
+			return err
+		}
+		// TODO: избавиться от повторяющихся конструкций
+		msg := tgbotapi.NewMessage(
+			user.TgId,
+			"Расписание успешно подключено!\n"+
+				"Теперь можно смотреть свои занятия по кнопке <b>Моё расписание</b>👇\n\n"+
+				"Также ты будешь получать уведомления о занятиях, "+
+				"которыми можно управлять в панели <b>Настройки</b>\n",
+		)
+		msg.ParseMode = tgbotapi.ModeHTML
+		msg.ReplyMarkup = GeneralKeyboard(true)
+		_, err := bot.TG.Send(msg)
+		return err
 	}
 	return err
 }
