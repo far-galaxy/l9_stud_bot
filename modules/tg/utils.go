@@ -187,10 +187,6 @@ func (bot *Bot) EditOrSend(
 			}
 			msg.ParseMode = tgbotapi.ModeHTML
 			if _, err := bot.TG.Request(msg); err != nil {
-				if strings.Contains(err.Error(), "message is not modified") {
-					bot.Debug.Println("Message no modified")
-					return nilMsg, nil
-				}
 				return nilMsg, err
 			}
 			return nilMsg, nil

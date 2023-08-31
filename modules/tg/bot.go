@@ -218,15 +218,17 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 		}
 
 		if err != nil {
+			if strings.Contains(err.Error(), "message is not modified") {
+				callback := tgbotapi.NewCallback(query.ID, "Ничего не изменилось")
+				_, err = bot.TG.Request(callback)
+				if err != nil {
+					return nilMsg, err
+				}
+				bot.Debug.Println("Message is not modified")
+				return nilMsg, nil
+			}
 			return nilMsg, err
 		}
-		/*if query.ID != "" {
-			callback := tgbotapi.NewCallback(query.ID, query.Data)
-			_, err = bot.TG.Request(callback)
-			if err != nil {
-				return nilMsg, err
-			}
-		}*/
 	}
 	return nilMsg, nil
 }
