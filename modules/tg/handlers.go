@@ -272,10 +272,10 @@ func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQue
 	}
 	if data[2] == "personal" {
 		switch data[1] {
-		case "day":
-			var shedules []database.ShedulesInUser
-			bot.DB.ID(user.L9Id).Find(&shedules)
-			_, err = bot.GetDaySummary(now[0], user, shedules, dt, true, *query.Message)
+		/*case "day":
+		var shedules []database.ShedulesInUser
+		bot.DB.ID(user.L9Id).Find(&shedules)
+		_, err = bot.GetDaySummary(now[0], user, shedules, dt, true, *query.Message)*/
 		case "week":
 			err = bot.GetWeekSummary(now[0], user, shedule[0], dt, true, "", *query.Message)
 		default:
@@ -283,8 +283,8 @@ func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQue
 		}
 	} else {
 		switch data[1] {
-		case "day":
-			_, err = bot.GetDaySummary(now[0], user, shedule, dt, false, *query.Message)
+		/*case "day":
+		_, err = bot.GetDaySummary(now[0], user, shedule, dt, false, *query.Message)*/
 		case "week":
 			err = bot.GetWeekSummary(now[0], user, shedule[0], dt, false, "", *query.Message)
 
