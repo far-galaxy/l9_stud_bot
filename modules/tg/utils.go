@@ -80,9 +80,9 @@ func SummaryKeyboard(clickedButton string, sheduleId int64, isGroup bool, dt int
 	near := []tgbotapi.InlineKeyboardButton{
 		tgbotapi.NewInlineKeyboardButtonData("Краткая сводка", "sh_near"+tail),
 	}
-	day := []tgbotapi.InlineKeyboardButton{
+	/*day := []tgbotapi.InlineKeyboardButton{
 		tgbotapi.NewInlineKeyboardButtonData("День", "sh_day"+tail),
-	}
+	}*/
 	week := []tgbotapi.InlineKeyboardButton{
 		tgbotapi.NewInlineKeyboardButtonData("Неделя", "sh_week"+tail),
 	}
@@ -108,17 +108,17 @@ func SummaryKeyboard(clickedButton string, sheduleId int64, isGroup bool, dt int
 
 	var markup [][]tgbotapi.InlineKeyboardButton
 	switch clickedButton {
-	case "sh_day":
-		markup = [][]tgbotapi.InlineKeyboardButton{
-			arrows, near, week,
-		}
+	/*case "sh_day":
+	markup = [][]tgbotapi.InlineKeyboardButton{
+		arrows, near, week,
+	}*/
 	case "sh_week":
 		markup = [][]tgbotapi.InlineKeyboardButton{
-			arrows, near, day,
+			arrows, near, //day,
 		}
 	default:
 		markup = [][]tgbotapi.InlineKeyboardButton{
-			arrows, day, week,
+			arrows, week, //day,
 		}
 	}
 	/*if sheduleId == 0 {
