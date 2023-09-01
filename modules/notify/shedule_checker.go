@@ -21,6 +21,7 @@ func CheckShedules(bot *tg.Bot, now time.Time) {
 		if du < 24 {
 			continue
 		}
+		log.Printf("check group %s, lastCheck %v", group.GroupName, group.LastCheck)
 		group.LastCheck = now
 		if _, err := bot.DB.ID(group.GroupId).Update(group); err != nil {
 			log.Println(err)
