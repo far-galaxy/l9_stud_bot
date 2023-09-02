@@ -52,15 +52,17 @@ func (bot *Bot) GetWeekSummary(
 		return err
 	}
 	var lastUpd time.Time
-	if shedule.IsGroup {
+	if image.IsGroup {
 		var group database.Group
-		if _, err := bot.DB.ID(shedule.SheduleId).Get(&group); err != nil {
+		group.GroupId = image.SheduleId
+		if _, err := bot.DB.Get(&group); err != nil {
 			return err
 		}
 		lastUpd = group.LastUpd
 	} else {
 		var teacher database.Teacher
-		if _, err := bot.DB.ID(shedule.SheduleId).Get(&teacher); err != nil {
+		teacher.TeacherId = image.SheduleId
+		if _, err := bot.DB.Get(&teacher); err != nil {
 			return err
 		}
 		lastUpd = teacher.LastUpd
