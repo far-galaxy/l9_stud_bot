@@ -222,9 +222,7 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 					if err != nil {
 						// Удаление пользователя, заблокировавшего бота
 						if !strings.Contains(err.Error(), "blocked by user") {
-							bot.DB.Delete(&user)
-							bot.DB.Delete(&database.ShedulesInUser{L9Id: user.L9Id})
-							bot.DB.Delete(&database.User{L9Id: user.L9Id})
+							bot.DeleteUser(user)
 							continue
 						} else {
 							log.Println(err)

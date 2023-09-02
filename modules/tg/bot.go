@@ -123,6 +123,13 @@ func InitUser(db *xorm.Engine, user *tgbotapi.User) (*database.TgUser, error) {
 	return &tg_user, nil
 }
 
+func (bot *Bot) DeleteUser(user database.TgUser) {
+	bot.DB.Delete(&user)
+	bot.DB.Delete(&database.ShedulesInUser{L9Id: user.L9Id})
+	bot.DB.Delete(&database.User{L9Id: user.L9Id})
+	bot.DB.Delete(&database.File{TgId: user.TgId})
+}
+
 func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi.Message, error) {
 	nilMsg := tgbotapi.Message{}
 	if update.Message != nil {
@@ -135,6 +142,17 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 		if strings.Contains(msg.Text, "/help") {
 			msg := tgbotapi.NewMessage(user.TgId, bot.HelpTxt)
 			return bot.TG.Send(msg)
+		}
+		if strings.Contains(msg.Text, "/start") && user.PosTag != database.NotStarted {
+			bot.DeleteUser(*user)
+			ans := tgbotapi.NewMessage(user.TgId, "Весь прогресс сброшен\nДобро пожаловать снова (:")
+			if _, err = bot.TG.Send(ans); err != nil {
+				return nilMsg, err
+			}
+			user, err = InitUser(bot.DB, msg.From)
+			if err != nil {
+				return nilMsg, err
+			}
 		}
 		switch user.PosTag {
 		case database.NotStarted:
