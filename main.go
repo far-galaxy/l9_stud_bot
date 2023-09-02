@@ -81,9 +81,7 @@ func main() {
 		case <-sheduleTicker.C:
 			now = time.Now()
 			if now.Hour() > 8 && now.Hour() < 20 {
-				log.Println("check changes")
-				notify.CheckShedules(bot, now)
-				log.Println("check end")
+				go notify.CheckShedules(bot, now)
 			}
 		}
 	}

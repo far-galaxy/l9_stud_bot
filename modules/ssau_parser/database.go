@@ -18,15 +18,17 @@ func UpdateSchedule(db *xorm.Engine, sh WeekShedule) ([]database.Lesson, []datab
 	}
 	// Проверяем преподавателей и группы в БД
 	for _, l := range sh.Uncovered {
-		_, err := CheckGroupOrTeacher(db, WeekShedule{
-			IsGroup:   false,
-			SheduleId: l.TeacherId,
-		})
-		if err != nil {
-			return nil, nil, err
+		if l.TeacherId != 0 {
+			_, err := CheckGroupOrTeacher(db, WeekShedule{
+				IsGroup:   false,
+				SheduleId: l.TeacherId,
+			})
+			if err != nil {
+				return nil, nil, err
+			}
 		}
 
-		_, err = CheckGroupOrTeacher(db, WeekShedule{
+		_, err := CheckGroupOrTeacher(db, WeekShedule{
 			IsGroup:   true,
 			SheduleId: l.GroupId,
 		})
@@ -85,18 +87,6 @@ func isGroupExists(db *xorm.Engine, groupId int64) (database.Group, error) {
 	return groups[0], nil
 }
 
-func isTeacherExists(db *xorm.Engine, teacherId int64) (database.Teacher, error) {
-	var teachers []database.Teacher
-	err := db.Find(&teachers, database.Teacher{TeacherId: teacherId})
-	if err != nil {
-		return database.Teacher{}, err
-	}
-	if len(teachers) == 0 {
-		teachers = append(teachers, database.Teacher{})
-	}
-	return teachers[0], nil
-}
-
 // Проверка наличия группы или преподавателя в БД и добавление при необходимости
 // Возвращает истину, если группы/преподавателя раньше не было
 // TODO: Добавить проверку изменений в полях данных
@@ -123,12 +113,12 @@ func CheckGroupOrTeacher(db *xorm.Engine, sh WeekShedule) (bool, error) {
 			return true, nil
 		}
 	} else {
-		teacher, err := isTeacherExists(db, sh.SheduleId)
+		var teachers []database.Teacher
+		tc, err := db.FindAndCount(&teachers, database.Teacher{TeacherId: sh.SheduleId})
 		if err != nil {
 			return false, err
 		}
-		nilT := database.Teacher{}
-		if teacher == nilT {
+		if tc == 0 {
 			sh.Week = 1
 			sh.DownloadById(false)
 			teacher := ParseTeacherName(sh.FullName)
@@ -138,7 +128,7 @@ func CheckGroupOrTeacher(db *xorm.Engine, sh WeekShedule) (bool, error) {
 				return false, err
 			}
 			return true, nil
-		} else if teacher.LastUpd.IsZero() {
+		} else if teachers[0].LastUpd.IsZero() {
 			return true, nil
 		}
 
