@@ -16,53 +16,60 @@ func CheckShedules(bot *tg.Bot, now time.Time) {
 	if err := bot.DB.Where("groupid >= 0").Find(&groups); err != nil {
 		log.Println(err)
 	}
+	log.Println("check changes")
 	for _, group := range groups {
-		du := now.Sub(group.LastCheck).Hours()
-		if du < 24 {
-			continue
+		CheckGroup(now, group, bot)
+	}
+	log.Println("check end")
+}
+
+func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
+	du := now.Sub(group.LastCheck).Hours()
+	if du < 24 {
+		return
+	}
+	log.Printf("check group %s, lastCheck %v", group.GroupName, group.LastCheck)
+	group.LastCheck = now
+	if _, err := bot.DB.ID(group.GroupId).Update(group); err != nil {
+		log.Println(err)
+	}
+	sh := ssau_parser.WeekShedule{
+		IsGroup:   true,
+		SheduleId: group.GroupId,
+	}
+	add, del, err := bot.LoadShedule(sh, now)
+	if err != nil {
+		log.Println(err)
+	}
+	// Очищаем от лишних пар
+	var n_a, n_d []database.Lesson
+	for _, a := range add {
+		if a.GroupId == group.GroupId {
+			n_a = append(n_a, a)
 		}
-		group.LastCheck = now
-		if _, err := bot.DB.ID(group.GroupId).Update(group); err != nil {
+	}
+	for _, d := range del {
+		if d.GroupId == group.GroupId {
+			n_d = append(n_d, d)
+		}
+	}
+	if len(n_a) > 0 || len(n_d) > 0 {
+		str := "‼ Обнаружены изменения в расписании\n"
+		str = strChanges(n_a, str, true, group.GroupId)
+		str = strChanges(n_d, str, false, group.GroupId)
+		var users []database.TgUser
+		if err := bot.DB.
+			UseBool("isgroup").
+			Table("ShedulesInUser").
+			Cols("tgid").
+			Join("INNER", "TgUser", "TgUser.l9id = ShedulesInUser.l9id").
+			Find(&users, tg.Swap(sh)); err != nil {
 			log.Println(err)
 		}
-		sh := ssau_parser.WeekShedule{
-			IsGroup:   true,
-			SheduleId: group.GroupId,
-		}
-		add, del, err := bot.LoadShedule(sh, now)
-		if err != nil {
-			log.Println(err)
-		}
-		// Очищаем от лишних пар
-		var n_a, n_d []database.Lesson
-		for _, a := range add {
-			if a.GroupId == group.GroupId {
-				n_a = append(n_a, a)
-			}
-		}
-		for _, d := range del {
-			if d.GroupId == group.GroupId {
-				n_d = append(n_d, d)
-			}
-		}
-		if len(n_a) > 0 || len(n_d) > 0 {
-			str := "‼ Обнаружены изменения в расписании\n"
-			str = strChanges(n_a, str, true, group.GroupId)
-			str = strChanges(n_d, str, false, group.GroupId)
-			var users []database.TgUser
-			if err := bot.DB.
-				UseBool("isgroup").
-				Table("ShedulesInUser").
-				Cols("tgid").
-				Join("INNER", "TgUser", "TgUser.l9id = ShedulesInUser.l9id").
-				Find(&users, tg.Swap(sh)); err != nil {
+		for _, user := range users {
+			msg := tgbotapi.NewMessage(user.TgId, str)
+			if _, err := bot.TG.Send(msg); nil != err {
 				log.Println(err)
-			}
-			for _, user := range users {
-				msg := tgbotapi.NewMessage(user.TgId, str)
-				if _, err := bot.TG.Send(msg); nil != err {
-					log.Println(err)
-				}
 			}
 		}
 	}
