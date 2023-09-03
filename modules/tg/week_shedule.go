@@ -46,6 +46,11 @@ func (bot *Bot) GetWeekSummary(
 			Week:       week,
 		}
 		cols = []string{"IsPersonal"}
+		// Контрольный выстрел в голову, чтобы точно было МОЁ расписание
+		shedule.L9Id = user.L9Id
+		if _, err := bot.DB.Get(&shedule); err != nil {
+			return err
+		}
 	}
 	has, err := bot.DB.UseBool(cols...).Get(&image)
 	if err != nil {
