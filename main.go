@@ -14,10 +14,10 @@ import (
 )
 
 func main() {
-	ssau_parser.HeadURL = "https://ssau.ru"
 	if err := tg.CheckEnv(); err != nil {
 		log.Fatal(err)
 	}
+	ssau_parser.HeadURL = os.Getenv("RASP_URL")
 	logs := database.OpenLogs()
 	defer logs.CloseAll()
 	log.SetOutput(io.MultiWriter(os.Stderr, logs.ErrorFile))
@@ -55,8 +55,16 @@ func main() {
 	// TODO: что-то придумать с этим выжиданием
 	log.Println("Waiting...")
 	time.Sleep(next.Sub(now))
-	mailTicker := time.NewTicker(1 * time.Minute)
-	sheduleTicker := time.NewTicker(30 * time.Minute)
+	mailPeriod, err := strconv.Atoi(os.Getenv("NOTIFY_PERIOD"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	mailTicker := time.NewTicker(time.Duration(mailPeriod) * time.Minute)
+	shedulePeriod, err := strconv.Atoi(os.Getenv("SHEDULES_CHECK_PERIOD"))
+	if err != nil {
+		log.Fatal(err)
+	}
+	sheduleTicker := time.NewTicker(time.Duration(shedulePeriod) * time.Minute)
 	log.Println("Started")
 	defer mailTicker.Stop()
 	defer sheduleTicker.Stop()

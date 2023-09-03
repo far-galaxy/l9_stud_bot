@@ -26,6 +26,7 @@ type Bot struct {
 	Updates  *tgbotapi.UpdatesChannel
 }
 
+// TODO: завернуть в структуру
 var env_keys = []string{
 	"TELEGRAM_APITOKEN",
 	"TELEGRAM_TEST_USER",
@@ -34,6 +35,9 @@ var env_keys = []string{
 	"MYSQL_PASS",
 	"MYSQL_DB",
 	"START_WEEK",
+	"RASP_URL",
+	"NOTIFY_PERIOD",
+	"SHEDULES_CHECK_PERIOD",
 }
 
 func CheckEnv() error {
