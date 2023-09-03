@@ -27,7 +27,8 @@ func (bot *Bot) GetPersonal(now time.Time, user *database.TgUser, editMsg ...tgb
 		msg := tgbotapi.NewMessage(
 			user.TgId,
 			"У тебя пока никакого расписания не подключено\n"+
-				"Введи <b>номер группы</b>",
+				"Введи <b>номер группы</b>\n"+
+				"(в формате 2305 или 2305-240502D)",
 		)
 		msg.ReplyMarkup = tgbotapi.ReplyKeyboardRemove{RemoveKeyboard: true}
 		msg.ParseMode = tgbotapi.ModeHTML

@@ -142,9 +142,16 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 		if err != nil {
 			return nilMsg, err
 		}
-		bot.Debug.Printf("Message [%d] <%s> %s", user.L9Id, user.Name, msg.Text)
+		options := database.ShedulesInUser{
+			L9Id: user.L9Id,
+		}
+		if _, err := bot.DB.Get(&options); err != nil {
+			return nilMsg, err
+		}
+		bot.Debug.Printf("Message [%d:%d] <%s> %s", user.L9Id, user.TgId, user.Name, msg.Text)
 		if strings.Contains(msg.Text, "/help") {
 			msg := tgbotapi.NewMessage(user.TgId, bot.HelpTxt)
+			msg.ReplyMarkup = GeneralKeyboard(options.UID != 0)
 			return bot.TG.Send(msg)
 		}
 		if strings.Contains(msg.Text, "/start") && user.PosTag != database.NotStarted {
@@ -170,12 +177,6 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 			} else if msg.Text == "Настройки" {
 				return bot.GetOptions(user)
 			} else if strings.Contains(msg.Text, "/keyboard") {
-				options := database.ShedulesInUser{
-					L9Id: user.L9Id,
-				}
-				if _, err := bot.DB.Get(&options); err != nil {
-					return nilMsg, err
-				}
 				msg := tgbotapi.NewMessage(user.TgId, "Клавиатура выдана")
 				msg.ReplyMarkup = GeneralKeyboard(options.UID != 0)
 				return bot.TG.Send(msg)
