@@ -43,20 +43,18 @@ func CheckNext(db *xorm.Engine, now time.Time) ([]Notify, error) {
 	now = now.Truncate(time.Minute)
 	var completed []database.Lesson
 	if err := db.
+		Asc("Begin").
 		Find(&completed, &database.Lesson{End: now}); err != nil {
 		return nil, err
 	}
-	var nums []int
-	for i := range completed {
-		new_num := completed[i].NumInShedule + 1
-		if !slices.Contains(nums, new_num) {
-			nums = append(nums, new_num)
-		}
+	if len(completed) == 0 {
+		return nil, nil
 	}
+	num := completed[0].NumInShedule + 1
+
 	var next []database.Lesson
 	if err := db.
-		Where("date(`begin`) = ?", now.Format("2006-01-02")).
-		In("numinshedule", nums).
+		Where("date(`Begin`) = ? and NumInShedule = ?", now.Format("2006-01-02"), num).
 		Find(&next); err != nil {
 		return nil, err
 	}
