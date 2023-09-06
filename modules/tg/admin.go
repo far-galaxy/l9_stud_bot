@@ -56,7 +56,8 @@ func (bot *Bot) Stat(msg *tgbotapi.Message) (tgbotapi.Message, error) {
 		return nilMsg, err
 	}
 
-	txt := fmt.Sprintf("Текущая сессия:\nСообщений: %d\nНажатий на кнопки: %d\n\n", bot.Messages, bot.Callbacks)
+	txt := fmt.Sprintf("Build: %s\n\n", bot.Build)
+	txt += fmt.Sprintf("Текущая сессия:\nСообщений: %d\nНажатий на кнопки: %d\n\n", bot.Messages, bot.Callbacks)
 	txt += fmt.Sprintf("Всего пользователей: %d\nАктивных пользователей: %d\n\nСтатистика по группам:\n", total, active)
 
 	res, err := bot.DB.Query("SELECT G.GroupName, COUNT(U.L9Id) AS UserCount " +
