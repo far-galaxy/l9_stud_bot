@@ -181,25 +181,7 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 				msg.ReplyMarkup = GeneralKeyboard(options.UID != 0)
 				return bot.TG.Send(msg)
 			} else if strings.Contains(msg.Text, "/scream") && user.TgId == bot.TestUser {
-				var users []database.TgUser
-				if err := bot.DB.Where("tgid > 0").Find(&users); err != nil {
-					return nilMsg, err
-				}
-				msg := tgbotapi.NewMessage(
-					0,
-					strings.TrimPrefix(msg.Text, "/scream"),
-				)
-				for _, u := range users {
-					msg.ChatID = u.TgId
-					if _, err := bot.TG.Send(msg); err != nil {
-						if !strings.Contains(err.Error(), "blocked by user") {
-							bot.Debug.Println(err)
-						}
-					}
-				}
-				msg.ChatID = bot.TestUser
-				msg.Text = "Сообщения отправлены"
-				return bot.TG.Send(msg)
+				return bot.Scream(msg)
 			}
 			return bot.Find(now[0], user, msg.Text)
 		case database.Add:
