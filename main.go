@@ -13,6 +13,8 @@ import (
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/tg"
 )
 
+var build string
+
 func main() {
 	if err := tg.CheckEnv(); err != nil {
 		log.Fatal(err)
@@ -35,6 +37,7 @@ func main() {
 			Schema: os.Getenv("MYSQL_DB"),
 		},
 		os.Getenv("TELEGRAM_APITOKEN"),
+		build,
 	)
 	if err != nil {
 		log.Fatal(err)
