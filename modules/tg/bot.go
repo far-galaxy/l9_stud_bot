@@ -16,14 +16,16 @@ import (
 )
 
 type Bot struct {
-	TG       *tgbotapi.BotAPI
-	DB       *xorm.Engine
-	TestUser int64
-	HelpTxt  string
-	Week     int
-	WkPath   string
-	Debug    *log.Logger
-	Updates  *tgbotapi.UpdatesChannel
+	TG        *tgbotapi.BotAPI
+	DB        *xorm.Engine
+	TestUser  int64
+	HelpTxt   string
+	Week      int
+	WkPath    string
+	Debug     *log.Logger
+	Updates   *tgbotapi.UpdatesChannel
+	Messages  int64
+	Callbacks int64
 }
 
 // TODO: завернуть в структуру
@@ -149,6 +151,7 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 			return nilMsg, err
 		}
 		bot.Debug.Printf("Message [%d:%d] <%s> %s", user.L9Id, user.TgId, user.Name, msg.Text)
+		bot.Messages += 1
 		if strings.Contains(msg.Text, "/help") {
 			msg := tgbotapi.NewMessage(user.TgId, bot.HelpTxt)
 			msg.ReplyMarkup = GeneralKeyboard(options.UID != 0)
@@ -180,8 +183,8 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 				msg := tgbotapi.NewMessage(user.TgId, "Клавиатура выдана")
 				msg.ReplyMarkup = GeneralKeyboard(options.UID != 0)
 				return bot.TG.Send(msg)
-			} else if strings.Contains(msg.Text, "/scream") && user.TgId == bot.TestUser {
-				return bot.Scream(msg)
+			} else if KeywordContains(msg.Text, AdminKey) && user.TgId == bot.TestUser {
+				return bot.AdminHandle(msg)
 			}
 			return bot.Find(now[0], user, msg.Text)
 		case database.Add:
@@ -204,7 +207,8 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 		if err != nil {
 			return nilMsg, err
 		}
-		bot.Debug.Printf("Callback [%d] <%s> %s", user.L9Id, user.Name, query.Data)
+		bot.Debug.Printf("Callback [%d:%d] <%s> %s", user.L9Id, user.TgId, user.Name, query.Data)
+		bot.Callbacks += 1
 		if query.Data == "cancel" {
 			return nilMsg, bot.Cancel(user, query)
 		}
