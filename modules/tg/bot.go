@@ -26,6 +26,7 @@ type Bot struct {
 	Updates   *tgbotapi.UpdatesChannel
 	Messages  int64
 	Callbacks int64
+	Build     string
 }
 
 // TODO: завернуть в структуру
@@ -55,8 +56,9 @@ func CheckEnv() error {
 }
 
 // Полная инициализация бота со стороны Telegram и БД
-func InitBot(files database.LogFiles, db database.DB, token string) (*Bot, error) {
+func InitBot(files database.LogFiles, db database.DB, token string, build string) (*Bot, error) {
 	var bot Bot
+	bot.Build = build
 	engine, err := database.Connect(db, files.DBLogFile)
 	if err != nil {
 		return nil, err
