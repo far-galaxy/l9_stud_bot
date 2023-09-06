@@ -86,8 +86,8 @@ func main() {
 			if err != nil {
 				log.Println(err)
 			}
-			notify.FirstMailing(bot, now)
 			notify.Mailing(bot, notes, now)
+			notify.FirstMailing(bot, now)
 			notify.ClearTemp(bot, now)
 		case <-sheduleTicker.C:
 			now = time.Now()
