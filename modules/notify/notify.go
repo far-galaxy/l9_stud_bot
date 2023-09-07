@@ -214,9 +214,7 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 		for _, user := range users {
 			if !slices.Contains(ids, user.TgId) {
 				if note.NotifyType != NextWeek {
-					msg := tgbotapi.NewMessage(user.TgId, txt)
-					msg.ParseMode = tgbotapi.ModeHTML
-					m, err := bot.TG.Send(msg)
+					m, err := bot.SendMsg(&user, txt, tg.GeneralKeyboard(true))
 					if err != nil {
 						// Удаление пользователя, заблокировавшего бота
 						if !strings.Contains(err.Error(), "blocked by user") {
@@ -298,9 +296,9 @@ func FirstMailing(bot *tg.Bot, now time.Time) {
 			log.Println(err)
 		}
 		var str string
-		if now.Hour() > 16 {
+		if now.Hour() >= 16 {
 			str = "Добрый вечер 🌆\n"
-		} else if now.Hour() > 11 {
+		} else if now.Hour() >= 11 {
 			str = "Добрый день 🌞\n"
 		} else {
 			str = "Доброе утро 🌅\n"
@@ -313,6 +311,7 @@ func FirstMailing(bot *tg.Bot, now time.Time) {
 		str += pair
 		user, _ := strconv.ParseInt(string(r["tgId"]), 0, 64)
 		mail := tgbotapi.NewMessage(user, str)
+		mail.ReplyMarkup = tg.GeneralKeyboard(true)
 		msg, err := bot.TG.Send(mail)
 		if err != nil {
 			log.Println(err)

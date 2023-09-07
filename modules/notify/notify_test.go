@@ -79,6 +79,7 @@ func TestFirstMailing(t *testing.T) {
 			Schema: os.Getenv("MYSQL_DB"),
 		},
 		os.Getenv("TELEGRAM_APITOKEN"),
+		"test",
 	)
 	if err != nil {
 		log.Fatal(err)

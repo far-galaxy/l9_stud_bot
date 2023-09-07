@@ -8,7 +8,6 @@ import (
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/tg"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 func CheckShedules(bot *tg.Bot, now time.Time) {
@@ -67,8 +66,7 @@ func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 			log.Println(err)
 		}
 		for _, user := range users {
-			msg := tgbotapi.NewMessage(user.TgId, str)
-			if _, err := bot.TG.Send(msg); nil != err {
+			if _, err := bot.SendMsg(&user, str, tg.GeneralKeyboard(true)); nil != err {
 				log.Println(err)
 			}
 		}

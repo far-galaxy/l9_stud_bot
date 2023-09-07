@@ -5,7 +5,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -93,6 +92,13 @@ func (bot *Bot) GetUpdates() {
 	bot.Updates = &updates
 }
 
+func (bot *Bot) SendMsg(user *database.TgUser, text string, markup interface{}) (tgbotapi.Message, error) {
+	msg := tgbotapi.NewMessage(user.TgId, text)
+	msg.ParseMode = tgbotapi.ModeHTML
+	msg.ReplyMarkup = markup
+	return bot.TG.Send(msg)
+}
+
 // Получение данных о пользователе из БД и создание нового при необходимости
 func InitUser(db *xorm.Engine, user *tgbotapi.User) (*database.TgUser, error) {
 	id := user.ID
@@ -139,7 +145,6 @@ func (bot *Bot) DeleteUser(user database.TgUser) {
 }
 
 func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi.Message, error) {
-	nilMsg := tgbotapi.Message{}
 	if update.Message != nil {
 		msg := update.Message
 		user, err := InitUser(bot.DB, msg.From)
@@ -155,14 +160,15 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 		bot.Debug.Printf("Message [%d:%d] <%s> %s", user.L9Id, user.TgId, user.Name, msg.Text)
 		bot.Messages += 1
 		if strings.Contains(msg.Text, "/help") {
-			msg := tgbotapi.NewMessage(user.TgId, bot.HelpTxt)
-			msg.ReplyMarkup = GeneralKeyboard(options.UID != 0)
-			return bot.TG.Send(msg)
+			return bot.SendMsg(user, bot.HelpTxt, GeneralKeyboard(options.UID != 0))
 		}
 		if strings.Contains(msg.Text, "/start") && user.PosTag != database.NotStarted {
 			bot.DeleteUser(*user)
-			ans := tgbotapi.NewMessage(user.TgId, "Весь прогресс сброшен\nДобро пожаловать снова (:")
-			if _, err = bot.TG.Send(ans); err != nil {
+			if _, err = bot.SendMsg(
+				user,
+				"Весь прогресс сброшен\nДобро пожаловать снова (:",
+				tgbotapi.ReplyKeyboardRemove{RemoveKeyboard: true},
+			); err != nil {
 				return nilMsg, err
 			}
 			user, err = InitUser(bot.DB, msg.From)
@@ -172,7 +178,7 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 		}
 		switch user.PosTag {
 		case database.NotStarted:
-			err = bot.Start(user)
+			return bot.Start(user)
 		case database.Ready:
 			if len(now) == 0 {
 				now = append(now, msg.Time())
@@ -182,9 +188,11 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 			} else if msg.Text == "Настройки" {
 				return bot.GetOptions(user)
 			} else if strings.Contains(msg.Text, "/keyboard") {
-				msg := tgbotapi.NewMessage(user.TgId, "Клавиатура выдана")
-				msg.ReplyMarkup = GeneralKeyboard(options.UID != 0)
-				return bot.TG.Send(msg)
+				return bot.SendMsg(
+					user,
+					"Кнопки действий выданы",
+					GeneralKeyboard(options.UID != 0),
+				)
 			} else if KeywordContains(msg.Text, AdminKey) && user.TgId == bot.TestUser {
 				return bot.AdminHandle(msg)
 			}
@@ -199,9 +207,6 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 		default:
 			return bot.Etc(user)
 		}
-		if err != nil {
-			return nilMsg, err
-		}
 	}
 	if update.CallbackQuery != nil {
 		query := update.CallbackQuery
@@ -215,7 +220,7 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 			return nilMsg, bot.Cancel(user, query)
 		}
 		if user.PosTag == database.NotStarted {
-			err = bot.Start(user)
+			return bot.Start(user)
 		} else if user.PosTag == database.Ready || user.PosTag == database.Add {
 			if strings.Contains(query.Data, "sh") {
 				err = bot.HandleSummary(user, query, now...)
@@ -242,73 +247,4 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 		}
 	}
 	return nilMsg, nil
-}
-
-func (bot *Bot) DeleteGroup(user *database.TgUser, text string) (tgbotapi.Message, error) {
-	nilMsg := tgbotapi.Message{}
-	user.PosTag = database.Ready
-	if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
-		return nilMsg, err
-	}
-	var msg tgbotapi.MessageConfig
-	if strings.ToLower(text) == "да" {
-		userInfo := database.ShedulesInUser{
-			L9Id: user.L9Id,
-		}
-		if _, err := bot.DB.Delete(&userInfo); err != nil {
-			return nilMsg, err
-		}
-		files := database.File{
-			TgId:       user.L9Id,
-			IsPersonal: true,
-		}
-		if _, err := bot.DB.UseBool("IsPersonal").Delete(&files); err != nil {
-			return nilMsg, err
-		}
-		msg = tgbotapi.NewMessage(user.TgId, "Группа отключена")
-		msg.ReplyMarkup = GeneralKeyboard(false)
-	} else {
-		msg = tgbotapi.NewMessage(user.TgId, "Действие отменено")
-	}
-	return bot.TG.Send(msg)
-}
-
-func (bot *Bot) SetFirstTime(msg *tgbotapi.Message, user *database.TgUser) (tgbotapi.Message, error) {
-	nilMsg := tgbotapi.Message{}
-	t, err := strconv.Atoi(msg.Text)
-	if err != nil {
-		msg := tgbotapi.NewMessage(
-			user.TgId,
-			"Ой, время соообщения о начале занятий введено как-то неверно ):",
-		)
-		return bot.TG.Send(msg)
-	}
-	userInfo := database.ShedulesInUser{
-		L9Id: user.L9Id,
-	}
-	if _, err := bot.DB.Get(&userInfo); err != nil {
-		return nilMsg, err
-	}
-	if t <= 10 {
-		msg := tgbotapi.NewMessage(
-			user.TgId,
-			"Ой, установлено слишком малое время. Попробуй ввести большее время",
-		)
-		return bot.TG.Send(msg)
-	} else if t > 240 {
-		msg := tgbotapi.NewMessage(
-			user.TgId,
-			"Ой, установлено слишком большое время. Попробуй ввести меньшее время",
-		)
-		return bot.TG.Send(msg)
-	}
-	userInfo.FirstTime = t / 5 * 5
-	if _, err := bot.DB.ID(userInfo.UID).Update(userInfo); err != nil {
-		return nilMsg, err
-	}
-	user.PosTag = database.Ready
-	if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
-		return nilMsg, err
-	}
-	return bot.GetOptions(user)
 }

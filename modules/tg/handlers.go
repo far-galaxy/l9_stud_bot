@@ -12,31 +12,30 @@ import (
 	"xorm.io/builder"
 )
 
+var nilMsg = tgbotapi.Message{}
+
 // Приветственное сообщение
-func (bot *Bot) Start(user *database.TgUser) error {
+func (bot *Bot) Start(user *database.TgUser) (tgbotapi.Message, error) {
 	user.PosTag = database.Ready
 	_, err := bot.DB.ID(user.L9Id).Update(user)
 	if err != nil {
-		return err
+		return nilMsg, err
 	}
-	msg := tgbotapi.NewMessage(
-		user.TgId,
+	return bot.SendMsg(
+		user,
 		`Привет! У меня можно посмотреть в удобном формате <b>ближайшие пары</b>, расписание <b>по дням</b> и даже <b>по неделям</b>!
 Просто напиши мне <b>номер группы</b> или <b>фамилию преподавателя</b>
 
 Также можно получать уведомления о своих занятиях по кнопке <b>Моё расписание</b>👇
 
 ‼ Внимание! Бот ещё находится на стадии испытаний, поэтому могут возникать ошибки в его работе.
-Рекомендуется сверять настоящее расписание и обо всех ошибках сообщать по контакам в /help`)
-	msg.ParseMode = tgbotapi.ModeHTML
-	msg.ReplyMarkup = GeneralKeyboard(false)
-	_, err = bot.TG.Send(msg)
-	return err
+Рекомендуется сверять настоящее расписание и обо всех ошибках сообщать по контакам в /help`,
+		GeneralKeyboard(false),
+	)
 }
 
 // Поиск расписания по запросу
 func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbotapi.Message, error) {
-	nilMsg := tgbotapi.Message{}
 	// Поиск в БД
 	var groups []database.Group
 	if err := bot.DB.Where(builder.Like{"GroupName", query}).Find(&groups); err != nil {
@@ -100,85 +99,97 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 			SheduleId: sheduleId,
 		}
 		not_exists, _ := ssau_parser.CheckGroupOrTeacher(bot.DB, shedule)
-		if not_exists {
-			msg := tgbotapi.NewMessage(user.TgId, "Загружаю расписание...\nЭто займёт некоторое время")
-			Smsg, _ := bot.TG.Send(msg)
-			_, _, err := bot.LoadShedule(shedule, now)
-			if err != nil {
-				return nilMsg, err
-			}
-			del := tgbotapi.NewDeleteMessage(Smsg.Chat.ID, Smsg.MessageID)
-			if _, err := bot.TG.Request(del); err != nil {
-				return nilMsg, err
-			}
-		}
 		// TODO: проверять подключенные ранее расписания
-		if user.PosTag == database.Add {
-			if !shedule.IsGroup {
-				msg := tgbotapi.NewMessage(
-					user.TgId,
-					"Личное расписание пока не работает с преподавателями :(\n"+
-						"Приносим извинения за временные неудобства",
-				)
-				msg.ReplyMarkup = GeneralKeyboard(false)
-				return bot.TG.Send(msg)
-			}
-			sh := Swap(shedule)
-			sh.L9Id = user.L9Id
-			sh.FirstTime = 45
-			sh.First = true
-			sh.NextNote = true
-			sh.NextDay = true
-			sh.NextWeek = true
-			if _, err := bot.DB.InsertOne(&sh); err != nil {
-				return nilMsg, err
-			}
-			user.PosTag = database.Ready
-			if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
-				return nilMsg, err
-			}
-			msg := tgbotapi.NewMessage(
-				user.TgId,
-				"Расписание успешно подключено!\n"+
-					"Теперь можно смотреть свои занятия по кнопке <b>Моё расписание</b>👇\n\n"+
-					"Также ты будешь получать уведомления о занятиях, "+
-					"которыми можно управлять в панели <b>Настройки</b>\n",
-			)
-			msg.ParseMode = tgbotapi.ModeHTML
-			msg.ReplyMarkup = GeneralKeyboard(true)
-			return bot.TG.Send(msg)
-		} else {
-			return bot.GetSummary(now, user, []database.ShedulesInUser{Swap(shedule)}, false)
-		}
+		return bot.ReturnSummary(not_exists, user.PosTag == database.Add, user, shedule, now)
 
 		// Если получено несколько групп
 	} else if len(allGroups) != 0 {
-		msg := tgbotapi.NewMessage(user.TgId, "Вот что я нашёл\nВыбери нужную группу")
-		msg.ReplyMarkup = GenerateKeyboard(GenerateGroupsArray(allGroups, user.PosTag == database.Add))
-		return bot.TG.Send(msg)
+		return bot.SendMsg(
+			user,
+			"Вот что я нашёл\nВыбери нужную группу",
+			GenerateKeyboard(GenerateGroupsArray(allGroups, user.PosTag == database.Add)),
+		)
 		// Если получено несколько преподавателей
 	} else if len(allTeachers) != 0 {
-		msg := tgbotapi.NewMessage(user.TgId, "Вот что я нашёл\nВыбери нужного преподавателя")
-		msg.ReplyMarkup = GenerateKeyboard(GenerateTeachersArray(allTeachers, user.PosTag == database.Add))
-		return bot.TG.Send(msg)
+		return bot.SendMsg(
+			user,
+			"Вот что я нашёл\nВыбери нужного преподавателя",
+			GenerateKeyboard(GenerateTeachersArray(allTeachers, user.PosTag == database.Add)),
+		)
 		// Если ничего не получено
 	} else {
-		var msg tgbotapi.MessageConfig
+		var txt string
 		if siteErr != nil {
-			msg = tgbotapi.NewMessage(
-				user.TgId,
-				"К сожалению, у меня ничего не нашлось, а на сайте ssau.ru/rasp произошла какая-то ошибка :(\n"+
-					"Повтори попытку позже",
-			)
 			bot.Debug.Printf("sasau error: %s", siteErr)
+			txt = "К сожалению, у меня ничего не нашлось, а на сайте ssau.ru/rasp произошла какая-то ошибка :(\n" +
+				"Повтори попытку позже"
 		} else {
-			msg = tgbotapi.NewMessage(
-				user.TgId,
-				"К сожалению, я ничего не нашёл ):\nПроверь свой запрос",
+			txt = "К сожалению, я ничего не нашёл ):\nПроверь свой запрос"
+		}
+		return bot.SendMsg(
+			user,
+			txt,
+			GeneralKeyboard(false),
+		)
+	}
+}
+
+func (bot *Bot) ReturnSummary(
+	not_exists bool,
+	isAdd bool,
+	user *database.TgUser,
+	shedule ssau_parser.WeekShedule,
+	now time.Time,
+) (
+	tgbotapi.Message,
+	error,
+) {
+	if not_exists {
+		msg := tgbotapi.NewMessage(user.TgId, "Загружаю расписание...\nЭто займёт некоторое время")
+		Smsg, _ := bot.TG.Send(msg)
+		_, _, err := bot.LoadShedule(shedule, now)
+		if err != nil {
+			return nilMsg, err
+		}
+		del := tgbotapi.NewDeleteMessage(Smsg.Chat.ID, Smsg.MessageID)
+		if _, err := bot.TG.Request(del); err != nil {
+			return nilMsg, err
+		}
+	}
+
+	if isAdd {
+		if !shedule.IsGroup {
+			return bot.SendMsg(
+				user,
+				"Личное расписание пока не работает с преподавателями :(\n"+
+					"Приносим извинения за временные неудобства",
+				GeneralKeyboard(false),
 			)
 		}
-
-		return bot.TG.Send(msg)
+		sh := Swap(shedule)
+		sh.L9Id = user.L9Id
+		sh.FirstTime = 45
+		sh.First = true
+		sh.NextNote = true
+		sh.NextDay = true
+		sh.NextWeek = true
+		if _, err := bot.DB.InsertOne(&sh); err != nil {
+			return nilMsg, err
+		}
+		user.PosTag = database.Ready
+		if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
+			return nilMsg, err
+		}
+		return bot.SendMsg(
+			user,
+			"Расписание успешно подключено!\n"+
+				"Теперь можно смотреть свои занятия по кнопке <b>Моё расписание</b>👇\n\n"+
+				"Также ты будешь получать уведомления о занятиях, "+
+				"которыми можно управлять в панели <b>Настройки</b>\n",
+			GeneralKeyboard(true),
+		)
+	} else {
+		return bot.GetSummary(now, user, []database.ShedulesInUser{Swap(shedule)}, false)
 	}
 }
 
@@ -202,62 +213,7 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 		SheduleId: groupId,
 	}
 	not_exists, _ := ssau_parser.CheckGroupOrTeacher(bot.DB, shedule)
-	if not_exists {
-		msg := tgbotapi.NewMessage(user.TgId, "Загружаю расписание...\nЭто займёт некоторое время")
-		Smsg, _ := bot.TG.Send(msg)
-		if _, _, err := bot.LoadShedule(shedule, now[0]); err != nil {
-			return err
-		}
-		del := tgbotapi.NewDeleteMessage(Smsg.Chat.ID, Smsg.MessageID)
-		if _, err := bot.TG.Request(del); err != nil {
-			return err
-		}
-
-	}
-	if !isAdd {
-		_, err = bot.GetSummary(now[0], user, []database.ShedulesInUser{Swap(shedule)}, false, *query.Message)
-	} else {
-		if !shedule.IsGroup {
-			msg := tgbotapi.NewMessage(
-				user.TgId,
-				"Личное расписание пока не работает с преподавателями :(\n"+
-					"Приносим извинения за временные неудобства",
-			)
-			msg.ReplyMarkup = GeneralKeyboard(false)
-			_, err := bot.TG.Send(msg)
-			return err
-		}
-		sh := Swap(shedule)
-		sh.L9Id = user.L9Id
-		sh.FirstTime = 45
-		sh.First = true
-		sh.NextNote = true
-		sh.NextDay = true
-		sh.NextWeek = true
-		if _, err = bot.DB.InsertOne(&sh); err != nil {
-			return err
-		}
-		user.PosTag = database.Ready
-		if _, err = bot.DB.ID(user.L9Id).Update(user); err != nil {
-			return err
-		}
-		del := tgbotapi.NewDeleteMessage(user.TgId, query.Message.MessageID)
-		if _, err := bot.TG.Request(del); err != nil {
-			return err
-		}
-		// TODO: избавиться от повторяющихся конструкций
-		msg := tgbotapi.NewMessage(
-			user.TgId,
-			"Расписание успешно подключено!\n"+
-				"Теперь можно смотреть свои занятия по кнопке <b>Моё расписание</b>👇\n\n"+
-				"Также ты будешь получать уведомления о занятиях, "+
-				"которыми можно управлять в панели <b>Настройки</b>\n",
-		)
-		msg.ParseMode = tgbotapi.ModeHTML
-		msg.ReplyMarkup = GeneralKeyboard(true)
-		_, err := bot.TG.Send(msg)
-		return err
-	}
+	_, err = bot.ReturnSummary(not_exists, isAdd, user, shedule, now[0])
 	return err
 }
 
@@ -316,4 +272,68 @@ func (bot *Bot) Cancel(user *database.TgUser, query *tgbotapi.CallbackQuery) err
 	delete := tgbotapi.NewDeleteMessage(query.From.ID, query.Message.MessageID)
 	_, err = bot.TG.Request(delete)
 	return err
+}
+
+func (bot *Bot) DeleteGroup(user *database.TgUser, text string) (tgbotapi.Message, error) {
+	user.PosTag = database.Ready
+	if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
+		return nilMsg, err
+	}
+	if strings.ToLower(text) == "да" {
+		userInfo := database.ShedulesInUser{
+			L9Id: user.L9Id,
+		}
+		if _, err := bot.DB.Delete(&userInfo); err != nil {
+			return nilMsg, err
+		}
+		files := database.File{
+			TgId:       user.L9Id,
+			IsPersonal: true,
+		}
+		if _, err := bot.DB.UseBool("IsPersonal").Delete(&files); err != nil {
+			return nilMsg, err
+		}
+		return bot.SendMsg(user, "Группа отключена", GeneralKeyboard(false))
+	} else {
+		return bot.SendMsg(user, "Действие отменено", GeneralKeyboard(true))
+	}
+}
+
+func (bot *Bot) SetFirstTime(msg *tgbotapi.Message, user *database.TgUser) (tgbotapi.Message, error) {
+	t, err := strconv.Atoi(msg.Text)
+	if err != nil {
+		return bot.SendMsg(
+			user,
+			"Ой, время соообщения о начале занятий введено как-то неверно ):",
+			CancelKey(),
+		)
+	}
+	userInfo := database.ShedulesInUser{
+		L9Id: user.L9Id,
+	}
+	if _, err := bot.DB.Get(&userInfo); err != nil {
+		return nilMsg, err
+	}
+	if t <= 10 {
+		return bot.SendMsg(
+			user,
+			"Ой, установлено слишком малое время. Попробуй ввести большее время",
+			CancelKey(),
+		)
+	} else if t > 240 {
+		return bot.SendMsg(
+			user,
+			"Ой, установлено слишком большое время. Попробуй ввести меньшее время",
+			CancelKey(),
+		)
+	}
+	userInfo.FirstTime = t / 5 * 5
+	if _, err := bot.DB.ID(userInfo.UID).Update(userInfo); err != nil {
+		return nilMsg, err
+	}
+	user.PosTag = database.Ready
+	if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
+		return nilMsg, err
+	}
+	return bot.SendMsg(user, "Время установлено", GeneralKeyboard(true))
 }

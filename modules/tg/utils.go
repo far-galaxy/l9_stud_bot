@@ -10,6 +10,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
+// Основные кнопки действий: "Моё расписание" и "Настройки" (опционально)
 func GeneralKeyboard(options bool) tgbotapi.ReplyKeyboardMarkup {
 	keyboard := [][]tgbotapi.KeyboardButton{{
 		tgbotapi.NewKeyboardButton("Моё расписание"),
@@ -20,6 +21,14 @@ func GeneralKeyboard(options bool) tgbotapi.ReplyKeyboardMarkup {
 	key := tgbotapi.NewReplyKeyboard(keyboard...)
 	key.ResizeKeyboard = true
 	return key
+}
+
+// Inline-кнопка отмены
+func CancelKey() tgbotapi.InlineKeyboardMarkup {
+	markup := [][]tgbotapi.InlineKeyboardButton{
+		{tgbotapi.NewInlineKeyboardButtonData("Отмена", "cancel")},
+	}
+	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: markup}
 }
 
 // Создание ряда кнопок из списка групп
@@ -34,6 +43,7 @@ func GenerateGroupsArray(groups []database.Group, isAdd bool) []tgbotapi.InlineK
 	return grKeys
 }
 
+// Создать имя преподавателя формата Фамилия И.О.
 func GenerateName(t database.Teacher) string {
 	var initials string
 	for _, n := range strings.Split(t.FirstName, " ") {
@@ -74,6 +84,7 @@ func GenerateKeyboard(array []tgbotapi.InlineKeyboardButton) tgbotapi.InlineKeyb
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: markup}
 }
 
+// Inline-клавиатура карочки с расписанием
 func SummaryKeyboard(clickedButton string, sheduleId int64, isGroup bool, dt int) tgbotapi.InlineKeyboardMarkup {
 	tail := GenerateButtonTail(sheduleId, 0, isGroup)
 
@@ -102,9 +113,6 @@ func SummaryKeyboard(clickedButton string, sheduleId int64, isGroup bool, dt int
 			tgbotapi.NewInlineKeyboardButtonData("🔄", clickedButton+update),
 		}
 	}
-	/*options := []tgbotapi.InlineKeyboardButton{
-		tgbotapi.NewInlineKeyboardButtonData("Настройки", "options"),
-	}*/
 
 	var markup [][]tgbotapi.InlineKeyboardButton
 	switch clickedButton {
@@ -121,9 +129,6 @@ func SummaryKeyboard(clickedButton string, sheduleId int64, isGroup bool, dt int
 			arrows, week, //day,
 		}
 	}
-	/*if sheduleId == 0 {
-		markup = append(markup, options)
-	}*/
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: markup}
 }
 
@@ -151,7 +156,6 @@ func (bot *Bot) EditOrSend(
 	tgbotapi.Message,
 	error,
 ) {
-	nilMsg := tgbotapi.Message{}
 
 	if len(editMsg) > 0 {
 		// Редактируем
@@ -235,6 +239,7 @@ func (bot *Bot) EditOrSend(
 	}
 }
 
+// Расшифровывать содержимое кнопки из карточки с расписанием
 func ParseQuery(data []string) ([]database.ShedulesInUser, int, error) {
 	isGroup := data[2] == "group"
 	sheduleId, err := strconv.ParseInt(data[4], 0, 64)
@@ -254,6 +259,7 @@ func ParseQuery(data []string) ([]database.ShedulesInUser, int, error) {
 
 var SumKey = []string{"near", "day", "week"}
 
+// Проверить строку на наличие одного из ключевых слов
 func KeywordContains(str string, keywords []string) bool {
 	for _, key := range keywords {
 		if strings.Contains(str, key) {
@@ -262,12 +268,6 @@ func KeywordContains(str string, keywords []string) bool {
 	}
 	return false
 }
-
-/*
-func (bot *Bot) DeleteMsg(query *tgbotapi.CallbackQuery) {
-	delete := tgbotapi.NewDeleteMessage(query.From.ID, query.Message.MessageID)
-	bot.TG.Request(delete)
-}*/
 
 // Меняем шило на мыло
 func Swap(sh ssau_parser.WeekShedule) database.ShedulesInUser {
