@@ -41,7 +41,7 @@ func initTestBot(files database.LogFiles) *Bot {
 	if err := CheckEnv(); err != nil {
 		log.Fatal(err)
 	}
-	bot, err := InitBot(files, TestDB, os.Getenv("TELEGRAM_APITOKEN"))
+	bot, err := InitBot(files, TestDB, os.Getenv("TELEGRAM_APITOKEN"), "test")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestInitBot(t *testing.T) {
 	initTestBot(files)
 
 	// Тестируем неправильный токен
-	_, err := InitBot(files, TestDB, os.Getenv("TELEGRAM_APITOKEN")+"oops")
+	_, err := InitBot(files, TestDB, os.Getenv("TELEGRAM_APITOKEN")+"oops", "test")
 	if err != nil {
 		log.Println(err)
 	}

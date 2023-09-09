@@ -12,7 +12,6 @@ var milBell = map[bool]string{true: "🫡 Есть военка", false: "🏖 �
 var optStr = "Настройки уведомлений\nНажми на кнопку, чтобы переключить параметр"
 
 func (bot *Bot) GetOptions(user *database.TgUser) (tgbotapi.Message, error) {
-	nilMsg := tgbotapi.Message{}
 	options := database.ShedulesInUser{
 		L9Id: user.L9Id,
 	}
@@ -21,15 +20,13 @@ func (bot *Bot) GetOptions(user *database.TgUser) (tgbotapi.Message, error) {
 	}
 	// Если кто-то хитрожопый нажал на кнопку без подключенной группы
 	if options.UID == 0 {
-		msg := tgbotapi.NewMessage(user.TgId, "У тебя пока не подключено ни одной группы\nНажми на кнопку <b>Моё расписание</b>")
-		msg.ParseMode = tgbotapi.ModeHTML
-		msg.ReplyMarkup = GeneralKeyboard(false)
-		return bot.TG.Send(msg)
+		return bot.SendMsg(
+			user,
+			"У тебя пока не подключено ни одной группы\nНажми на кнопку <b>Моё расписание</b>",
+			GeneralKeyboard(false),
+		)
 	}
-	markup := OptMarkup(options)
-	msg := tgbotapi.NewMessage(user.TgId, optStr)
-	msg.ReplyMarkup = markup
-	return bot.TG.Send(msg)
+	return bot.SendMsg(user, optStr, OptMarkup(options))
 }
 
 func OptMarkup(options database.ShedulesInUser) tgbotapi.InlineKeyboardMarkup {
@@ -71,16 +68,16 @@ func (bot *Bot) HandleOptions(user *database.TgUser, query *tgbotapi.CallbackQue
 				"Сейчас установлено %d минут",
 			options.FirstTime,
 		)
-		_, err := bot.EditOrSend(user.TgId, txt, "", tgbotapi.InlineKeyboardMarkup{}, *query.Message)
+		_, err := bot.EditOrSend(user.TgId, txt, "", CancelKey(), *query.Message)
 		return err
 	case "opt_del":
 		user.PosTag = database.Delete
 		if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
 			return err
 		}
-		txt := "Ты действительно хочешь отключиться от этой группы?\n" +
-			"Напиши \"Да\" для подтверждения, для отмены напиши любой другой текст"
-		_, err := bot.EditOrSend(user.TgId, txt, "", tgbotapi.InlineKeyboardMarkup{}, *query.Message)
+		txt := "⁉️Ты действительно хочешь отключиться от этой группы?\n" +
+			"Напиши <b>Да</b> для подтверждения, для отмены нажми кнопку или напиши любой другой текст"
+		_, err := bot.EditOrSend(user.TgId, txt, "", CancelKey(), *query.Message)
 		return err
 
 	case "opt_lesson":

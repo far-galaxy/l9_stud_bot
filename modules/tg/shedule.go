@@ -2,7 +2,6 @@ package tg
 
 import (
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -24,15 +23,13 @@ func (bot *Bot) GetPersonal(now time.Time, user *database.TgUser, editMsg ...tgb
 			return tgbotapi.Message{}, err
 		}
 
-		msg := tgbotapi.NewMessage(
-			user.TgId,
+		return bot.SendMsg(
+			user,
 			"У тебя пока никакого расписания не подключено\n"+
 				"Введи <b>номер группы</b>\n"+
 				"(в формате 2305 или 2305-240502D)",
+			tgbotapi.ReplyKeyboardRemove{RemoveKeyboard: true},
 		)
-		msg.ReplyMarkup = tgbotapi.ReplyKeyboardRemove{RemoveKeyboard: true}
-		msg.ParseMode = tgbotapi.ModeHTML
-		return bot.TG.Send(msg)
 	} else {
 		return bot.GetSummary(now, user, shedules, true, editMsg...)
 	}
@@ -50,7 +47,6 @@ func (bot *Bot) GetSummary(
 	error,
 ) {
 
-	nilMsg := tgbotapi.Message{}
 	lessons, err := bot.GetLessons(shedules, now)
 	if err != nil {
 		return nilMsg, err
@@ -59,7 +55,6 @@ func (bot *Bot) GetSummary(
 		var firstPair, secondPair []database.Lesson
 		pairs := GroupPairs(lessons)
 		firstPair = pairs[0]
-		log.Println(firstPair, secondPair)
 		str := "📝Краткая сводка:\n\n"
 		if pairs[0][0].Begin.Day() != now.Day() {
 			str += "❗️Сегодня пар нет\nБлижайшие занятия "
@@ -153,7 +148,6 @@ func (bot *Bot) GetDaySummary(
 	tgbotapi.Message,
 	error,
 ) {
-	nilMsg := tgbotapi.Message{}
 	day := time.Date(now.Year(), now.Month(), now.Day()+dt, 0, 0, 0, 0, now.Location())
 	lessons, err := bot.GetLessons(shedules, day)
 	if err != nil {
@@ -193,8 +187,7 @@ func (bot *Bot) GetDaySummary(
 		str += day
 		return bot.EditOrSend(user.TgId, str, "", markup, editMsg...)
 	} else {
-		msg := tgbotapi.NewMessage(user.TgId, "Ой! Пар не обнаружено ):")
-		return bot.TG.Send(msg)
+		return bot.SendMsg(user, "Ой! Пар не обнаружено ):", GeneralKeyboard(true))
 	}
 
 }

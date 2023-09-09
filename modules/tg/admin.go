@@ -21,7 +21,6 @@ func (bot *Bot) AdminHandle(msg *tgbotapi.Message) (tgbotapi.Message, error) {
 }
 
 func (bot *Bot) Scream(msg *tgbotapi.Message) (tgbotapi.Message, error) {
-	nilMsg := tgbotapi.Message{}
 	var users []database.TgUser
 	if err := bot.DB.Where("tgid > 0").Find(&users); err != nil {
 		return nilMsg, err
@@ -44,8 +43,6 @@ func (bot *Bot) Scream(msg *tgbotapi.Message) (tgbotapi.Message, error) {
 }
 
 func (bot *Bot) Stat(msg *tgbotapi.Message) (tgbotapi.Message, error) {
-	nilMsg := tgbotapi.Message{}
-
 	total, err := bot.DB.Count(database.TgUser{})
 	if err != nil {
 		return nilMsg, err
