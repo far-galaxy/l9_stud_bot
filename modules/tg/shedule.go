@@ -14,10 +14,13 @@ import (
 )
 
 func (bot *Bot) GetPersonal(now time.Time, user *database.TgUser, editMsg ...tgbotapi.Message) (tgbotapi.Message, error) {
-	var shedules []database.ShedulesInUser
-	bot.DB.Where("l9id = ?", user.L9Id).Find(&shedules)
+	shedule := database.ShedulesInUser{L9Id: user.L9Id}
+	exists, err := bot.DB.Get(&shedule)
+	if err != nil {
+		return nilMsg, err
+	}
 
-	if len(shedules) == 0 {
+	if !exists {
 		user.PosTag = database.Add
 		if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
 			return tgbotapi.Message{}, err
@@ -31,23 +34,30 @@ func (bot *Bot) GetPersonal(now time.Time, user *database.TgUser, editMsg ...tgb
 			tgbotapi.ReplyKeyboardRemove{RemoveKeyboard: true},
 		)
 	} else {
-		return bot.GetSummary(now, user, shedules, true, editMsg...)
+		return nilMsg, bot.GetWeekSummary(now, user, shedule, 0, true, "")
+		//return bot.GetSummary(now, user, shedules, true, editMsg...)
 	}
 }
 
 // Получить краткую сводку
+//
+// Если isPersonal == false, то обязательно заполнение объекта shedule
+//
+// При isPersonal == true, объект shedule игнорируется
 func (bot *Bot) GetSummary(
 	now time.Time,
 	user *database.TgUser,
-	shedules []database.ShedulesInUser,
+	shedule database.ShedulesInUser,
 	isPersonal bool,
 	editMsg ...tgbotapi.Message,
 ) (
 	tgbotapi.Message,
 	error,
 ) {
-
-	lessons, err := bot.GetLessons(shedules, now)
+	if err := bot.ActShedule(isPersonal, user, &shedule); err != nil {
+		return nilMsg, err
+	}
+	lessons, err := bot.GetLessons(shedule, now)
 	if err != nil {
 		return nilMsg, err
 	}
@@ -71,7 +81,7 @@ func (bot *Bot) GetSummary(
 				)
 			}
 			str += "\n\n"
-			day, err := bot.StrDayShedule(pairs, shedules[0].IsGroup)
+			day, err := bot.StrDayShedule(pairs, shedule.IsGroup)
 			if err != nil {
 				return nilMsg, err
 			}
@@ -87,7 +97,7 @@ func (bot *Bot) GetSummary(
 				)
 				str += fmt.Sprintf("Ближайшая пара %s:\n\n", dt)
 			}
-			firstStr, err := PairToStr(firstPair, bot.DB, shedules[0].IsGroup)
+			firstStr, err := PairToStr(firstPair, bot.DB, shedule.IsGroup)
 			if err != nil {
 				return nilMsg, err
 			}
@@ -96,7 +106,7 @@ func (bot *Bot) GetSummary(
 				secondPair = pairs[1]
 				if firstPair[0].Begin.Day() == secondPair[0].Begin.Day() {
 					str += "\nПосле неё:\n\n"
-					secondStr, err := PairToStr(secondPair, bot.DB, shedules[0].IsGroup)
+					secondStr, err := PairToStr(secondPair, bot.DB, shedule.IsGroup)
 					if err != nil {
 						return nilMsg, err
 					}
@@ -109,19 +119,11 @@ func (bot *Bot) GetSummary(
 			}
 
 		}
-
-		var shId int64
-		if isPersonal {
-			shId = 0
-		} else {
-			shId = shedules[0].SheduleId
-		}
-
 		markup := SummaryKeyboard(
 			// TODO: создать тип таких префиксов
 			"sh_near",
-			shId,
-			shedules[0].IsGroup,
+			shedule,
+			isPersonal,
 			0,
 		)
 		return bot.EditOrSend(user.TgId, str, "", markup, editMsg...)
@@ -136,11 +138,25 @@ func (bot *Bot) GetSummary(
 	}
 }
 
-// ПОлучить расписание на день
+// Актуализация запроса на расписание для персональных расписаний
+func (bot *Bot) ActShedule(isPersonal bool, user *database.TgUser, shedule *database.ShedulesInUser) error {
+	if isPersonal {
+		if _, err := bot.DB.Where("L9Id = ?", user.L9Id).Get(shedule); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Получить расписание на день
+//
+// Если isPersonal == false, то обязательно заполнение объекта shedule
+//
+// При isPersonal == true, объект shedule игнорируется
 func (bot *Bot) GetDaySummary(
 	now time.Time,
 	user *database.TgUser,
-	shedules []database.ShedulesInUser,
+	shedule database.ShedulesInUser,
 	dt int,
 	isPersonal bool,
 	editMsg ...tgbotapi.Message,
@@ -149,7 +165,10 @@ func (bot *Bot) GetDaySummary(
 	error,
 ) {
 	day := time.Date(now.Year(), now.Month(), now.Day()+dt, 0, 0, 0, 0, now.Location())
-	lessons, err := bot.GetLessons(shedules, day)
+	if err := bot.ActShedule(isPersonal, user, &shedule); err != nil {
+		return nilMsg, err
+	}
+	lessons, err := bot.GetLessons(shedule, day)
 	if err != nil {
 		return nilMsg, err
 	}
@@ -159,18 +178,7 @@ func (bot *Bot) GetDaySummary(
 		firstPair := pairs[0][0].Begin
 		dayStr := DayStr(day)
 
-		var shId int64
-		if isPersonal {
-			shId = 0
-		} else {
-			shId = shedules[0].SheduleId
-		}
-		markup := SummaryKeyboard(
-			"sh_day",
-			shId,
-			shedules[0].IsGroup,
-			dt,
-		)
+		markup := SummaryKeyboard("sh_day", shedule, isPersonal, dt)
 
 		if firstPair.Day() != day.Day() {
 			str = fmt.Sprintf("В %s, занятий нет", dayStr)
@@ -180,7 +188,7 @@ func (bot *Bot) GetDaySummary(
 
 		// TODO: придумать скачки для пустых дней
 		//dt += int(firstPair.Sub(day).Hours()) / 24
-		day, err := bot.StrDayShedule(pairs, shedules[0].IsGroup)
+		day, err := bot.StrDayShedule(pairs, shedule.IsGroup)
 		if err != nil {
 			return nilMsg, err
 		}
@@ -204,9 +212,9 @@ func DayStr(day time.Time) string {
 }
 
 // Получить список ближайших занятий (для краткой сводки или расписания на день)
-func (bot *Bot) GetLessons(shedules []database.ShedulesInUser, now time.Time) ([]database.Lesson, error) {
+func (bot *Bot) GetLessons(shedule database.ShedulesInUser, now time.Time) ([]database.Lesson, error) {
 
-	condition := CreateCondition(shedules)
+	condition := CreateCondition(shedule)
 
 	var lessons []database.Lesson
 	err := bot.DB.
@@ -271,16 +279,14 @@ func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule, now time.Time) (
 }
 
 // Создать условие поиска группы/преподавателя
-func CreateCondition(shedules []database.ShedulesInUser) string {
+func CreateCondition(shedule database.ShedulesInUser) string {
 	var groups []string
 	var teachers []string
 
-	for _, sh := range shedules {
-		if !sh.IsGroup {
-			teachers = append(teachers, strconv.FormatInt(sh.SheduleId, 10))
-		} else {
-			groups = append(groups, strconv.FormatInt(sh.SheduleId, 10))
-		}
+	if !shedule.IsGroup {
+		teachers = append(teachers, strconv.FormatInt(shedule.SheduleId, 10))
+	} else {
+		groups = append(groups, strconv.FormatInt(shedule.SheduleId, 10))
 	}
 
 	var condition, teachers_str, groups_str string

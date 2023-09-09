@@ -189,7 +189,7 @@ func (bot *Bot) ReturnSummary(
 			GeneralKeyboard(true),
 		)
 	} else {
-		return bot.GetSummary(now, user, []database.ShedulesInUser{Swap(shedule)}, false)
+		return nilMsg, bot.GetWeekSummary(now, user, Swap(shedule), 0, false, "")
 	}
 }
 
@@ -229,20 +229,19 @@ func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQue
 	if data[2] == "personal" {
 		switch data[1] {
 		/*case "day":
-		var shedules []database.ShedulesInUser
-		bot.DB.ID(user.L9Id).Find(&shedules)
 		_, err = bot.GetDaySummary(now[0], user, shedules, dt, true, *query.Message)*/
 		case "week":
-			err = bot.GetWeekSummary(now[0], user, shedule[0], dt, true, "", *query.Message)
+			err = bot.GetWeekSummary(now[0], user, shedule, dt, true, "", *query.Message)
 		default:
-			_, err = bot.GetPersonal(now[0], user, *query.Message)
+			_, err = bot.GetSummary(now[0], user, shedule, true, *query.Message)
+			// _, err = bot.GetPersonal(now[0], user, *query.Message)
 		}
 	} else {
 		switch data[1] {
 		/*case "day":
 		_, err = bot.GetDaySummary(now[0], user, shedule, dt, false, *query.Message)*/
 		case "week":
-			err = bot.GetWeekSummary(now[0], user, shedule[0], dt, false, "", *query.Message)
+			err = bot.GetWeekSummary(now[0], user, shedule, dt, false, "", *query.Message)
 
 		default:
 			_, err = bot.GetSummary(now[0], user, shedule, false, *query.Message)
@@ -287,7 +286,7 @@ func (bot *Bot) DeleteGroup(user *database.TgUser, text string) (tgbotapi.Messag
 			return nilMsg, err
 		}
 		files := database.File{
-			TgId:       user.L9Id,
+			TgId:       user.TgId,
 			IsPersonal: true,
 		}
 		if _, err := bot.DB.UseBool("IsPersonal").Delete(&files); err != nil {

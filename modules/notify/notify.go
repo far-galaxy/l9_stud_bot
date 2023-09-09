@@ -143,19 +143,17 @@ func StrNext(db *xorm.Engine, note Notify) (string, error) {
 func StrNextDay(bot *tg.Bot, note Notify) (string, error) {
 	begin := note.Lesson.Begin
 	day := time.Date(begin.Year(), begin.Month(), begin.Day(), 0, 0, 0, 0, begin.Location())
-	shedules := []database.ShedulesInUser{
-		{
-			IsGroup:   true,
-			SheduleId: note.Lesson.GroupId,
-		},
+	shedule := database.ShedulesInUser{
+		IsGroup:   true,
+		SheduleId: note.Lesson.GroupId,
 	}
-	lessons, err := bot.GetLessons(shedules, day)
+	lessons, err := bot.GetLessons(shedule, day)
 	if err != nil {
 		return "", err
 	}
 	if len(lessons) != 0 {
 		pairs := tg.GroupPairs(lessons)
-		dayStr, err := bot.StrDayShedule(pairs, shedules[0].IsGroup)
+		dayStr, err := bot.StrDayShedule(pairs, shedule.IsGroup)
 		if err != nil {
 			return "", err
 		}
@@ -205,8 +203,8 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 		if err := bot.DB.
 			UseBool(string(note.NotifyType)).
 			Table("ShedulesInUser").
-			Cols("tgid").
-			Join("INNER", "TgUser", "TgUser.l9id = ShedulesInUser.l9id").
+			Cols("TgId", "TgUser.L9Id").
+			Join("INNER", "TgUser", "TgUser.L9Id = ShedulesInUser.L9Id").
 			// Where(condition, note.Lesson.SubGroup).
 			Find(&users, &query); err != nil {
 			log.Println(err)
