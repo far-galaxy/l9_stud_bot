@@ -242,6 +242,13 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 				}
 				bot.Debug.Println("Message is not modified")
 				return nilMsg, nil
+			} else if strings.Contains(err.Error(), "no lessons") {
+				callback := tgbotapi.NewCallback(query.ID, "Тут занятий уже нет")
+				_, err = bot.TG.Request(callback)
+				if err != nil {
+					return nilMsg, err
+				}
+				bot.Debug.Println(err)
 			}
 			return nilMsg, err
 		}

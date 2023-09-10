@@ -57,7 +57,7 @@ func (bot *Bot) GetSummary(
 	if err := bot.ActShedule(isPersonal, user, &shedule); err != nil {
 		return nilMsg, err
 	}
-	lessons, err := bot.GetLessons(shedule, now)
+	lessons, err := bot.GetLessons(shedule, now, 32)
 	if err != nil {
 		return nilMsg, err
 	}
@@ -168,7 +168,7 @@ func (bot *Bot) GetDaySummary(
 	if err := bot.ActShedule(isPersonal, user, &shedule); err != nil {
 		return nilMsg, err
 	}
-	lessons, err := bot.GetLessons(shedule, day)
+	lessons, err := bot.GetLessons(shedule, day, 32)
 	if err != nil {
 		return nilMsg, err
 	}
@@ -212,7 +212,7 @@ func DayStr(day time.Time) string {
 }
 
 // Получить список ближайших занятий (для краткой сводки или расписания на день)
-func (bot *Bot) GetLessons(shedule database.ShedulesInUser, now time.Time) ([]database.Lesson, error) {
+func (bot *Bot) GetLessons(shedule database.ShedulesInUser, now time.Time, limit int) ([]database.Lesson, error) {
 
 	condition := CreateCondition(shedule)
 
@@ -221,7 +221,7 @@ func (bot *Bot) GetLessons(shedule database.ShedulesInUser, now time.Time) ([]da
 		Where("end > ?", now.Format("2006-01-02 15:04:05")).
 		And(condition).
 		OrderBy("begin").
-		Limit(32).
+		Limit(limit).
 		Find(&lessons)
 
 	return lessons, err

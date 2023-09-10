@@ -147,7 +147,7 @@ func StrNextDay(bot *tg.Bot, note Notify) (string, error) {
 		IsGroup:   true,
 		SheduleId: note.Lesson.GroupId,
 	}
-	lessons, err := bot.GetLessons(shedule, day)
+	lessons, err := bot.GetLessons(shedule, day, 32)
 	if err != nil {
 		return "", err
 	}
