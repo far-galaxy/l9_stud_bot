@@ -75,17 +75,8 @@ func (sh *WeekShedule) Parse(p Page, uncover bool) error {
 	})
 
 	var shedule [][]Pair
-	var firstNum int
 
 	for t := 0; t < len(raw_times); t += 2 {
-		if t == 0 {
-			begin, err := time.Parse(" 15:04 -07", raw_times[t])
-			if err != nil {
-				return err
-			}
-			firstNum = hourMap[begin.Hour()]
-		}
-
 		var time_line []Pair
 		for d, date := range raw_dates {
 			begin_raw := date + raw_times[t]
@@ -102,7 +93,7 @@ func (sh *WeekShedule) Parse(p Page, uncover bool) error {
 			lesson := Pair{
 				Begin:        begin,
 				End:          end,
-				NumInShedule: t/2 + firstNum,
+				NumInShedule: hourMap[begin.Hour()],
 				Lessons:      lessons[idx],
 			}
 			time_line = append(time_line, lesson)
