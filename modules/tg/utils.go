@@ -84,9 +84,20 @@ func GenerateKeyboard(array []tgbotapi.InlineKeyboardButton) tgbotapi.InlineKeyb
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: markup}
 }
 
-// Inline-клавиатура карочки с расписанием
-func SummaryKeyboard(clickedButton string, sheduleId int64, isGroup bool, dt int) tgbotapi.InlineKeyboardMarkup {
-	tail := GenerateButtonTail(sheduleId, 0, isGroup)
+// Inline-клавиатура карточки с расписанием
+func SummaryKeyboard(
+	clickedButton string,
+	shedule database.ShedulesInUser,
+	isPersonal bool,
+	dt int,
+) tgbotapi.InlineKeyboardMarkup {
+	var sheduleId int64
+	if isPersonal {
+		sheduleId = 0
+	} else {
+		sheduleId = shedule.SheduleId
+	}
+	tail := GenerateButtonTail(sheduleId, 0, shedule.IsGroup)
 
 	near := []tgbotapi.InlineKeyboardButton{
 		tgbotapi.NewInlineKeyboardButtonData("Краткая сводка", "sh_near"+tail),
@@ -98,11 +109,11 @@ func SummaryKeyboard(clickedButton string, sheduleId int64, isGroup bool, dt int
 		tgbotapi.NewInlineKeyboardButtonData("Неделя", "sh_week"+tail),
 	}
 
-	update := GenerateButtonTail(sheduleId, dt, isGroup)
+	update := GenerateButtonTail(sheduleId, dt, shedule.IsGroup)
 	var arrows []tgbotapi.InlineKeyboardButton
 	if clickedButton == "sh_day" || clickedButton == "sh_week" {
-		prev_arrow := GenerateButtonTail(sheduleId, dt-1, isGroup)
-		next_arrow := GenerateButtonTail(sheduleId, dt+1, isGroup)
+		prev_arrow := GenerateButtonTail(sheduleId, dt-1, shedule.IsGroup)
+		next_arrow := GenerateButtonTail(sheduleId, dt+1, shedule.IsGroup)
 		arrows = []tgbotapi.InlineKeyboardButton{
 			tgbotapi.NewInlineKeyboardButtonData("⏮", clickedButton+prev_arrow),
 			tgbotapi.NewInlineKeyboardButtonData("🔄", clickedButton+update),
@@ -240,21 +251,20 @@ func (bot *Bot) EditOrSend(
 }
 
 // Расшифровывать содержимое кнопки из карточки с расписанием
-func ParseQuery(data []string) ([]database.ShedulesInUser, int, error) {
+func ParseQuery(data []string) (database.ShedulesInUser, int, error) {
+	var shedule database.ShedulesInUser
 	isGroup := data[2] == "group"
 	sheduleId, err := strconv.ParseInt(data[4], 0, 64)
 	if err != nil {
-		return nil, 0, err
+		return shedule, 0, err
 	}
-	shedule := database.ShedulesInUser{
-		IsGroup:   isGroup,
-		SheduleId: sheduleId,
-	}
+	shedule.IsGroup = isGroup
+	shedule.SheduleId = sheduleId
 	dt, err := strconv.ParseInt(data[3], 0, 0)
 	if err != nil {
-		return nil, 0, err
+		return shedule, 0, err
 	}
-	return []database.ShedulesInUser{shedule}, int(dt), nil
+	return shedule, int(dt), nil
 }
 
 var SumKey = []string{"near", "day", "week"}

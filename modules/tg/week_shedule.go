@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"sort"
+	"strings"
 	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
@@ -17,17 +18,47 @@ import (
 
 var days = [6]string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}
 
+// Получить расписание на неделю
+// При week == -1 неделя определяется автоматически
+//
+// Если isPersonal == false, то обязательно заполнение объекта shedule
+//
+// При isPersonal == true, объект shedule игнорируется
 func (bot *Bot) GetWeekSummary(
 	now time.Time,
 	user *database.TgUser,
 	shedule database.ShedulesInUser,
-	dw int,
+	week int,
 	isPersonal bool,
 	caption string,
 	editMsg ...tgbotapi.Message,
 ) error {
-	_, week := now.ISOWeek()
-	week += dw - bot.Week
+
+	if err := bot.ActShedule(isPersonal, user, &shedule); err != nil {
+		return err
+	}
+
+	isCompleted := false
+	if week == -1 {
+		_, now_week := now.ISOWeek()
+		now_week -= bot.Week
+		week = now_week
+		// Проверяем, не закончились ли пары на этой неделе
+		lessons, err := bot.GetLessons(shedule, now, 1)
+		if err != nil {
+			return err
+		}
+		if len(lessons) > 0 {
+			_, lesson_week := lessons[0].Begin.ISOWeek()
+			if lesson_week-bot.Week > now_week {
+				week += 1
+				isCompleted = true
+				caption = "На этой неделе больше занятий нет\n" +
+					"На фото расписание следующей недели"
+			}
+		}
+	}
+
 	var image database.File
 	var cols []string
 	if !isPersonal {
@@ -46,16 +77,13 @@ func (bot *Bot) GetWeekSummary(
 			Week:       week,
 		}
 		cols = []string{"IsPersonal"}
-		// Контрольный выстрел в голову, чтобы точно было МОЁ расписание
-		shedule.L9Id = user.L9Id
-		if _, err := bot.DB.Get(&shedule); err != nil {
-			return err
-		}
 	}
 	has, err := bot.DB.UseBool(cols...).Get(&image)
 	if err != nil {
 		return err
 	}
+
+	// Получаем дату обновления расписания
 	var lastUpd time.Time
 	if image.IsGroup {
 		var group database.Group
@@ -74,33 +102,22 @@ func (bot *Bot) GetWeekSummary(
 	}
 
 	if !has || image.LastUpd.Before(lastUpd) {
-		if _, err := bot.DB.Delete(&image); err != nil {
-			return err
-		}
-		var shedules []database.ShedulesInUser
-		if isPersonal {
-			shedules = append(shedules, database.ShedulesInUser{L9Id: user.L9Id})
-			if _, err := bot.DB.Get(&shedules[0]); err != nil {
+		// Если картинки нет, или она устарела
+		if has {
+			if _, err := bot.DB.Delete(&image); err != nil {
 				return err
 			}
-		} else {
-			shedules = append(shedules, shedule)
 		}
-		return bot.CreateWeekImg(now, user, shedules, dw, isPersonal, caption, editMsg...)
+		return bot.CreateWeekImg(now, user, shedule, week, isPersonal, caption, editMsg...)
 	} else {
-		var shId int64
-		if isPersonal {
-			shId = 0
-		} else {
-			shId = shedule.SheduleId
-		}
+		// Если всё есть, скидываем, что есть
 		markup := tgbotapi.InlineKeyboardMarkup{}
-		if caption == "" {
+		if caption == "" || (caption != "" && isCompleted) {
 			markup = SummaryKeyboard(
 				"sh_week",
-				shId,
-				shedule.IsGroup,
-				dw,
+				shedule,
+				isPersonal,
+				week,
 			)
 		}
 
@@ -109,8 +126,8 @@ func (bot *Bot) GetWeekSummary(
 	}
 }
 
-func (bot *Bot) GetWeekLessons(shedules []database.ShedulesInUser, week int) ([]database.Lesson, error) {
-	condition := CreateCondition(shedules)
+func (bot *Bot) GetWeekLessons(shedule database.ShedulesInUser, week int) ([]database.Lesson, error) {
+	condition := CreateCondition(shedule)
 
 	var lessons []database.Lesson
 	err := bot.DB.
@@ -125,21 +142,20 @@ func (bot *Bot) GetWeekLessons(shedules []database.ShedulesInUser, week int) ([]
 func (bot *Bot) CreateWeekImg(
 	now time.Time,
 	user *database.TgUser,
-	shedules []database.ShedulesInUser,
-	dw int,
+	shedule database.ShedulesInUser,
+	week int,
 	isPersonal bool,
 	caption string,
 	editMsg ...tgbotapi.Message,
 ) error {
-	_, week := now.ISOWeek()
-	week += dw
-	lessons, err := bot.GetWeekLessons(shedules, week-bot.Week)
+	lessons, err := bot.GetWeekLessons(shedule, week)
 	if err != nil {
 		return err
 	}
 	if len(lessons) == 0 {
 		// TODO: сделать костыль поизящнее и предупреждать, если неделя пустая
-		next, err := bot.GetWeekLessons(shedules, week-bot.Week+1)
+		// TODO: так же проработать нулевую неделю
+		next, err := bot.GetWeekLessons(shedule, week+1)
 		if err != nil {
 			return err
 		}
@@ -147,7 +163,7 @@ func (bot *Bot) CreateWeekImg(
 			lessons = next
 			week += 1
 		} else {
-			return fmt.Errorf("no lessons: %d, week %d", shedules[0].SheduleId, week-bot.Week)
+			return fmt.Errorf("no lessons: %d, week %d", shedule.SheduleId, week)
 		}
 	}
 
@@ -194,28 +210,28 @@ func (bot *Bot) CreateWeekImg(
 		times = append(times, sh)
 	}
 
-	weekBegin := timex.WeekStart(lessons[0].Begin.Year(), week)
+	weekBegin := timex.WeekStart(lessons[0].Begin.Year(), week+bot.Week)
 	for i := range days {
 		dates = append(dates, weekBegin.Add(time.Hour*time.Duration(24*i)))
 	}
 
-	shedule := make([][6][]database.Lesson, height-minDay+1)
+	table := make([][6][]database.Lesson, height-minDay+1)
 	pairs := GroupPairs(lessons)
 
 	for _, p := range pairs {
 		day := int(math.Floor(p[0].Begin.Sub(weekBegin).Hours() / 24))
-		shedule[p[0].NumInShedule-minDay][day] = p
+		table[p[0].NumInShedule-minDay][day] = p
 	}
 
 	// Проверяем пустые строки и эпирическим путём подбираем для них время (или не подбираем вовсе)
-	for y, line := range shedule {
+	for y, line := range table {
 		count := 0
 		for _, l := range line {
 			count += len(l)
 		}
 		if count == 0 {
 			nilPair := ssau_parser.Pair{}
-			if y == len(shedule) {
+			if y == len(table) {
 				times = append(times, nilPair)
 			} else {
 				times = append(times[:y+1], times[y:]...)
@@ -226,24 +242,24 @@ func (bot *Bot) CreateWeekImg(
 
 	var header string
 	if isPersonal {
-		header = fmt.Sprintf("Моё расписание, %d неделя", week-bot.Week)
-	} else if shedules[0].IsGroup {
+		header = fmt.Sprintf("Моё расписание, %d неделя", week)
+	} else if shedule.IsGroup {
 		var group database.Group
-		if _, err := bot.DB.ID(shedules[0].SheduleId).Get(&group); err != nil {
+		if _, err := bot.DB.ID(shedule.SheduleId).Get(&group); err != nil {
 			return err
 		}
-		header = fmt.Sprintf("%s, %d неделя", group.GroupName, week-bot.Week)
+		header = fmt.Sprintf("%s, %d неделя", group.GroupName, week)
 	} else {
 		var teacher database.Teacher
-		if _, err := bot.DB.ID(shedules[0].SheduleId).Get(&teacher); err != nil {
+		if _, err := bot.DB.ID(shedule.SheduleId).Get(&teacher); err != nil {
 			return err
 		}
-		header = fmt.Sprintf("%s %s, %d неделя", teacher.FirstName, teacher.LastName, week-bot.Week)
+		header = fmt.Sprintf("%s %s, %d неделя", teacher.FirstName, teacher.LastName, week)
 	}
 
-	html := bot.CreateHTMLShedule(shedules[0].IsGroup, header, shedule, dates, times)
+	html := bot.CreateHTMLShedule(shedule.IsGroup, header, table, dates, times)
 
-	path := GeneratePath(shedules[0], isPersonal, user.L9Id)
+	path := GeneratePath(shedule, isPersonal, user.L9Id)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		err = os.MkdirAll(path, os.ModePerm)
 		if err != nil {
@@ -251,8 +267,8 @@ func (bot *Bot) CreateWeekImg(
 		}
 	}
 
-	input := fmt.Sprintf("./%s/week_%d.html", path, week-bot.Week)
-	output := fmt.Sprintf("./%s/week_%d.jpg", path, week-bot.Week)
+	input := fmt.Sprintf("./%s/week_%d.html", path, week)
+	output := fmt.Sprintf("./%s/week_%d.jpg", path, week)
 	f, _ := os.Create(input)
 	defer f.Close()
 	f.WriteString(html)
@@ -269,7 +285,6 @@ func (bot *Bot) CreateWeekImg(
 	if err != nil {
 		return err
 	}
-
 	photoBytes, err := os.ReadFile(output)
 	if err != nil {
 		return err
@@ -277,24 +292,16 @@ func (bot *Bot) CreateWeekImg(
 	photoFileBytes := tgbotapi.FileBytes{
 		Bytes: photoBytes,
 	}
-
-	// TODO: Загнать эту конструкцию внутрь функции
-	var shId int64
-	if isPersonal {
-		shId = 0
-	} else {
-		shId = shedules[0].SheduleId
-	}
-
 	// Качаем фото и сохраняем данные о нём в БД
 	photo := tgbotapi.NewPhoto(user.TgId, photoFileBytes)
 	photo.Caption = caption
-	if caption == "" {
+	isCompleted := strings.Contains(caption, "На этой неделе больше занятий нет")
+	if caption == "" || isCompleted {
 		photo.ReplyMarkup = SummaryKeyboard(
 			"sh_week",
-			shId,
-			shedules[0].IsGroup,
-			dw,
+			shedule,
+			isPersonal,
+			week,
 		)
 	}
 	resp, err := bot.TG.Send(photo)
@@ -305,12 +312,19 @@ func (bot *Bot) CreateWeekImg(
 		FileId:     resp.Photo[0].FileID,
 		TgId:       user.TgId,
 		IsPersonal: isPersonal,
-		IsGroup:    shedules[0].IsGroup,
-		SheduleId:  shedules[0].SheduleId,
-		Week:       week - bot.Week,
+		IsGroup:    shedule.IsGroup,
+		SheduleId:  shedule.SheduleId,
+		Week:       week,
 		LastUpd:    now,
 	}
 	_, err = bot.DB.InsertOne(file)
+
+	if err := os.Remove(output); err != nil {
+		return err
+	}
+	if err := os.Remove(input); err != nil {
+		return err
+	}
 
 	// Удаляем старое сообщение
 	if len(editMsg) != 0 {
