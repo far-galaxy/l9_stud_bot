@@ -34,7 +34,7 @@ func (bot *Bot) GetPersonal(now time.Time, user *database.TgUser, editMsg ...tgb
 			tgbotapi.ReplyKeyboardRemove{RemoveKeyboard: true},
 		)
 	} else {
-		return nilMsg, bot.GetWeekSummary(now, user, shedule, 0, true, "")
+		return nilMsg, bot.GetWeekSummary(now, user, shedule, -1, true, "")
 		//return bot.GetSummary(now, user, shedules, true, editMsg...)
 	}
 }

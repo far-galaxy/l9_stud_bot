@@ -189,7 +189,7 @@ func (bot *Bot) ReturnSummary(
 			GeneralKeyboard(true),
 		)
 	} else {
-		return nilMsg, bot.GetWeekSummary(now, user, Swap(shedule), 0, false, "")
+		return nilMsg, bot.GetWeekSummary(now, user, Swap(shedule), -1, false, "")
 	}
 }
 

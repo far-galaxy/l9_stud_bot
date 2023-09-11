@@ -19,6 +19,7 @@ import (
 var days = [6]string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}
 
 // Получить расписание на неделю
+// При week == -1 неделя определяется автоматически
 //
 // Если isPersonal == false, то обязательно заполнение объекта shedule
 //
@@ -27,36 +28,35 @@ func (bot *Bot) GetWeekSummary(
 	now time.Time,
 	user *database.TgUser,
 	shedule database.ShedulesInUser,
-	dw int,
+	week int,
 	isPersonal bool,
 	caption string,
 	editMsg ...tgbotapi.Message,
 ) error {
-	_, week := now.ISOWeek()
-	week += dw - bot.Week
 
 	if err := bot.ActShedule(isPersonal, user, &shedule); err != nil {
 		return err
 	}
 
-	// Проверяем, не закончились ли пары на этой неделе
-	lessons, err := bot.GetLessons(shedule, now, 1)
-	if err != nil {
-		return err
-	}
 	isCompleted := false
-	if len(lessons) > 0 {
-		_, lesson_week := lessons[0].Begin.ISOWeek()
-		if lesson_week-bot.Week > week-dw {
-			week += 1
-			if dw == 0 {
+	if week == -1 {
+		_, now_week := now.ISOWeek()
+		now_week -= bot.Week
+		week = now_week
+		// Проверяем, не закончились ли пары на этой неделе
+		lessons, err := bot.GetLessons(shedule, now, 1)
+		if err != nil {
+			return err
+		}
+		if len(lessons) > 0 {
+			_, lesson_week := lessons[0].Begin.ISOWeek()
+			if lesson_week-bot.Week > now_week {
+				week += 1
 				isCompleted = true
 				caption = "На этой неделе больше занятий нет\n" +
 					"На фото расписание следующей недели"
 			}
 		}
-	} else {
-		return fmt.Errorf("no lessons: %d, week %d", shedule.SheduleId, week)
 	}
 
 	var image database.File
@@ -117,7 +117,7 @@ func (bot *Bot) GetWeekSummary(
 				"sh_week",
 				shedule,
 				isPersonal,
-				dw,
+				week,
 			)
 		}
 
@@ -295,15 +295,13 @@ func (bot *Bot) CreateWeekImg(
 	// Качаем фото и сохраняем данные о нём в БД
 	photo := tgbotapi.NewPhoto(user.TgId, photoFileBytes)
 	photo.Caption = caption
-	_, now_week := now.ISOWeek()
 	isCompleted := strings.Contains(caption, "На этой неделе больше занятий нет")
 	if caption == "" || isCompleted {
-		dw := week + bot.Week - now_week - 1
 		photo.ReplyMarkup = SummaryKeyboard(
 			"sh_week",
 			shedule,
 			isPersonal,
-			dw,
+			week,
 		)
 	}
 	resp, err := bot.TG.Send(photo)
