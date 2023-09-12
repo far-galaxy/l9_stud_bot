@@ -222,7 +222,7 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 		if user.PosTag == database.NotStarted {
 			return bot.Start(user)
 		} else if user.PosTag == database.Ready || user.PosTag == database.Add {
-			if strings.Contains(query.Data, "sh") {
+			if strings.Contains(query.Data, SummaryPrefix) {
 				err = bot.HandleSummary(user, query, now...)
 			} else if strings.Contains(query.Data, "opt") {
 				err = bot.HandleOptions(user, query)

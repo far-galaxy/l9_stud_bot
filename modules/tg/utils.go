@@ -84,9 +84,18 @@ func GenerateKeyboard(array []tgbotapi.InlineKeyboardButton) tgbotapi.InlineKeyb
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: markup}
 }
 
+type SummaryType string
+
+const (
+	SummaryPrefix string      = "sh_"
+	Near          SummaryType = "near"
+	Day           SummaryType = "day"
+	Week          SummaryType = "week"
+)
+
 // Inline-клавиатура карточки с расписанием
 func SummaryKeyboard(
-	clickedButton string,
+	clickedButton SummaryType,
 	shedule database.ShedulesInUser,
 	isPersonal bool,
 	dt int,
@@ -100,44 +109,53 @@ func SummaryKeyboard(
 	tail := GenerateButtonTail(sheduleId, 0, shedule.IsGroup)
 
 	near := []tgbotapi.InlineKeyboardButton{
-		tgbotapi.NewInlineKeyboardButtonData("Краткая сводка", "sh_near"+tail),
+		tgbotapi.NewInlineKeyboardButtonData(
+			"Краткая сводка",
+			SummaryPrefix+string(Near)+tail,
+		),
 	}
-	/*day := []tgbotapi.InlineKeyboardButton{
-		tgbotapi.NewInlineKeyboardButtonData("День", "sh_day"+tail),
-	}*/
+	day := []tgbotapi.InlineKeyboardButton{
+		tgbotapi.NewInlineKeyboardButtonData(
+			"День",
+			SummaryPrefix+string(Day)+tail,
+		),
+	}
 	week := []tgbotapi.InlineKeyboardButton{
-		tgbotapi.NewInlineKeyboardButtonData("Неделя", "sh_week"+tail),
+		tgbotapi.NewInlineKeyboardButtonData(
+			"Неделя",
+			SummaryPrefix+string(Week)+tail,
+		),
 	}
 
 	update := GenerateButtonTail(sheduleId, dt, shedule.IsGroup)
 	var arrows []tgbotapi.InlineKeyboardButton
-	if clickedButton == "sh_day" || clickedButton == "sh_week" {
+	if clickedButton == Day || clickedButton == Week {
 		prev_arrow := GenerateButtonTail(sheduleId, dt-1, shedule.IsGroup)
 		next_arrow := GenerateButtonTail(sheduleId, dt+1, shedule.IsGroup)
 		arrows = []tgbotapi.InlineKeyboardButton{
-			tgbotapi.NewInlineKeyboardButtonData("⏮", clickedButton+prev_arrow),
-			tgbotapi.NewInlineKeyboardButtonData("🔄", clickedButton+update),
-			tgbotapi.NewInlineKeyboardButtonData("⏭", clickedButton+next_arrow),
+			tgbotapi.NewInlineKeyboardButtonData("⏮", SummaryPrefix+string(clickedButton)+prev_arrow),
+			tgbotapi.NewInlineKeyboardButtonData("🔄", SummaryPrefix+string(clickedButton)+update),
+			tgbotapi.NewInlineKeyboardButtonData("⏭", SummaryPrefix+string(clickedButton)+next_arrow),
 		}
 	} else {
 		arrows = []tgbotapi.InlineKeyboardButton{
-			tgbotapi.NewInlineKeyboardButtonData("🔄", clickedButton+update),
+			tgbotapi.NewInlineKeyboardButtonData("🔄", SummaryPrefix+string(clickedButton)+update),
 		}
 	}
 
 	var markup [][]tgbotapi.InlineKeyboardButton
 	switch clickedButton {
-	/*case "sh_day":
-	markup = [][]tgbotapi.InlineKeyboardButton{
-		arrows, near, week,
-	}*/
-	case "sh_week":
+	case Day:
 		markup = [][]tgbotapi.InlineKeyboardButton{
-			arrows, near, //day,
+			arrows, near, week,
+		}
+	case Week:
+		markup = [][]tgbotapi.InlineKeyboardButton{
+			arrows, day, near,
 		}
 	default:
 		markup = [][]tgbotapi.InlineKeyboardButton{
-			arrows, week, //day,
+			arrows, day, week,
 		}
 	}
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: markup}
@@ -251,20 +269,29 @@ func (bot *Bot) EditOrSend(
 }
 
 // Расшифровывать содержимое кнопки из карточки с расписанием
-func ParseQuery(data []string) (database.ShedulesInUser, int, error) {
+func ParseQuery(data []string) (SummaryType, database.ShedulesInUser, int, error) {
 	var shedule database.ShedulesInUser
 	isGroup := data[2] == "group"
 	sheduleId, err := strconv.ParseInt(data[4], 0, 64)
 	if err != nil {
-		return shedule, 0, err
+		return Near, shedule, 0, err
 	}
 	shedule.IsGroup = isGroup
 	shedule.SheduleId = sheduleId
 	dt, err := strconv.ParseInt(data[3], 0, 0)
 	if err != nil {
-		return shedule, 0, err
+		return Near, shedule, 0, err
 	}
-	return shedule, int(dt), nil
+	var sumType SummaryType
+	switch data[1] {
+	case "day":
+		sumType = Day
+	case "week":
+		sumType = Week
+	default:
+		sumType = Near
+	}
+	return sumType, shedule, int(dt), nil
 }
 
 var SumKey = []string{"near", "day", "week"}
