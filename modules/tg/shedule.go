@@ -44,7 +44,7 @@ func (bot *Bot) GetPersonal(now time.Time, user *database.TgUser, editMsg ...tgb
 // Если isPersonal == false, то обязательно заполнение объекта shedule
 //
 // При isPersonal == true, объект shedule игнорируется
-func (bot *Bot) GetSummary(
+func (bot *Bot) GetShortSummary(
 	now time.Time,
 	user *database.TgUser,
 	shedule database.ShedulesInUser,
@@ -120,8 +120,7 @@ func (bot *Bot) GetSummary(
 
 		}
 		markup := SummaryKeyboard(
-			// TODO: создать тип таких префиксов
-			"sh_near",
+			Near,
 			shedule,
 			isPersonal,
 			0,
@@ -178,7 +177,7 @@ func (bot *Bot) GetDaySummary(
 		firstPair := pairs[0][0].Begin
 		dayStr := DayStr(day)
 
-		markup := SummaryKeyboard("sh_day", shedule, isPersonal, dt)
+		markup := SummaryKeyboard(Day, shedule, isPersonal, dt)
 
 		if firstPair.Day() != day.Day() {
 			str = fmt.Sprintf("В %s, занятий нет", dayStr)

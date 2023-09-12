@@ -39,7 +39,7 @@ func (bot *Bot) GetWeekSummary(
 	}
 
 	isCompleted := false
-	if week == -1 {
+	if week == -1 || week == 0 {
 		_, now_week := now.ISOWeek()
 		now_week -= bot.Week
 		week = now_week
@@ -114,7 +114,7 @@ func (bot *Bot) GetWeekSummary(
 		markup := tgbotapi.InlineKeyboardMarkup{}
 		if caption == "" || (caption != "" && isCompleted) {
 			markup = SummaryKeyboard(
-				"sh_week",
+				Week,
 				shedule,
 				isPersonal,
 				week,
@@ -298,7 +298,7 @@ func (bot *Bot) CreateWeekImg(
 	isCompleted := strings.Contains(caption, "На этой неделе больше занятий нет")
 	if caption == "" || isCompleted {
 		photo.ReplyMarkup = SummaryKeyboard(
-			"sh_week",
+			Week,
 			shedule,
 			isPersonal,
 			week,

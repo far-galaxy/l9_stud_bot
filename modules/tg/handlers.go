@@ -29,7 +29,7 @@ func (bot *Bot) Start(user *database.TgUser) (tgbotapi.Message, error) {
 Также можно получать уведомления о своих занятиях по кнопке <b>Моё расписание</b>👇
 
 ‼ Внимание! Бот ещё находится на стадии испытаний, поэтому могут возникать ошибки в его работе.
-Рекомендуется сверять настоящее расписание и обо всех ошибках сообщать по контакам в /help`,
+Рекомендуется сверять настоящее расписание и обо всех ошибках сообщать в чат @chat_l9_stud_bot или по контактам в /help`,
 		GeneralKeyboard(false),
 	)
 }
@@ -213,38 +213,41 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 		SheduleId: groupId,
 	}
 	not_exists, _ := ssau_parser.CheckGroupOrTeacher(bot.DB, shedule)
+	del := tgbotapi.NewDeleteMessage(query.From.ID, query.Message.MessageID)
+	if _, err := bot.TG.Request(del); err != nil {
+		return err
+	}
 	_, err = bot.ReturnSummary(not_exists, isAdd, user, shedule, now[0])
 	return err
 }
 
 func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQuery, now ...time.Time) error {
 	data := strings.Split(query.Data, "_")
-	shedule, dt, err := ParseQuery(data)
+	sumType, shedule, dt, err := ParseQuery(data)
 	if err != nil {
 		return err
 	}
 	if len(now) == 0 {
 		now = append(now, time.Now())
 	}
+
 	if data[2] == "personal" {
-		switch data[1] {
-		/*case "day":
-		_, err = bot.GetDaySummary(now[0], user, shedules, dt, true, *query.Message)*/
-		case "week":
+		switch sumType {
+		case Day:
+			_, err = bot.GetDaySummary(now[0], user, shedule, dt, true, *query.Message)
+		case Week:
 			err = bot.GetWeekSummary(now[0], user, shedule, dt, true, "", *query.Message)
 		default:
-			_, err = bot.GetSummary(now[0], user, shedule, true, *query.Message)
-			// _, err = bot.GetPersonal(now[0], user, *query.Message)
+			_, err = bot.GetShortSummary(now[0], user, shedule, true, *query.Message)
 		}
 	} else {
-		switch data[1] {
-		/*case "day":
-		_, err = bot.GetDaySummary(now[0], user, shedule, dt, false, *query.Message)*/
-		case "week":
+		switch sumType {
+		case Day:
+			_, err = bot.GetDaySummary(now[0], user, shedule, dt, false, *query.Message)
+		case Week:
 			err = bot.GetWeekSummary(now[0], user, shedule, dt, false, "", *query.Message)
-
 		default:
-			_, err = bot.GetSummary(now[0], user, shedule, false, *query.Message)
+			_, err = bot.GetShortSummary(now[0], user, shedule, false, *query.Message)
 		}
 	}
 	return err
