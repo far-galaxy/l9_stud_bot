@@ -64,6 +64,7 @@ func (bot *Bot) GetWeekSummary(
 	if !isPersonal {
 		image = database.File{
 			TgId:       user.TgId,
+			FileType:   database.Photo,
 			IsPersonal: false,
 			IsGroup:    shedule.IsGroup,
 			SheduleId:  shedule.SheduleId,
@@ -73,6 +74,7 @@ func (bot *Bot) GetWeekSummary(
 	} else {
 		image = database.File{
 			TgId:       user.TgId,
+			FileType:   database.Photo,
 			IsPersonal: true,
 			Week:       week,
 		}
@@ -310,6 +312,7 @@ func (bot *Bot) CreateWeekImg(
 	}
 	file := database.File{
 		FileId:     resp.Photo[0].FileID,
+		FileType:   database.Photo,
 		TgId:       user.TgId,
 		IsPersonal: isPersonal,
 		IsGroup:    shedule.IsGroup,
@@ -360,7 +363,7 @@ const head = `<html lang="ru">
 </head>
 
 <style>
-.subj div,th.head,th.subj,th.time{border-radius:10px}.note,.subj p,th.head,th.time{font-family:monospace}.note div,.rasp div{background-color:#f0f8ff;padding:10px;text-align:center;border-radius:10px}.subj div #text,.subj p{display:none}html{font-size:1.5rem}body{background:#dc14bd}table{table-layout:fixed;width:100%;border-spacing:5px 5px}.note div{margin:10px 0}.head p,.subj p,hr{margin:0}.rasp div{transition:.3s}th.head{background-color:#0ff;padding:5px;font-size:1.05rem}th.subj,th.time{background-color:#f0f8ff;padding:10px}th.time{font-size:1.1rem}.subj h2,.subj p{font-size:.85rem}th.subj:not(.lab,.lect,.pract,.other){background-color:#a9a9a9}.subj div{padding:5px}.subj p{color:#f0f8ff}.subj h2,.subj h3,.subj h5{font-family:monospace;text-align:left;margin:5px}.subj h3{font-size:.65rem}.subj h5{font-size:.7rem;font-weight:400}.lect div{background-color:#7fff00}.pract div{background-color:#dc143c}.lab div{background-color:#8a2be2}.mil div,.other div{background-color:#ff8c00}.window div{background-color:#00f}.cons div{background-color:green}.exam div{background-color:purple}.kurs div{background-color:orange}
+.subj div,th.head,th.subj,th.time{border-radius:10px}.note,.subj p,th.head,th.time{font-family:monospace}.note div,.rasp div{background-color:#f0f8ff;padding:10px;text-align:center;border-radius:10px}.subj div #text,.subj p{display:none}html{font-size:1.5rem}body{background:black}table{table-layout:fixed;width:100%;border-spacing:5px 5px}.note div{margin:10px 0}.head p,.subj p,hr{margin:0}.rasp div{transition:.3s}th.head{background-color:#0ff;padding:5px;font-size:1.05rem}th.subj,th.time{background-color:#f0f8ff;padding:10px}th.time{font-size:1.1rem}.subj h2,.subj p{font-size:.85rem}th.subj:not(.lab,.lect,.pract,.other){background-color:#a9a9a9}.subj div{padding:5px}.subj p{color:#f0f8ff}.subj h2,.subj h3,.subj h5{font-family:monospace;text-align:left;margin:5px}.subj h3{font-size:.65rem}.subj h5{font-size:.7rem;font-weight:400}.lect div{background-color:#7fff00}.pract div{background-color:#dc143c}.lab div{background-color:#8a2be2}.mil div,.other div{background-color:#ff8c00}.window div{background-color:#00f}.cons div{background-color:green}.exam div{background-color:purple}.kurs div{background-color:orange}
 </style>
 
 <body>
@@ -472,4 +475,78 @@ func (bot *Bot) CreateHTMLShedule(
 	}
 	html += "</table></body></html>"
 	return html
+}
+
+func (bot *Bot) CreateICS(
+	user *database.TgUser,
+	shedule database.ShedulesInUser,
+	isPersonal bool,
+	week int,
+	query ...tgbotapi.CallbackQuery,
+) error {
+	if err := bot.ActShedule(isPersonal, user, &shedule); err != nil {
+		return err
+	}
+	lessons, err := bot.GetWeekLessons(shedule, week)
+	if err != nil {
+		return err
+	}
+	txt := "BEGIN:VCALENDAR\n" + "VERSION:2.0\n" + "CALSCALE:GREGORIAN\n" + "METHOD:REQUEST\n"
+	if len(lessons) != 0 {
+		for _, lesson := range lessons {
+			l := "BEGIN:VEVENT\n"
+			l += lesson.Begin.Format("DTSTART;TZID=Europe/Samara:20060102T150405Z\n")
+			l += lesson.End.Format("DTEND;TZID=Europe/Samara:20060102T150405Z\n")
+			l += fmt.Sprintf("SUMMARY:%s%s\n", Icons[lesson.Type], lesson.Name)
+			var desc string
+			if lesson.TeacherId != 0 && shedule.IsGroup {
+				var t database.Teacher
+				_, err := bot.DB.ID(lesson.TeacherId).Get(&t)
+				if err != nil {
+					return err
+				}
+				desc = fmt.Sprintf("%s %s\n", t.FirstName, t.ShortName)
+			}
+			if lesson.SubGroup != 0 {
+				desc += fmt.Sprintf("Подгруппа: %d\n", lesson.SubGroup)
+			}
+			if lesson.Comment != "" {
+				desc += fmt.Sprintf("%s\n", lesson.Comment)
+			}
+			l += fmt.Sprintf("DESCRIPTION:%s\n", desc)
+			l += fmt.Sprintf("LOCATION:%s\n", lesson.Place)
+			l += "END:VEVENT\n"
+			txt += l
+		}
+		txt += "END:VCALENDAR"
+
+		var fileName string
+		if isPersonal {
+			fileName = fmt.Sprintf("personal_%d.ics", week)
+		} else if shedule.IsGroup {
+			fileName = fmt.Sprintf("group_%d_%d.ics", shedule.SheduleId, week)
+		} else {
+			fileName = fmt.Sprintf("staff_%d_%d.ics", shedule.SheduleId, week)
+		}
+
+		icsFileBytes := tgbotapi.FileBytes{
+			Name:  fileName,
+			Bytes: []byte(txt),
+		}
+
+		doc := tgbotapi.NewDocument(user.TgId, icsFileBytes)
+		doc.Caption = "Тут будет инструкция по применению\n\n" +
+			"‼️ Удалите старые занятия из календаря, если они есть"
+		_, err := bot.TG.Send(doc)
+		if err != nil {
+			return err
+		}
+		if len(query) != 0 {
+			ans := tgbotapi.NewCallback(query[0].ID, "")
+			if _, err := bot.TG.Request(ans); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
