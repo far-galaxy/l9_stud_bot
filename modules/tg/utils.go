@@ -91,6 +91,7 @@ const (
 	Near          SummaryType = "near"
 	Day           SummaryType = "day"
 	Week          SummaryType = "week"
+	ICS           SummaryType = "ics"
 )
 
 // Inline-клавиатура карточки с расписанием
@@ -128,6 +129,13 @@ func SummaryKeyboard(
 	}
 
 	update := GenerateButtonTail(sheduleId, dt, shedule.IsGroup)
+	ics := []tgbotapi.InlineKeyboardButton{
+		tgbotapi.NewInlineKeyboardButtonData(
+			"🗓 Скачать .ics",
+			SummaryPrefix+string(ICS)+update,
+		),
+	}
+
 	var arrows []tgbotapi.InlineKeyboardButton
 	if clickedButton == Day || clickedButton == Week {
 		prev_arrow := GenerateButtonTail(sheduleId, dt-1, shedule.IsGroup)
@@ -151,7 +159,7 @@ func SummaryKeyboard(
 		}
 	case Week:
 		markup = [][]tgbotapi.InlineKeyboardButton{
-			arrows, day, near,
+			arrows, ics, day, near,
 		}
 	default:
 		markup = [][]tgbotapi.InlineKeyboardButton{
@@ -288,6 +296,8 @@ func ParseQuery(data []string) (SummaryType, database.ShedulesInUser, int, error
 		sumType = Day
 	case "week":
 		sumType = Week
+	case "ics":
+		sumType = ICS
 	default:
 		sumType = Near
 	}

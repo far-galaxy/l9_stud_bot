@@ -77,8 +77,16 @@ type Lesson struct {
 }
 
 // Файлы, залитые в Telegream
+type FileType string
+
+const (
+	Photo FileType = "photo"
+	ICS   FileType = "ics"
+)
+
 type File struct {
-	Id         int64 `xorm:"pk autoincr"`
+	Id int64 `xorm:"pk autoincr"`
+	FileType
 	FileId     string
 	TgId       int64
 	IsPersonal bool
