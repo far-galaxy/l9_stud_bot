@@ -229,7 +229,7 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 						note.Lesson.Begin,
 						&user,
 						database.ShedulesInUser{},
-						0,
+						-1,
 						true,
 						"На этой неделе больше ничего нет\n\nНа фото расписание на следующую неделю",
 					); err != nil {
@@ -272,18 +272,20 @@ func ClearTemp(bot *tg.Bot, now time.Time) {
 	}
 }
 
-var firstMailQuery = `SELECT t.tgId, l.lessonId, u.firsttime
+var firstMailQuery = `SELECT t.TgId, a.LessonId, u.FirstTime
 FROM ShedulesInUser u
-JOIN (SELECT lessonid, groupid, type, min(begin) as begin FROM Lesson WHERE date(begin) = date('%s') GROUP BY groupid) l 
-ON '%s' = DATE_SUB(l.Begin, INTERVAL u.firsttime MINUTE) AND u.sheduleid = l.groupid
+JOIN (SELECT GroupId, MIN(Begin) as Begin FROM Lesson WHERE DATE(Begin) = DATE('%s') GROUP BY GroupId) l 
+ON '%s' = DATE_SUB(l.Begin, INTERVAL u.FirstTime MINUTE) AND u.SheduleId = l.GroupId
+JOIN (SELECT lessonid, type, groupid, begin FROM Lesson WHERE date(begin) = date('%s')) a
+ON a.groupId = l.groupid AND a.begin=l.begin
 JOIN TgUser t ON u.L9ID = t.L9ID
-WHERE u.first = true AND (l.type != "mil" OR (l.type = "mil" AND u.military = true));`
+WHERE u.first = true AND (a.type != "mil" OR (a.type = "mil" AND u.military = true));`
 
 // Рассылка сообщений о начале занятий
 func FirstMailing(bot *tg.Bot, now time.Time) {
 	now = now.Truncate(time.Minute)
 	nowStr := now.Format("2006-01-02 15:04:05")
-	res, err := bot.DB.Query(fmt.Sprintf(firstMailQuery, nowStr, nowStr))
+	res, err := bot.DB.Query(fmt.Sprintf(firstMailQuery, nowStr, nowStr, nowStr))
 	if err != nil {
 		log.Println(err)
 	}

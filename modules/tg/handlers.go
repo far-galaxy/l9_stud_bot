@@ -147,7 +147,7 @@ func (bot *Bot) ReturnSummary(
 	if not_exists {
 		msg := tgbotapi.NewMessage(user.TgId, "Загружаю расписание...\nЭто займёт некоторое время")
 		Smsg, _ := bot.TG.Send(msg)
-		_, _, err := bot.LoadShedule(shedule, now)
+		_, _, err := bot.LoadShedule(shedule, now, false)
 		if err != nil {
 			return nilMsg, err
 		}
