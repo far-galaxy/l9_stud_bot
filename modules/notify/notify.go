@@ -276,10 +276,10 @@ var firstMailQuery = `SELECT t.TgId, a.LessonId, u.FirstTime
 FROM ShedulesInUser u
 JOIN (SELECT GroupId, MIN(Begin) as Begin FROM Lesson WHERE DATE(Begin) = DATE('%s') GROUP BY GroupId) l 
 ON '%s' = DATE_SUB(l.Begin, INTERVAL u.FirstTime MINUTE) AND u.SheduleId = l.GroupId
-JOIN (SELECT lessonid, type, groupid, begin FROM Lesson WHERE date(begin) = date('%s')) a
-ON a.groupId = l.groupid AND a.begin=l.begin
+JOIN (SELECT LessonId, Type, GroupId, Begin FROM Lesson WHERE DATE(Begin) = date('%s')) a
+ON a.GroupId = l.GroupId AND a.Begin=l.Begin
 JOIN TgUser t ON u.L9ID = t.L9ID
-WHERE u.first = true AND (a.type != "mil" OR (a.type = "mil" AND u.military = true));`
+WHERE u.First = true AND (a.Type != "mil" OR (a.Type = "mil" AND u.Military = true));`
 
 // Рассылка сообщений о начале занятий
 func FirstMailing(bot *tg.Bot, now time.Time) {
@@ -290,7 +290,7 @@ func FirstMailing(bot *tg.Bot, now time.Time) {
 		log.Println(err)
 	}
 	for _, r := range res {
-		lid, _ := strconv.ParseInt(string(r["lessonId"]), 0, 64)
+		lid, _ := strconv.ParseInt(string(r["LessonId"]), 0, 64)
 		lesson := database.Lesson{LessonId: lid}
 		if _, err := bot.DB.Get(&lesson); err != nil {
 			log.Println(err)
@@ -303,13 +303,13 @@ func FirstMailing(bot *tg.Bot, now time.Time) {
 		} else {
 			str = "Доброе утро 🌅\n"
 		}
-		str += fmt.Sprintf("Через %s минут начнутся занятия\n\nПервая пара:\n", r["firsttime"])
+		str += fmt.Sprintf("Через %s минут начнутся занятия\n\nПервая пара:\n", r["FirstTime"])
 		pair, err := tg.PairToStr([]database.Lesson{lesson}, bot.DB, true)
 		if err != nil {
 			log.Println(err)
 		}
 		str += pair
-		user, _ := strconv.ParseInt(string(r["tgId"]), 0, 64)
+		user, _ := strconv.ParseInt(string(r["TgId"]), 0, 64)
 		mail := tgbotapi.NewMessage(user, str)
 		mail.ReplyMarkup = tg.GeneralKeyboard(true)
 		msg, err := bot.TG.Send(mail)
