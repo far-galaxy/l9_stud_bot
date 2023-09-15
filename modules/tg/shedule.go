@@ -323,15 +323,27 @@ func GroupPairs(lessons []database.Lesson) [][]database.Lesson {
 }
 
 var Icons = map[string]string{
-	"lect":   "📗 Лекция ",
-	"pract":  "📕 Практика ",
-	"lab":    "📘 Лаба ",
-	"other":  "📙 Прочее ",
+	"lect":   "📗",
+	"pract":  "📕",
+	"lab":    "📘",
+	"other":  "📙",
 	"mil":    "🫡",
 	"window": "🏝",
-	"exam":   "💀 Экзамен",
-	"cons":   "🗨 Консультация",
-	"kurs":   "🤯 Курсовая",
+	"exam":   "💀",
+	"cons":   "🗨",
+	"kurs":   "🤯",
+}
+
+var Comm = map[string]string{
+	"lect":   "Лекция",
+	"pract":  "Практика",
+	"lab":    "Лаба",
+	"other":  "Прочее",
+	"mil":    "",
+	"window": "",
+	"exam":   "Экзамен",
+	"cons":   "Консультация",
+	"kurs":   "Курсовая",
 }
 
 // Конвертация занятий с текст
@@ -353,8 +365,8 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine, isGroup bool) (string, e
 	}
 
 	for i, sublesson := range pair {
-		type_emoji := Icons[sublesson.Type]
-		str += fmt.Sprintf("%s%s\n", type_emoji, sublesson.Name)
+		type_emoji := Icons[sublesson.Type] + " " + Comm[sublesson.Type]
+		str += fmt.Sprintf("%s %s\n", type_emoji, sublesson.Name)
 		if sublesson.Place != "" {
 			str += fmt.Sprintf("🧭 %s\n", sublesson.Place)
 		}
