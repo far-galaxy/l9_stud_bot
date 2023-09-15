@@ -15,6 +15,7 @@ require (
 	github.com/deckarep/golang-set/v2 v2.3.0 // indirect
 	github.com/icza/gox v0.0.0-20230117093757-93f961aa2755 // indirect
 	github.com/pdfcpu/pdfcpu v0.4.0 // indirect
+	github.com/robfig/cron/v3 v3.0.0 // indirect
 	golang.org/x/net v0.7.0 // indirect
 )
 
