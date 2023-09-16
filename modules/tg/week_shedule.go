@@ -38,25 +38,13 @@ func (bot *Bot) GetWeekSummary(
 		return err
 	}
 
-	isCompleted := false
-	if week == -1 || week == 0 {
-		_, now_week := now.ISOWeek()
-		now_week -= bot.Week
-		week = now_week
-		// Проверяем, не закончились ли пары на этой неделе
-		lessons, err := bot.GetLessons(shedule, now, 1)
-		if err != nil {
-			return err
-		}
-		if len(lessons) > 0 {
-			_, lesson_week := lessons[0].Begin.ISOWeek()
-			if lesson_week-bot.Week > now_week {
-				week += 1
-				isCompleted = true
-				caption = "На этой неделе больше занятий нет\n" +
-					"На фото расписание следующей недели"
-			}
-		}
+	isCompleted, err := bot.CheckWeek(now, &week, shedule)
+	if err != nil {
+		return err
+	}
+	if isCompleted {
+		caption = "На этой неделе больше занятий нет\n" +
+			"На фото расписание следующей недели"
 	}
 
 	var image database.File
@@ -126,6 +114,30 @@ func (bot *Bot) GetWeekSummary(
 		_, err := bot.EditOrSend(user.TgId, caption, image.FileId, markup, editMsg...)
 		return err
 	}
+}
+
+// Проверка, не закончились ли пары на этой неделе
+//
+// При week == -1 неделя определяется автоматически
+func (bot *Bot) CheckWeek(now time.Time, week *int, shedule database.ShedulesInUser) (bool, error) {
+	if *week == -1 || *week == 0 {
+		_, now_week := now.ISOWeek()
+		now_week -= bot.Week
+		*week = now_week
+		lessons, err := bot.GetLessons(shedule, now, 1)
+		if err != nil {
+			return false, err
+		}
+		if len(lessons) > 0 {
+			_, lesson_week := lessons[0].Begin.ISOWeek()
+			if lesson_week-bot.Week > now_week {
+				*week += 1
+				return true, nil
+			}
+			return false, nil
+		}
+	}
+	return false, nil
 }
 
 func (bot *Bot) GetWeekLessons(shedule database.ShedulesInUser, week int) ([]database.Lesson, error) {
@@ -477,7 +489,11 @@ func (bot *Bot) CreateHTMLShedule(
 	return html
 }
 
+// Создание и отправка .ics файла с расписанием указанной недели для приложений календаря
+//
+// При week == -1 неделя определяется автоматически
 func (bot *Bot) CreateICS(
+	now time.Time,
 	user *database.TgUser,
 	shedule database.ShedulesInUser,
 	isPersonal bool,
@@ -493,6 +509,11 @@ func (bot *Bot) CreateICS(
 			"Скачивание .ics для преподавателей пока недоступно (:",
 			GeneralKeyboard(false),
 		)
+		return err
+	}
+
+	isCompleted, err := bot.CheckWeek(now, &week, shedule)
+	if err != nil {
 		return err
 	}
 	lessons, err := bot.GetWeekLessons(shedule, week)
@@ -556,8 +577,12 @@ func (bot *Bot) CreateICS(
 		}
 
 		doc := tgbotapi.NewDocument(user.TgId, icsFileBytes)
-		doc.Caption = "📖 Инструкция: https://bit.ly/ics_upload\n\n" +
-			"‼️ Удалите старые занятия данной недели из календаря, если они есть"
+		if isCompleted {
+			doc.Caption = "А это файл для приложения календаря:\n https://bit.ly/ics_upload"
+		} else {
+			doc.Caption = "📖 Инструкция: https://bit.ly/ics_upload\n\n" +
+				"‼️ Удалите старые занятия данной недели из календаря, если они есть"
+		}
 		_, err := bot.TG.Send(doc)
 		if err != nil {
 			return err

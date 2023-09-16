@@ -43,7 +43,7 @@ func CheckNext(db *xorm.Engine, now time.Time) ([]Notify, error) {
 	now = now.Truncate(time.Minute)
 	var completed []database.Lesson
 	if err := db.
-		Asc("Begin").
+		Desc("Begin").
 		Find(&completed, &database.Lesson{End: now}); err != nil {
 		return nil, err
 	}
@@ -232,6 +232,16 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 						-1,
 						true,
 						"На этой неделе больше ничего нет\n\nНа фото расписание на следующую неделю",
+					); err != nil {
+						log.Println(err)
+						continue
+					}
+					if err = bot.CreateICS(
+						now,
+						&user,
+						database.ShedulesInUser{},
+						true,
+						-1,
 					); err != nil {
 						log.Println(err)
 						continue

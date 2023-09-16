@@ -238,7 +238,7 @@ func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQue
 		case Week:
 			err = bot.GetWeekSummary(now[0], user, shedule, dt, true, "", *query.Message)
 		case ICS:
-			err = bot.CreateICS(user, shedule, true, dt, *query)
+			err = bot.CreateICS(now[0], user, shedule, true, dt, *query)
 		default:
 			_, err = bot.GetShortSummary(now[0], user, shedule, true, *query.Message)
 		}
@@ -249,7 +249,7 @@ func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQue
 		case Week:
 			err = bot.GetWeekSummary(now[0], user, shedule, dt, false, "", *query.Message)
 		case ICS:
-			err = bot.CreateICS(user, shedule, false, dt, *query)
+			err = bot.CreateICS(now[0], user, shedule, false, dt, *query)
 		default:
 			_, err = bot.GetShortSummary(now[0], user, shedule, false, *query.Message)
 		}
