@@ -487,72 +487,87 @@ func (bot *Bot) CreateICS(
 	if err := bot.ActShedule(isPersonal, user, &shedule); err != nil {
 		return err
 	}
-	if shedule.IsGroup {
-		lessons, err := bot.GetWeekLessons(shedule, week)
-		if err != nil {
-			return err
-		}
-		txt := "BEGIN:VCALENDAR\n" + "VERSION:2.0\n" + "CALSCALE:GREGORIAN\n" + "METHOD:REQUEST\n"
-		if len(lessons) != 0 {
-			for _, lesson := range lessons {
-				l := "BEGIN:VEVENT\n"
-				l += lesson.Begin.Format("DTSTART;TZID=Europe/Samara:20060102T150405Z\n")
-				l += lesson.End.Format("DTEND;TZID=Europe/Samara:20060102T150405Z\n")
-				l += fmt.Sprintf("SUMMARY:%s%s\n", Icons[lesson.Type], lesson.Name)
-				var desc string
-				if lesson.TeacherId != 0 && shedule.IsGroup {
-					var t database.Teacher
-					_, err := bot.DB.ID(lesson.TeacherId).Get(&t)
-					if err != nil {
-						return err
-					}
-					desc = fmt.Sprintf("%s %s\\n", t.FirstName, t.ShortName)
-				}
-				if lesson.SubGroup != 0 {
-					desc += fmt.Sprintf("Подгруппа: %d\\n", lesson.SubGroup)
-				}
-				if lesson.Comment != "" {
-					desc += fmt.Sprintf("%s\\n", lesson.Comment)
-				}
-				l += fmt.Sprintf("DESCRIPTION:%s\n", desc)
-				l += fmt.Sprintf("LOCATION:%s\n", lesson.Place)
-				l += "END:VEVENT\n"
-				txt += l
-			}
-			txt += "END:VCALENDAR"
-
-			var fileName string
-			if isPersonal {
-				fileName = fmt.Sprintf("personal_%d.ics", week)
-			} else {
-				fileName = fmt.Sprintf("group_%d_%d.ics", shedule.SheduleId, week)
-			}
-
-			icsFileBytes := tgbotapi.FileBytes{
-				Name:  fileName,
-				Bytes: []byte(txt),
-			}
-
-			doc := tgbotapi.NewDocument(user.TgId, icsFileBytes)
-			doc.Caption = "📖 Инструкция: https://bit.ly/ics_upload\n\n" +
-				"‼️ Удалите старые занятия данной недели из календаря, если они есть"
-			_, err := bot.TG.Send(doc)
-			if err != nil {
-				return err
-			}
-			if len(query) != 0 {
-				ans := tgbotapi.NewCallback(query[0].ID, "")
-				if _, err := bot.TG.Request(ans); err != nil {
-					return err
-				}
-			}
-		}
-	} else {
-		bot.SendMsg(
+	if !shedule.IsGroup {
+		_, err := bot.SendMsg(
 			user,
 			"Скачивание .ics для преподавателей пока недоступно (:",
 			GeneralKeyboard(false),
 		)
+		return err
+	}
+	lessons, err := bot.GetWeekLessons(shedule, week)
+	if err != nil {
+		return err
+	}
+	txt := "BEGIN:VCALENDAR\n" + "VERSION:2.0\n" + "CALSCALE:GREGORIAN\n" + "METHOD:REQUEST\n"
+	if len(lessons) != 0 {
+		for _, lesson := range lessons {
+			// TODO: создать тип типов занятий
+			if lesson.Type == "window" {
+				continue
+			}
+			if lesson.Type == "mil" && !shedule.Military {
+				continue
+			}
+			l := "BEGIN:VEVENT\n"
+			l += lesson.Begin.Format("DTSTART;TZID=Europe/Samara:20060102T150405Z\n")
+			l += lesson.End.Format("DTEND;TZID=Europe/Samara:20060102T150405Z\n")
+			if lesson.SubGroup == 0 {
+				l += fmt.Sprintf("SUMMARY:%s%s\n", Icons[lesson.Type], lesson.Name)
+			} else {
+				l += fmt.Sprintf(
+					"SUMMARY:%s%s (%d)\n",
+					Icons[lesson.Type],
+					lesson.Name,
+					lesson.SubGroup,
+				)
+			}
+			var desc string
+			if lesson.TeacherId != 0 {
+				var t database.Teacher
+				_, err := bot.DB.ID(lesson.TeacherId).Get(&t)
+				if err != nil {
+					return err
+				}
+				desc = fmt.Sprintf("%s %s\\n", t.FirstName, t.LastName)
+			}
+			if lesson.Comment != "" {
+				desc += fmt.Sprintf("%s\\n", lesson.Comment)
+			}
+			l += fmt.Sprintf("DESCRIPTION:%s\n", desc)
+			if lesson.Type != "mil" {
+				l += fmt.Sprintf("LOCATION:%s / %s\n", Comm[lesson.Type], lesson.Place)
+			}
+			l += "END:VEVENT\n"
+			txt += l
+		}
+		txt += "END:VCALENDAR"
+
+		var fileName string
+		if isPersonal {
+			fileName = fmt.Sprintf("personal_%d.ics", week)
+		} else {
+			fileName = fmt.Sprintf("group_%d_%d.ics", shedule.SheduleId, week)
+		}
+
+		icsFileBytes := tgbotapi.FileBytes{
+			Name:  fileName,
+			Bytes: []byte(txt),
+		}
+
+		doc := tgbotapi.NewDocument(user.TgId, icsFileBytes)
+		doc.Caption = "📖 Инструкция: https://bit.ly/ics_upload\n\n" +
+			"‼️ Удалите старые занятия данной недели из календаря, если они есть"
+		_, err := bot.TG.Send(doc)
+		if err != nil {
+			return err
+		}
+		if len(query) != 0 {
+			ans := tgbotapi.NewCallback(query[0].ID, "")
+			if _, err := bot.TG.Request(ans); err != nil {
+				return err
+			}
+		}
 	}
 	return nil
 }

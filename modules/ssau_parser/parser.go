@@ -131,6 +131,9 @@ func (sh *WeekShedule) Parse(p Page, uncover bool) error {
 		for y, line := range shedule {
 			for x, pair := range line {
 				if len(pair.Lessons) > 0 && pair.Lessons[0].Type == "mil" {
+					day_str := pair.Begin.Format("2006-01-02")
+					shedule[y][x].Begin, _ = time.Parse("2006-01-02 15:04 -07", day_str+" 08:30 +04")
+					shedule[y][x].End, _ = time.Parse("2006-01-02 15:04 -07", day_str+" 17:20 +04")
 					for i := y + 1; i < len(shedule); i++ {
 						if len(shedule[i][x].Lessons) > 0 && shedule[i][x].Lessons[0].Type == "mil" {
 							shedule[i][x].Lessons = []Lesson{}
