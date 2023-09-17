@@ -38,25 +38,13 @@ func (bot *Bot) GetWeekSummary(
 		return err
 	}
 
-	isCompleted := false
-	if week == -1 || week == 0 {
-		_, now_week := now.ISOWeek()
-		now_week -= bot.Week
-		week = now_week
-		// Проверяем, не закончились ли пары на этой неделе
-		lessons, err := bot.GetLessons(shedule, now, 1)
-		if err != nil {
-			return err
-		}
-		if len(lessons) > 0 {
-			_, lesson_week := lessons[0].Begin.ISOWeek()
-			if lesson_week-bot.Week > now_week {
-				week += 1
-				isCompleted = true
-				caption = "На этой неделе больше занятий нет\n" +
-					"На фото расписание следующей недели"
-			}
-		}
+	isCompleted, err := bot.CheckWeek(now, &week, shedule)
+	if err != nil {
+		return err
+	}
+	if isCompleted {
+		caption = "На этой неделе больше занятий нет\n" +
+			"На фото расписание следующей недели"
 	}
 
 	var image database.File
@@ -64,6 +52,7 @@ func (bot *Bot) GetWeekSummary(
 	if !isPersonal {
 		image = database.File{
 			TgId:       user.TgId,
+			FileType:   database.Photo,
 			IsPersonal: false,
 			IsGroup:    shedule.IsGroup,
 			SheduleId:  shedule.SheduleId,
@@ -73,6 +62,7 @@ func (bot *Bot) GetWeekSummary(
 	} else {
 		image = database.File{
 			TgId:       user.TgId,
+			FileType:   database.Photo,
 			IsPersonal: true,
 			Week:       week,
 		}
@@ -124,6 +114,30 @@ func (bot *Bot) GetWeekSummary(
 		_, err := bot.EditOrSend(user.TgId, caption, image.FileId, markup, editMsg...)
 		return err
 	}
+}
+
+// Проверка, не закончились ли пары на этой неделе
+//
+// При week == -1 неделя определяется автоматически
+func (bot *Bot) CheckWeek(now time.Time, week *int, shedule database.ShedulesInUser) (bool, error) {
+	if *week == -1 || *week == 0 {
+		_, now_week := now.ISOWeek()
+		now_week -= bot.Week
+		*week = now_week
+		lessons, err := bot.GetLessons(shedule, now, 1)
+		if err != nil {
+			return false, err
+		}
+		if len(lessons) > 0 {
+			_, lesson_week := lessons[0].Begin.ISOWeek()
+			if lesson_week-bot.Week > now_week {
+				*week += 1
+				return true, nil
+			}
+			return false, nil
+		}
+	}
+	return false, nil
 }
 
 func (bot *Bot) GetWeekLessons(shedule database.ShedulesInUser, week int) ([]database.Lesson, error) {
@@ -310,6 +324,7 @@ func (bot *Bot) CreateWeekImg(
 	}
 	file := database.File{
 		FileId:     resp.Photo[0].FileID,
+		FileType:   database.Photo,
 		TgId:       user.TgId,
 		IsPersonal: isPersonal,
 		IsGroup:    shedule.IsGroup,
@@ -360,7 +375,7 @@ const head = `<html lang="ru">
 </head>
 
 <style>
-.subj div,th.head,th.subj,th.time{border-radius:10px}.note,.subj p,th.head,th.time{font-family:monospace}.note div,.rasp div{background-color:#f0f8ff;padding:10px;text-align:center;border-radius:10px}.subj div #text,.subj p{display:none}html{font-size:1.5rem}body{background:#dc14bd}table{table-layout:fixed;width:100%;border-spacing:5px 5px}.note div{margin:10px 0}.head p,.subj p,hr{margin:0}.rasp div{transition:.3s}th.head{background-color:#0ff;padding:5px;font-size:1.05rem}th.subj,th.time{background-color:#f0f8ff;padding:10px}th.time{font-size:1.1rem}.subj h2,.subj p{font-size:.85rem}th.subj:not(.lab,.lect,.pract,.other){background-color:#a9a9a9}.subj div{padding:5px}.subj p{color:#f0f8ff}.subj h2,.subj h3,.subj h5{font-family:monospace;text-align:left;margin:5px}.subj h3{font-size:.65rem}.subj h5{font-size:.7rem;font-weight:400}.lect div{background-color:#7fff00}.pract div{background-color:#dc143c}.lab div{background-color:#8a2be2}.mil div,.other div{background-color:#ff8c00}.window div{background-color:#00f}.cons div{background-color:green}.exam div{background-color:purple}.kurs div{background-color:orange}
+.subj div,th.head,th.subj,th.time{border-radius:10px}.note,.subj p,th.head,th.time{font-family:monospace}.note div,.rasp div{background-color:#f0f8ff;padding:10px;text-align:center;border-radius:10px}.subj div #text,.subj p{display:none}html{font-size:1.5rem}body{background:black}table{table-layout:fixed;width:100%;border-spacing:5px 5px}.note div{margin:10px 0}.head p,.subj p,hr{margin:0}.rasp div{transition:.3s}th.head{background-color:#0ff;padding:5px;font-size:1.05rem}th.subj,th.time{background-color:#f0f8ff;padding:10px}th.time{font-size:1.1rem}.subj h2,.subj p{font-size:.85rem}th.subj:not(.lab,.lect,.pract,.other){background-color:#a9a9a9}.subj div{padding:5px}.subj p{color:#f0f8ff}.subj h2,.subj h3,.subj h5{font-family:monospace;text-align:left;margin:5px}.subj h3{font-size:.65rem}.subj h5{font-size:.7rem;font-weight:400}.lect div{background-color:#7fff00}.pract div{background-color:#dc143c}.lab div{background-color:#8a2be2}.mil div,.other div{background-color:#ff8c00}.window div{background-color:#00f}.cons div{background-color:green}.exam div{background-color:purple}.kurs div{background-color:orange}
 </style>
 
 <body>
@@ -472,4 +487,112 @@ func (bot *Bot) CreateHTMLShedule(
 	}
 	html += "</table></body></html>"
 	return html
+}
+
+// Создание и отправка .ics файла с расписанием указанной недели для приложений календаря
+//
+// При week == -1 неделя определяется автоматически
+func (bot *Bot) CreateICS(
+	now time.Time,
+	user *database.TgUser,
+	shedule database.ShedulesInUser,
+	isPersonal bool,
+	week int,
+	query ...tgbotapi.CallbackQuery,
+) error {
+	if err := bot.ActShedule(isPersonal, user, &shedule); err != nil {
+		return err
+	}
+	if !shedule.IsGroup {
+		_, err := bot.SendMsg(
+			user,
+			"Скачивание .ics для преподавателей пока недоступно (:",
+			GeneralKeyboard(false),
+		)
+		return err
+	}
+
+	isCompleted, err := bot.CheckWeek(now, &week, shedule)
+	if err != nil {
+		return err
+	}
+	lessons, err := bot.GetWeekLessons(shedule, week)
+	if err != nil {
+		return err
+	}
+	txt := "BEGIN:VCALENDAR\n" + "VERSION:2.0\n" + "CALSCALE:GREGORIAN\n" + "METHOD:REQUEST\n"
+	if len(lessons) != 0 {
+		for _, lesson := range lessons {
+			// TODO: создать тип типов занятий
+			if lesson.Type == "window" {
+				continue
+			}
+			if lesson.Type == "mil" && !shedule.Military {
+				continue
+			}
+			l := "BEGIN:VEVENT\n"
+			l += lesson.Begin.Format("DTSTART;TZID=Europe/Samara:20060102T150405Z\n")
+			l += lesson.End.Format("DTEND;TZID=Europe/Samara:20060102T150405Z\n")
+			if lesson.SubGroup == 0 {
+				l += fmt.Sprintf("SUMMARY:%s%s\n", Icons[lesson.Type], lesson.Name)
+			} else {
+				l += fmt.Sprintf(
+					"SUMMARY:%s%s (%d)\n",
+					Icons[lesson.Type],
+					lesson.Name,
+					lesson.SubGroup,
+				)
+			}
+			var desc string
+			if lesson.TeacherId != 0 {
+				var t database.Teacher
+				_, err := bot.DB.ID(lesson.TeacherId).Get(&t)
+				if err != nil {
+					return err
+				}
+				desc = fmt.Sprintf("%s %s\\n", t.FirstName, t.LastName)
+			}
+			if lesson.Comment != "" {
+				desc += fmt.Sprintf("%s\\n", lesson.Comment)
+			}
+			l += fmt.Sprintf("DESCRIPTION:%s\n", desc)
+			if lesson.Type != "mil" {
+				l += fmt.Sprintf("LOCATION:%s / %s\n", Comm[lesson.Type], lesson.Place)
+			}
+			l += "END:VEVENT\n"
+			txt += l
+		}
+		txt += "END:VCALENDAR"
+
+		var fileName string
+		if isPersonal {
+			fileName = fmt.Sprintf("personal_%d.ics", week)
+		} else {
+			fileName = fmt.Sprintf("group_%d_%d.ics", shedule.SheduleId, week)
+		}
+
+		icsFileBytes := tgbotapi.FileBytes{
+			Name:  fileName,
+			Bytes: []byte(txt),
+		}
+
+		doc := tgbotapi.NewDocument(user.TgId, icsFileBytes)
+		if isCompleted {
+			doc.Caption = "А это файл для приложения календаря:\n https://bit.ly/ics_upload"
+		} else {
+			doc.Caption = "📖 Инструкция: https://bit.ly/ics_upload\n\n" +
+				"‼️ Удалите старые занятия данной недели из календаря, если они есть"
+		}
+		_, err := bot.TG.Send(doc)
+		if err != nil {
+			return err
+		}
+		if len(query) != 0 {
+			ans := tgbotapi.NewCallback(query[0].ID, "")
+			if _, err := bot.TG.Request(ans); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }

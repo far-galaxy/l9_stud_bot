@@ -227,7 +227,7 @@ func (bot *Bot) GetLessons(shedule database.ShedulesInUser, now time.Time, limit
 }
 
 // Загрузка расписания из ssau.ru/rasp
-func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule, now time.Time) (
+func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule, now time.Time, fast bool) (
 	[]database.Lesson,
 	[]database.Lesson,
 	error,
@@ -236,8 +236,16 @@ func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule, now time.Time) (
 		SheduleId: shedule.SheduleId,
 		IsGroup:   shedule.IsGroup,
 	}
+	var start, end int
+	if fast {
+		_, start = now.ISOWeek()
+		end = start + 1
+	} else {
+		start = 1
+		end = 21
+	}
 	var add, del []database.Lesson
-	for week := 1; week < 21; week++ {
+	for week := start; week < end; week++ {
 		sh.Week = week
 		if err := sh.DownloadById(true); err != nil {
 			if strings.Contains(err.Error(), "404") {
@@ -323,15 +331,27 @@ func GroupPairs(lessons []database.Lesson) [][]database.Lesson {
 }
 
 var Icons = map[string]string{
-	"lect":   "📗 Лекция ",
-	"pract":  "📕 Практика ",
-	"lab":    "📘 Лаба ",
-	"other":  "📙 Прочее ",
+	"lect":   "📗",
+	"pract":  "📕",
+	"lab":    "📘",
+	"other":  "📙",
 	"mil":    "🫡",
 	"window": "🏝",
-	"exam":   "💀 Экзамен",
-	"cons":   "🗨 Консультация",
-	"kurs":   "🤯 Курсовая",
+	"exam":   "💀",
+	"cons":   "🗨",
+	"kurs":   "🤯",
+}
+
+var Comm = map[string]string{
+	"lect":   "Лекция",
+	"pract":  "Практика",
+	"lab":    "Лаба",
+	"other":  "Прочее",
+	"mil":    "",
+	"window": "",
+	"exam":   "Экзамен",
+	"cons":   "Консультация",
+	"kurs":   "Курсовая",
 }
 
 // Конвертация занятий с текст
@@ -353,8 +373,8 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine, isGroup bool) (string, e
 	}
 
 	for i, sublesson := range pair {
-		type_emoji := Icons[sublesson.Type]
-		str += fmt.Sprintf("%s%s\n", type_emoji, sublesson.Name)
+		type_emoji := Icons[sublesson.Type] + " " + Comm[sublesson.Type]
+		str += fmt.Sprintf("%s %s\n", type_emoji, sublesson.Name)
 		if sublesson.Place != "" {
 			str += fmt.Sprintf("🧭 %s\n", sublesson.Place)
 		}

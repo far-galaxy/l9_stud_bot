@@ -43,7 +43,7 @@ func CheckNext(db *xorm.Engine, now time.Time) ([]Notify, error) {
 	now = now.Truncate(time.Minute)
 	var completed []database.Lesson
 	if err := db.
-		Asc("Begin").
+		Desc("Begin").
 		Find(&completed, &database.Lesson{End: now}); err != nil {
 		return nil, err
 	}
@@ -229,9 +229,19 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 						note.Lesson.Begin,
 						&user,
 						database.ShedulesInUser{},
-						0,
+						-1,
 						true,
 						"На этой неделе больше ничего нет\n\nНа фото расписание на следующую неделю",
+					); err != nil {
+						log.Println(err)
+						continue
+					}
+					if err = bot.CreateICS(
+						now,
+						&user,
+						database.ShedulesInUser{},
+						true,
+						-1,
 					); err != nil {
 						log.Println(err)
 						continue
@@ -272,23 +282,25 @@ func ClearTemp(bot *tg.Bot, now time.Time) {
 	}
 }
 
-var firstMailQuery = `SELECT t.tgId, l.lessonId, u.firsttime
+var firstMailQuery = `SELECT t.TgId, a.LessonId, u.FirstTime
 FROM ShedulesInUser u
-JOIN (SELECT lessonid, groupid, type, min(begin) as begin FROM Lesson WHERE date(begin) = date('%s') GROUP BY groupid) l 
-ON '%s' = DATE_SUB(l.Begin, INTERVAL u.firsttime MINUTE) AND u.sheduleid = l.groupid
+JOIN (SELECT GroupId, MIN(Begin) as Begin FROM Lesson WHERE DATE(Begin) = DATE('%s') GROUP BY GroupId) l 
+ON '%s' = DATE_SUB(l.Begin, INTERVAL u.FirstTime MINUTE) AND u.SheduleId = l.GroupId
+JOIN (SELECT LessonId, Type, GroupId, Begin FROM Lesson WHERE DATE(Begin) = date('%s')) a
+ON a.GroupId = l.GroupId AND a.Begin=l.Begin
 JOIN TgUser t ON u.L9ID = t.L9ID
-WHERE u.first = true AND (l.type != "mil" OR (l.type = "mil" AND u.military = true));`
+WHERE u.First = true AND (a.Type != "mil" OR (a.Type = "mil" AND u.Military = true));`
 
 // Рассылка сообщений о начале занятий
 func FirstMailing(bot *tg.Bot, now time.Time) {
 	now = now.Truncate(time.Minute)
 	nowStr := now.Format("2006-01-02 15:04:05")
-	res, err := bot.DB.Query(fmt.Sprintf(firstMailQuery, nowStr, nowStr))
+	res, err := bot.DB.Query(fmt.Sprintf(firstMailQuery, nowStr, nowStr, nowStr))
 	if err != nil {
 		log.Println(err)
 	}
 	for _, r := range res {
-		lid, _ := strconv.ParseInt(string(r["lessonId"]), 0, 64)
+		lid, _ := strconv.ParseInt(string(r["LessonId"]), 0, 64)
 		lesson := database.Lesson{LessonId: lid}
 		if _, err := bot.DB.Get(&lesson); err != nil {
 			log.Println(err)
@@ -301,13 +313,13 @@ func FirstMailing(bot *tg.Bot, now time.Time) {
 		} else {
 			str = "Доброе утро 🌅\n"
 		}
-		str += fmt.Sprintf("Через %s минут начнутся занятия\n\nПервая пара:\n", r["firsttime"])
+		str += fmt.Sprintf("Через %s минут начнутся занятия\n\nПервая пара:\n", r["FirstTime"])
 		pair, err := tg.PairToStr([]database.Lesson{lesson}, bot.DB, true)
 		if err != nil {
 			log.Println(err)
 		}
 		str += pair
-		user, _ := strconv.ParseInt(string(r["tgId"]), 0, 64)
+		user, _ := strconv.ParseInt(string(r["TgId"]), 0, 64)
 		mail := tgbotapi.NewMessage(user, str)
 		mail.ReplyMarkup = tg.GeneralKeyboard(true)
 		msg, err := bot.TG.Send(mail)

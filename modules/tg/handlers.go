@@ -147,7 +147,7 @@ func (bot *Bot) ReturnSummary(
 	if not_exists {
 		msg := tgbotapi.NewMessage(user.TgId, "Загружаю расписание...\nЭто займёт некоторое время")
 		Smsg, _ := bot.TG.Send(msg)
-		_, _, err := bot.LoadShedule(shedule, now)
+		_, _, err := bot.LoadShedule(shedule, now, false)
 		if err != nil {
 			return nilMsg, err
 		}
@@ -237,6 +237,8 @@ func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQue
 			_, err = bot.GetDaySummary(now[0], user, shedule, dt, true, *query.Message)
 		case Week:
 			err = bot.GetWeekSummary(now[0], user, shedule, dt, true, "", *query.Message)
+		case ICS:
+			err = bot.CreateICS(now[0], user, shedule, true, dt, *query)
 		default:
 			_, err = bot.GetShortSummary(now[0], user, shedule, true, *query.Message)
 		}
@@ -246,6 +248,8 @@ func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQue
 			_, err = bot.GetDaySummary(now[0], user, shedule, dt, false, *query.Message)
 		case Week:
 			err = bot.GetWeekSummary(now[0], user, shedule, dt, false, "", *query.Message)
+		case ICS:
+			err = bot.CreateICS(now[0], user, shedule, false, dt, *query)
 		default:
 			_, err = bot.GetShortSummary(now[0], user, shedule, false, *query.Message)
 		}

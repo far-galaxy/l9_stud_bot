@@ -24,7 +24,7 @@ func CheckShedules(bot *tg.Bot, now time.Time) {
 
 func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 	du := now.Sub(group.LastCheck).Hours()
-	if du < 24 {
+	if du < 1 {
 		return
 	}
 	log.Printf("check group %s, lastCheck %v", group.GroupName, group.LastCheck)
@@ -36,19 +36,24 @@ func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 		IsGroup:   true,
 		SheduleId: group.GroupId,
 	}
-	add, del, err := bot.LoadShedule(sh, now)
+	add, del, err := bot.LoadShedule(sh, now, true)
 	if err != nil {
 		log.Println(err)
 	}
 	// Очищаем от лишних пар
 	var n_a, n_d []database.Lesson
+	_, now_week := now.ISOWeek()
 	for _, a := range add {
-		if a.GroupId == group.GroupId {
+		_, a_week := a.Begin.ISOWeek()
+		if a.GroupId == group.GroupId &&
+			(a_week == now_week || a_week == now_week+1) {
 			n_a = append(n_a, a)
 		}
 	}
 	for _, d := range del {
-		if d.GroupId == group.GroupId {
+		_, d_week := d.Begin.ISOWeek()
+		if d.GroupId == group.GroupId &&
+			(d_week == now_week || d_week == now_week+1) {
 			n_d = append(n_d, d)
 		}
 	}
