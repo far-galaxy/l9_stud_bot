@@ -26,6 +26,7 @@ func (bot *Bot) GetOptions(user *database.TgUser) (tgbotapi.Message, error) {
 			GeneralKeyboard(false),
 		)
 	}
+
 	return bot.SendMsg(user, optStr, OptMarkup(options))
 }
 
@@ -45,6 +46,7 @@ func OptMarkup(options database.ShedulesInUser) tgbotapi.InlineKeyboardMarkup {
 			tgbotapi.NewInlineKeyboardButtonData(fmt.Sprintf("⏰ Настроить время (%d)", options.FirstTime), "opt_set"),
 		}
 	}
+
 	return tgbotapi.NewInlineKeyboardMarkup(markup...)
 }
 
@@ -69,7 +71,9 @@ func (bot *Bot) HandleOptions(user *database.TgUser, query *tgbotapi.CallbackQue
 			options.FirstTime,
 		)
 		_, err := bot.EditOrSend(user.TgId, txt, "", CancelKey(), *query.Message)
+
 		return err
+
 	case "opt_del":
 		user.PosTag = database.Delete
 		if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
@@ -78,6 +82,7 @@ func (bot *Bot) HandleOptions(user *database.TgUser, query *tgbotapi.CallbackQue
 		txt := "⁉️Ты действительно хочешь отключиться от этой группы?\n" +
 			"Напиши <b>Да</b> для подтверждения, для отмены нажми кнопку или напиши любой другой текст"
 		_, err := bot.EditOrSend(user.TgId, txt, "", CancelKey(), *query.Message)
+
 		return err
 
 	case "opt_lesson":
@@ -93,5 +98,6 @@ func (bot *Bot) HandleOptions(user *database.TgUser, query *tgbotapi.CallbackQue
 		return err
 	}
 	_, err := bot.EditOrSend(user.TgId, optStr, "", OptMarkup(options), *query.Message)
+
 	return err
 }

@@ -1,7 +1,6 @@
 package tg
 
 import (
-	"context"
 	"fmt"
 	"math"
 	"os"
@@ -98,22 +97,22 @@ func (bot *Bot) GetWeekSummary(
 				return err
 			}
 		}
-		return bot.CreateWeekImg(now, user, shedule, week, isPersonal, caption, editMsg...)
-	} else {
-		// Если всё есть, скидываем, что есть
-		markup := tgbotapi.InlineKeyboardMarkup{}
-		if caption == "" || (caption != "" && isCompleted) {
-			markup = SummaryKeyboard(
-				Week,
-				shedule,
-				isPersonal,
-				week,
-			)
-		}
 
-		_, err := bot.EditOrSend(user.TgId, caption, image.FileId, markup, editMsg...)
-		return err
+		return bot.CreateWeekImg(now, user, shedule, week, isPersonal, caption, editMsg...)
 	}
+	// Если всё есть, скидываем, что есть
+	markup := tgbotapi.InlineKeyboardMarkup{}
+	if caption == "" || (caption != "" && isCompleted) {
+		markup = SummaryKeyboard(
+			Week,
+			shedule,
+			isPersonal,
+			week,
+		)
+	}
+	_, err = bot.EditOrSend(user.TgId, caption, image.FileId, markup, editMsg...)
+
+	return err
 }
 
 // Проверка, не закончились ли пары на этой неделе
@@ -121,22 +120,25 @@ func (bot *Bot) GetWeekSummary(
 // При week == -1 неделя определяется автоматически
 func (bot *Bot) CheckWeek(now time.Time, week *int, shedule database.ShedulesInUser) (bool, error) {
 	if *week == -1 || *week == 0 {
-		_, now_week := now.ISOWeek()
-		now_week -= bot.Week
-		*week = now_week
+		_, nowWeek := now.ISOWeek()
+		nowWeek -= bot.Week
+		*week = nowWeek
 		lessons, err := bot.GetLessons(shedule, now, 1)
 		if err != nil {
 			return false, err
 		}
 		if len(lessons) > 0 {
-			_, lesson_week := lessons[0].Begin.ISOWeek()
-			if lesson_week-bot.Week > now_week {
-				*week += 1
+			_, lessonWeek := lessons[0].Begin.ISOWeek()
+			if lessonWeek-bot.Week > nowWeek {
+				*week++
+
 				return true, nil
 			}
+
 			return false, nil
 		}
 	}
+
 	return false, nil
 }
 
@@ -175,7 +177,7 @@ func (bot *Bot) CreateWeekImg(
 		}
 		if len(next) > 0 {
 			lessons = next
-			week += 1
+			week++
 		} else {
 			return fmt.Errorf("no lessons: %d, week %d", shedule.SheduleId, week)
 		}
@@ -285,14 +287,16 @@ func (bot *Bot) CreateWeekImg(
 	output := fmt.Sprintf("./%s/week_%d.jpg", path, week)
 	f, _ := os.Create(input)
 	defer f.Close()
-	f.WriteString(html)
+	if _, err := f.WriteString(html); err != nil {
+		return err
+	}
 
-	cmd := exec.CommandContext(context.Background(), bot.WkPath, []string{
+	cmd := exec.Command(bot.WkPath, []string{
 		"--width",
 		"1600",
 		input,
 		output,
-	}...)
+	}...) // #nosec G204
 	cmd.Stderr = bot.Debug.Writer()
 	cmd.Stdout = bot.Debug.Writer()
 	err = cmd.Run()
@@ -351,21 +355,24 @@ func (bot *Bot) CreateWeekImg(
 			return err
 		}
 	}
+
 	return err
 }
 
-func GeneratePath(sh database.ShedulesInUser, isPersonal bool, userId int64) string {
+func GeneratePath(sh database.ShedulesInUser, isPersonal bool, userID int64) string {
 	var path string
 	if isPersonal {
-		path = fmt.Sprintf("personal/%d", userId)
+		path = fmt.Sprintf("personal/%d", userID)
 	} else if sh.IsGroup {
 		path = fmt.Sprintf("group/%d", sh.SheduleId)
 	} else {
 		path = fmt.Sprintf("staff/%d", sh.SheduleId)
 	}
+
 	return "shedules/" + path
 }
 
+// TODO: вынести в файл
 const head = `<html lang="ru">
 <head>
 <meta charset="UTF-8">
@@ -426,7 +433,9 @@ func (bot *Bot) CreateHTMLShedule(
 				html += fmt.Sprintf(lessonHead, l[0].Type, l[0].Name)
 				if isGroup && l[0].TeacherId != 0 {
 					var t database.Teacher
-					bot.DB.ID(l[0].TeacherId).Get(&t)
+					if _, err := bot.DB.ID(l[0].TeacherId).Get(&t); err != nil {
+						bot.Debug.Println(err)
+					}
 					html += fmt.Sprintf("<h5 id=\"prep\">%s %s</h5>\n", t.FirstName, t.ShortName)
 				}
 				if l[0].Place != "" {
@@ -434,7 +443,9 @@ func (bot *Bot) CreateHTMLShedule(
 				}
 				if !isGroup {
 					var t database.Group
-					bot.DB.ID(l[0].GroupId).Get(&t)
+					if _, err := bot.DB.ID(l[0].GroupId).Get(&t); err != nil {
+						bot.Debug.Println(err)
+					}
 					html += fmt.Sprintf("<h3>%s</h3>\n", t.GroupName)
 				}
 				if l[0].SubGroup != 0 {
@@ -451,7 +462,9 @@ func (bot *Bot) CreateHTMLShedule(
 					}
 					if l[1].TeacherId != 0 {
 						var t database.Teacher
-						bot.DB.ID(l[1].TeacherId).Get(&t)
+						if _, err := bot.DB.ID(l[1].TeacherId).Get(&t); err != nil {
+							bot.Debug.Println(err)
+						}
 						html += fmt.Sprintf("<h5 id=\"prep\">%s %s</h5>\n", t.FirstName, t.ShortName)
 					}
 					if l[1].Place != "" {
@@ -467,7 +480,9 @@ func (bot *Bot) CreateHTMLShedule(
 				if len(l) > 1 && !isGroup {
 					for _, gr := range l[1:] {
 						var t database.Group
-						bot.DB.ID(gr.GroupId).Get(&t)
+						if _, err := bot.DB.ID(gr.GroupId).Get(&t); err != nil {
+							bot.Debug.Println(err)
+						}
 						html += fmt.Sprintf("<h3>%s</h3>\n", t.GroupName)
 						if gr.SubGroup != 0 {
 							html += fmt.Sprintf("<h3>Подгруппа: %d</h3>\n<hr>\n", l[1].SubGroup)
@@ -486,6 +501,7 @@ func (bot *Bot) CreateHTMLShedule(
 		}
 	}
 	html += "</table></body></html>"
+
 	return html
 }
 
@@ -509,6 +525,7 @@ func (bot *Bot) CreateICS(
 			"Скачивание .ics для преподавателей пока недоступно (:",
 			GeneralKeyboard(false),
 		)
+
 		return err
 	}
 
@@ -594,5 +611,6 @@ func (bot *Bot) CreateICS(
 			}
 		}
 	}
+
 	return nil
 }

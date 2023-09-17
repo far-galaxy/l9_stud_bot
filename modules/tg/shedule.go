@@ -13,7 +13,14 @@ import (
 	"xorm.io/xorm"
 )
 
-func (bot *Bot) GetPersonal(now time.Time, user *database.TgUser, editMsg ...tgbotapi.Message) (tgbotapi.Message, error) {
+func (bot *Bot) GetPersonal(
+	now time.Time,
+	user *database.TgUser,
+	editMsg ...tgbotapi.Message,
+) (
+	tgbotapi.Message,
+	error,
+) {
 	shedule := database.ShedulesInUser{L9Id: user.L9Id}
 	exists, err := bot.DB.Get(&shedule)
 	if err != nil {
@@ -33,10 +40,10 @@ func (bot *Bot) GetPersonal(now time.Time, user *database.TgUser, editMsg ...tgb
 				"(в формате 2305 или 2305-240502D)",
 			tgbotapi.ReplyKeyboardRemove{RemoveKeyboard: true},
 		)
-	} else {
-		return nilMsg, bot.GetWeekSummary(now, user, shedule, -1, true, "")
-		//return bot.GetSummary(now, user, shedules, true, editMsg...)
 	}
+
+	return nilMsg, bot.GetWeekSummary(now, user, shedule, -1, true, "", editMsg...)
+
 }
 
 // Получить краткую сводку
@@ -125,16 +132,17 @@ func (bot *Bot) GetShortSummary(
 			isPersonal,
 			0,
 		)
+
 		return bot.EditOrSend(user.TgId, str, "", markup, editMsg...)
 
-	} else {
-		return bot.EditOrSend(
-			user.TgId,
-			"Ой! Занятий не обнаружено ):",
-			"",
-			tgbotapi.InlineKeyboardMarkup{},
-			editMsg...)
 	}
+
+	return bot.EditOrSend(
+		user.TgId,
+		"Ой! Занятий не обнаружено ):",
+		"",
+		tgbotapi.InlineKeyboardMarkup{},
+		editMsg...)
 }
 
 // Актуализация запроса на расписание для персональных расписаний
@@ -144,6 +152,7 @@ func (bot *Bot) ActShedule(isPersonal bool, user *database.TgUser, shedule *data
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -181,6 +190,7 @@ func (bot *Bot) GetDaySummary(
 
 		if firstPair.Day() != day.Day() {
 			str = fmt.Sprintf("В %s, занятий нет", dayStr)
+
 			return bot.EditOrSend(user.TgId, str, "", markup, editMsg...)
 		}
 		str = fmt.Sprintf("Расписание на %s\n\n", dayStr)
@@ -192,11 +202,11 @@ func (bot *Bot) GetDaySummary(
 			return nilMsg, err
 		}
 		str += day
+
 		return bot.EditOrSend(user.TgId, str, "", markup, editMsg...)
-	} else {
-		return bot.SendMsg(user, "Ой! Пар не обнаружено ):", GeneralKeyboard(true))
 	}
 
+	return bot.SendMsg(user, "Ой! Пар не обнаружено ):", GeneralKeyboard(true))
 }
 
 // Строка даты формата "среду, 1 января"
@@ -207,6 +217,7 @@ func DayStr(day time.Time) string {
 		day.Day(),
 		Month[day.Month()-1],
 	)
+
 	return dayStr
 }
 
@@ -251,6 +262,7 @@ func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule, now time.Time, fast
 			if strings.Contains(err.Error(), "404") {
 				break
 			}
+
 			return nil, nil, err
 		}
 		a, d, err := ssau_parser.UpdateSchedule(bot.DB, sh)
@@ -282,6 +294,7 @@ func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule, now time.Time, fast
 			}
 		}
 	}
+
 	return add, del, nil
 }
 
@@ -296,18 +309,19 @@ func CreateCondition(shedule database.ShedulesInUser) string {
 		groups = append(groups, strconv.FormatInt(shedule.SheduleId, 10))
 	}
 
-	var condition, teachers_str, groups_str string
+	var condition, teachersStr, groupsStr string
 	if len(groups) > 0 {
-		groups_str = strings.Join(groups, ",")
-		condition = "groupId in (" + groups_str + ") "
+		groupsStr = strings.Join(groups, ",")
+		condition = "groupId in (" + groupsStr + ") "
 	}
 	if len(teachers) > 0 {
 		if len(condition) > 0 {
 			condition += " or "
 		}
-		teachers_str += strings.Join(teachers, ",")
-		condition += "teacherId in (" + teachers_str + ") "
+		teachersStr += strings.Join(teachers, ",")
+		condition += "teacherId in (" + teachersStr + ") "
 	}
+
 	return condition
 }
 
@@ -316,17 +330,18 @@ func GroupPairs(lessons []database.Lesson) [][]database.Lesson {
 	var shedule [][]database.Lesson
 	var pair []database.Lesson
 
-	l_idx := 0
+	lIdx := 0
 
-	for l_idx < len(lessons) {
-		day := lessons[l_idx].Begin
-		for l_idx < len(lessons) && lessons[l_idx].Begin == day {
-			pair = append(pair, lessons[l_idx])
-			l_idx++
+	for lIdx < len(lessons) {
+		day := lessons[lIdx].Begin
+		for lIdx < len(lessons) && lessons[lIdx].Begin == day {
+			pair = append(pair, lessons[lIdx])
+			lIdx++
 		}
 		shedule = append(shedule, pair)
 		pair = []database.Lesson{}
 	}
+
 	return shedule
 }
 
@@ -373,8 +388,8 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine, isGroup bool) (string, e
 	}
 
 	for i, sublesson := range pair {
-		type_emoji := Icons[sublesson.Type] + " " + Comm[sublesson.Type]
-		str += fmt.Sprintf("%s %s\n", type_emoji, sublesson.Name)
+		typeEmoji := Icons[sublesson.Type] + " " + Comm[sublesson.Type]
+		str += fmt.Sprintf("%s %s\n", typeEmoji, sublesson.Name)
 		if sublesson.Place != "" {
 			str += fmt.Sprintf("🧭 %s\n", sublesson.Place)
 		}
@@ -418,6 +433,7 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine, isGroup bool) (string, e
 	}
 
 	str += "------------------------------------------\n"
+
 	return str, nil
 }
 
@@ -436,5 +452,6 @@ func (bot *Bot) StrDayShedule(lessons [][]database.Lesson, isGroup bool) (string
 			break
 		}
 	}
+
 	return str, nil
 }

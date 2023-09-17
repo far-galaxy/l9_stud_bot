@@ -20,6 +20,7 @@ func GeneralKeyboard(options bool) tgbotapi.ReplyKeyboardMarkup {
 	}
 	key := tgbotapi.NewReplyKeyboard(keyboard...)
 	key.ResizeKeyboard = true
+
 	return key
 }
 
@@ -28,6 +29,7 @@ func CancelKey() tgbotapi.InlineKeyboardMarkup {
 	markup := [][]tgbotapi.InlineKeyboardButton{
 		{tgbotapi.NewInlineKeyboardButtonData("Отмена", "cancel")},
 	}
+
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: markup}
 }
 
@@ -40,6 +42,7 @@ func GenerateGroupsArray(groups []database.Group, isAdd bool) []tgbotapi.InlineK
 			fmt.Sprintf("%t_group_%d", isAdd, gr.GroupId),
 		))
 	}
+
 	return grKeys
 }
 
@@ -50,6 +53,7 @@ func GenerateName(t database.Teacher) string {
 		initials += fmt.Sprintf("%s.", n[:2])
 	}
 	name := fmt.Sprintf("%s %s", t.LastName, initials)
+
 	return name
 }
 
@@ -63,6 +67,7 @@ func GenerateTeachersArray(teachers []database.Teacher, isAdd bool) []tgbotapi.I
 			fmt.Sprintf("%t_staff_%d", isAdd, t.TeacherId),
 		))
 	}
+
 	return teacherKeys
 }
 
@@ -79,8 +84,9 @@ func GenerateKeyboard(array []tgbotapi.InlineKeyboardButton) tgbotapi.InlineKeyb
 		}
 	}
 	markup = append(markup, keys)
-	no_one := tgbotapi.NewInlineKeyboardButtonData("Отмена", "cancel")
-	markup = append(markup, []tgbotapi.InlineKeyboardButton{no_one})
+	noOne := tgbotapi.NewInlineKeyboardButtonData("Отмена", "cancel")
+	markup = append(markup, []tgbotapi.InlineKeyboardButton{noOne})
+
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: markup}
 }
 
@@ -101,13 +107,13 @@ func SummaryKeyboard(
 	isPersonal bool,
 	dt int,
 ) tgbotapi.InlineKeyboardMarkup {
-	var sheduleId int64
+	var sheduleID int64
 	if isPersonal {
-		sheduleId = 0
+		sheduleID = 0
 	} else {
-		sheduleId = shedule.SheduleId
+		sheduleID = shedule.SheduleId
 	}
-	tail := GenerateButtonTail(sheduleId, 0, shedule.IsGroup)
+	tail := GenerateButtonTail(sheduleID, 0, shedule.IsGroup)
 
 	near := []tgbotapi.InlineKeyboardButton{
 		tgbotapi.NewInlineKeyboardButtonData(
@@ -128,7 +134,7 @@ func SummaryKeyboard(
 		),
 	}
 
-	update := GenerateButtonTail(sheduleId, dt, shedule.IsGroup)
+	update := GenerateButtonTail(sheduleID, dt, shedule.IsGroup)
 	ics := []tgbotapi.InlineKeyboardButton{
 		tgbotapi.NewInlineKeyboardButtonData(
 			"🗓 Скачать .ics",
@@ -138,12 +144,12 @@ func SummaryKeyboard(
 
 	var arrows []tgbotapi.InlineKeyboardButton
 	if clickedButton == Day || clickedButton == Week {
-		prev_arrow := GenerateButtonTail(sheduleId, dt-1, shedule.IsGroup)
-		next_arrow := GenerateButtonTail(sheduleId, dt+1, shedule.IsGroup)
+		prevArrow := GenerateButtonTail(sheduleID, dt-1, shedule.IsGroup)
+		nextArrow := GenerateButtonTail(sheduleID, dt+1, shedule.IsGroup)
 		arrows = []tgbotapi.InlineKeyboardButton{
-			tgbotapi.NewInlineKeyboardButtonData("⏮", SummaryPrefix+string(clickedButton)+prev_arrow),
+			tgbotapi.NewInlineKeyboardButtonData("⏮", SummaryPrefix+string(clickedButton)+prevArrow),
 			tgbotapi.NewInlineKeyboardButtonData("🔄", SummaryPrefix+string(clickedButton)+update),
-			tgbotapi.NewInlineKeyboardButtonData("⏭", SummaryPrefix+string(clickedButton)+next_arrow),
+			tgbotapi.NewInlineKeyboardButtonData("⏭", SummaryPrefix+string(clickedButton)+nextArrow),
 		}
 	} else {
 		arrows = []tgbotapi.InlineKeyboardButton{
@@ -166,18 +172,20 @@ func SummaryKeyboard(
 			arrows, day, week,
 		}
 	}
+
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: markup}
 }
 
-func GenerateButtonTail(sheduleId int64, dt int, isGroup bool) string {
+func GenerateButtonTail(sheduleID int64, dt int, isGroup bool) string {
 	var tail string
-	if sheduleId == 0 {
+	if sheduleID == 0 {
 		tail = fmt.Sprintf("_personal_%d_0", dt)
 	} else if !isGroup {
-		tail = fmt.Sprintf("_teacher_%d_%d", dt, sheduleId)
+		tail = fmt.Sprintf("_teacher_%d_%d", dt, sheduleID)
 	} else {
-		tail = fmt.Sprintf("_group_%d_%d", dt, sheduleId)
+		tail = fmt.Sprintf("_group_%d_%d", dt, sheduleID)
 	}
+
 	return tail
 }
 
@@ -186,7 +194,7 @@ func GenerateButtonTail(sheduleId int64, dt int, isGroup bool) string {
 func (bot *Bot) EditOrSend(
 	id int64,
 	str string,
-	imageId string,
+	imageID string,
 	markup tgbotapi.InlineKeyboardMarkup,
 	editMsg ...tgbotapi.Message,
 ) (
@@ -196,7 +204,7 @@ func (bot *Bot) EditOrSend(
 
 	if len(editMsg) > 0 {
 		// Редактируем
-		if imageId != "" {
+		if imageID != "" {
 			// Обновляем фото, если есть
 			// TODO: реализовать нормальное обновление фото, когда нужный метод появится в tgbotapi
 			del := tgbotapi.NewDeleteMessage(
@@ -208,13 +216,14 @@ func (bot *Bot) EditOrSend(
 			}
 			newMsg := tgbotapi.NewPhoto(
 				editMsg[0].Chat.ID,
-				tgbotapi.FileID(imageId),
+				tgbotapi.FileID(imageID),
 			)
 			newMsg.Caption = str
 			newMsg.ParseMode = tgbotapi.ModeHTML
 			if len(markup.InlineKeyboard) != 0 {
 				newMsg.ReplyMarkup = &markup
 			}
+
 			return bot.TG.Send(newMsg)
 		} else if len(editMsg[0].Photo) == 0 {
 			// Фото нет и не было, только текст
@@ -230,6 +239,7 @@ func (bot *Bot) EditOrSend(
 			if _, err := bot.TG.Request(msg); err != nil {
 				return nilMsg, err
 			}
+
 			return nilMsg, nil
 		} else {
 			// Фото было, но теперь его не будет
@@ -246,33 +256,36 @@ func (bot *Bot) EditOrSend(
 				msg.ReplyMarkup = &markup
 			}
 			msg.ParseMode = tgbotapi.ModeHTML
+
 			return bot.TG.Send(msg)
 		}
 	} else {
 		// Обновлений нет, новое сообщение
-		if imageId != "" {
+		if imageID != "" {
 			// С фото
 			newMsg := tgbotapi.NewPhoto(
 				id,
-				tgbotapi.FileID(imageId),
+				tgbotapi.FileID(imageID),
 			)
 			newMsg.Caption = str
 			newMsg.ParseMode = tgbotapi.ModeHTML
 			if len(markup.InlineKeyboard) != 0 {
 				newMsg.ReplyMarkup = &markup
 			}
+
 			return bot.TG.Send(newMsg)
-		} else {
-			// Только текст
-			msg := tgbotapi.NewMessage(id, str)
-			if len(markup.InlineKeyboard) != 0 {
-				msg.ReplyMarkup = &markup
-			} else {
-				msg.ReplyMarkup = GeneralKeyboard(false)
-			}
-			msg.ParseMode = tgbotapi.ModeHTML
-			return bot.TG.Send(msg)
 		}
+		// Только текст
+		msg := tgbotapi.NewMessage(id, str)
+		if len(markup.InlineKeyboard) != 0 {
+			msg.ReplyMarkup = &markup
+		} else {
+			msg.ReplyMarkup = GeneralKeyboard(false)
+		}
+		msg.ParseMode = tgbotapi.ModeHTML
+
+		return bot.TG.Send(msg)
+
 	}
 }
 
@@ -280,12 +293,12 @@ func (bot *Bot) EditOrSend(
 func ParseQuery(data []string) (SummaryType, database.ShedulesInUser, int, error) {
 	var shedule database.ShedulesInUser
 	isGroup := data[2] == "group"
-	sheduleId, err := strconv.ParseInt(data[4], 0, 64)
+	sheduleID, err := strconv.ParseInt(data[4], 0, 64)
 	if err != nil {
 		return Near, shedule, 0, err
 	}
 	shedule.IsGroup = isGroup
-	shedule.SheduleId = sheduleId
+	shedule.SheduleId = sheduleID
 	dt, err := strconv.ParseInt(data[3], 0, 0)
 	if err != nil {
 		return Near, shedule, 0, err
@@ -301,6 +314,7 @@ func ParseQuery(data []string) (SummaryType, database.ShedulesInUser, int, error
 	default:
 		sumType = Near
 	}
+
 	return sumType, shedule, int(dt), nil
 }
 
@@ -313,6 +327,7 @@ func KeywordContains(str string, keywords []string) bool {
 			return true
 		}
 	}
+
 	return false
 }
 

@@ -29,7 +29,7 @@ type Bot struct {
 }
 
 // TODO: завернуть в структуру
-var env_keys = []string{
+var envKeys = []string{
 	"TELEGRAM_APITOKEN",
 	"TELEGRAM_TEST_USER",
 	"WK_PATH",
@@ -46,11 +46,12 @@ func CheckEnv() error {
 	if err := godotenv.Load(); err != nil {
 		log.Print("No .env file found")
 	}
-	for _, key := range env_keys {
+	for _, key := range envKeys {
 		if _, exists := os.LookupEnv(key); !exists {
 			return fmt.Errorf("lost env key: %s", key)
 		}
 	}
+
 	return nil
 }
 
@@ -96,6 +97,7 @@ func (bot *Bot) SendMsg(user *database.TgUser, text string, markup interface{}) 
 	msg := tgbotapi.NewMessage(user.TgId, text)
 	msg.ParseMode = tgbotapi.ModeHTML
 	msg.ReplyMarkup = markup
+
 	return bot.TG.Send(msg)
 }
 
@@ -110,7 +112,7 @@ func InitUser(db *xorm.Engine, user *tgbotapi.User) (*database.TgUser, error) {
 		return nil, err
 	}
 
-	var tg_user database.TgUser
+	var tgUser database.TgUser
 	if len(users) == 0 {
 		l9id, err := database.GenerateID(db)
 		if err != nil {
@@ -121,137 +123,163 @@ func InitUser(db *xorm.Engine, user *tgbotapi.User) (*database.TgUser, error) {
 			L9Id: l9id,
 		}
 
-		tg_user = database.TgUser{
+		tgUser = database.TgUser{
 			L9Id: l9id,
 			//Name:   name,
 			TgId:   id,
 			PosTag: database.NotStarted,
 		}
-		_, err = db.Insert(user, tg_user)
+		_, err = db.Insert(user, tgUser)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		tg_user = users[0]
+		tgUser = users[0]
 	}
-	return &tg_user, nil
+
+	return &tgUser, nil
 }
 
-func (bot *Bot) DeleteUser(user database.TgUser) {
-	bot.DB.Delete(&user)
-	bot.DB.Delete(&database.ShedulesInUser{L9Id: user.L9Id})
-	bot.DB.Delete(&database.User{L9Id: user.L9Id})
-	bot.DB.Delete(&database.File{TgId: user.TgId})
+func (bot *Bot) DeleteUser(user database.TgUser) error {
+	if _, err := bot.DB.Delete(&user); err != nil {
+		return err
+	}
+	if _, err := bot.DB.Delete(&database.ShedulesInUser{L9Id: user.L9Id}); err != nil {
+		return err
+	}
+	if _, err := bot.DB.Delete(&database.User{L9Id: user.L9Id}); err != nil {
+		return err
+	}
+	if _, err := bot.DB.Delete(&database.File{TgId: user.TgId}); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi.Message, error) {
+	if len(now) == 0 {
+		now = append(now, time.Now())
+	}
 	if update.Message != nil {
-		msg := update.Message
-		user, err := InitUser(bot.DB, msg.From)
+		return bot.HandleMessage(update.Message, now[0])
+	}
+	if update.CallbackQuery != nil {
+		return bot.HandleCallback(update.CallbackQuery, now[0])
+	}
+
+	return nilMsg, nil
+}
+
+func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Message, error) {
+	user, err := InitUser(bot.DB, msg.From)
+	if err != nil {
+		return nilMsg, err
+	}
+	options := database.ShedulesInUser{
+		L9Id: user.L9Id,
+	}
+	if _, err := bot.DB.Get(&options); err != nil {
+		return nilMsg, err
+	}
+	bot.Debug.Printf("Message [%d:%d] <%s> %s", user.L9Id, user.TgId, user.Name, msg.Text)
+	bot.Messages++
+	if strings.Contains(msg.Text, "/help") {
+		return bot.SendMsg(user, bot.HelpTxt, GeneralKeyboard(options.UID != 0))
+	}
+	if strings.Contains(msg.Text, "/start") && user.PosTag != database.NotStarted {
+		if err := bot.DeleteUser(*user); err != nil {
+			return nilMsg, err
+		}
+		if _, err = bot.SendMsg(
+			user,
+			"Весь прогресс сброшен\nДобро пожаловать снова (:",
+			tgbotapi.ReplyKeyboardRemove{RemoveKeyboard: true},
+		); err != nil {
+			return nilMsg, err
+		}
+		user, err = InitUser(bot.DB, msg.From)
 		if err != nil {
 			return nilMsg, err
 		}
-		options := database.ShedulesInUser{
-			L9Id: user.L9Id,
-		}
-		if _, err := bot.DB.Get(&options); err != nil {
-			return nilMsg, err
-		}
-		bot.Debug.Printf("Message [%d:%d] <%s> %s", user.L9Id, user.TgId, user.Name, msg.Text)
-		bot.Messages += 1
-		if strings.Contains(msg.Text, "/help") {
-			return bot.SendMsg(user, bot.HelpTxt, GeneralKeyboard(options.UID != 0))
-		}
-		if strings.Contains(msg.Text, "/start") && user.PosTag != database.NotStarted {
-			bot.DeleteUser(*user)
-			if _, err = bot.SendMsg(
+	}
+	switch user.PosTag {
+	case database.NotStarted:
+		return bot.Start(user)
+	case database.Ready:
+		if msg.Text == "Моё расписание" {
+			return bot.GetPersonal(now, user)
+		} else if msg.Text == "Настройки" {
+			return bot.GetOptions(user)
+		} else if strings.Contains(msg.Text, "/keyboard") {
+			return bot.SendMsg(
 				user,
-				"Весь прогресс сброшен\nДобро пожаловать снова (:",
-				tgbotapi.ReplyKeyboardRemove{RemoveKeyboard: true},
-			); err != nil {
-				return nilMsg, err
-			}
-			user, err = InitUser(bot.DB, msg.From)
+				"Кнопки действий выданы",
+				GeneralKeyboard(options.UID != 0),
+			)
+		} else if KeywordContains(msg.Text, AdminKey) && user.TgId == bot.TestUser {
+			return bot.AdminHandle(msg)
+		}
+
+		return bot.Find(now, user, msg.Text)
+	case database.Add:
+		return bot.Find(now, user, msg.Text)
+	case database.Set:
+		return bot.SetFirstTime(msg, user)
+	case database.Delete:
+		return bot.DeleteGroup(user, msg.Text)
+
+	default:
+		return bot.Etc(user)
+	}
+}
+
+func (bot *Bot) HandleCallback(query *tgbotapi.CallbackQuery, now time.Time) (tgbotapi.Message, error) {
+	user, err := InitUser(bot.DB, query.From)
+	if err != nil {
+		return nilMsg, err
+	}
+	bot.Debug.Printf("Callback [%d:%d] <%s> %s", user.L9Id, user.TgId, user.Name, query.Data)
+	bot.Callbacks++
+	if query.Data == "cancel" {
+		return nilMsg, bot.Cancel(user, query)
+	}
+	if user.PosTag == database.NotStarted {
+		return bot.Start(user)
+	} else if user.PosTag == database.Ready || user.PosTag == database.Add {
+		if strings.Contains(query.Data, SummaryPrefix) {
+			err = bot.HandleSummary(user, query, now)
+		} else if strings.Contains(query.Data, "opt") {
+			err = bot.HandleOptions(user, query)
+		} else {
+			err = bot.GetShedule(user, query, now)
+		}
+	} else {
+		return bot.Etc(user)
+	}
+
+	// Обработка ошибок
+	if err != nil {
+		if strings.Contains(err.Error(), "message is not modified") {
+			callback := tgbotapi.NewCallback(query.ID, "Ничего не изменилось")
+			_, err = bot.TG.Request(callback)
 			if err != nil {
 				return nilMsg, err
 			}
-		}
-		switch user.PosTag {
-		case database.NotStarted:
-			return bot.Start(user)
-		case database.Ready:
-			if len(now) == 0 {
-				now = append(now, msg.Time())
-			}
-			if msg.Text == "Моё расписание" {
-				return bot.GetPersonal(now[0], user)
-			} else if msg.Text == "Настройки" {
-				return bot.GetOptions(user)
-			} else if strings.Contains(msg.Text, "/keyboard") {
-				return bot.SendMsg(
-					user,
-					"Кнопки действий выданы",
-					GeneralKeyboard(options.UID != 0),
-				)
-			} else if KeywordContains(msg.Text, AdminKey) && user.TgId == bot.TestUser {
-				return bot.AdminHandle(msg)
-			}
-			return bot.Find(now[0], user, msg.Text)
-		case database.Add:
-			return bot.Find(now[0], user, msg.Text)
-		case database.Set:
-			return bot.SetFirstTime(msg, user)
-		case database.Delete:
-			return bot.DeleteGroup(user, msg.Text)
+			bot.Debug.Println("Message is not modified")
 
-		default:
-			return bot.Etc(user)
-		}
-	}
-	if update.CallbackQuery != nil {
-		query := update.CallbackQuery
-		user, err := InitUser(bot.DB, query.From)
-		if err != nil {
-			return nilMsg, err
-		}
-		bot.Debug.Printf("Callback [%d:%d] <%s> %s", user.L9Id, user.TgId, user.Name, query.Data)
-		bot.Callbacks += 1
-		if query.Data == "cancel" {
-			return nilMsg, bot.Cancel(user, query)
-		}
-		if user.PosTag == database.NotStarted {
-			return bot.Start(user)
-		} else if user.PosTag == database.Ready || user.PosTag == database.Add {
-			if strings.Contains(query.Data, SummaryPrefix) {
-				err = bot.HandleSummary(user, query, now...)
-			} else if strings.Contains(query.Data, "opt") {
-				err = bot.HandleOptions(user, query)
-			} else {
-				err = bot.GetShedule(user, query, now...)
+			return nilMsg, nil
+		} else if strings.Contains(err.Error(), "no lessons") {
+			callback := tgbotapi.NewCallback(query.ID, "Тут занятий уже нет")
+			_, err = bot.TG.Request(callback)
+			if err != nil {
+				return nilMsg, err
 			}
-		} else {
-			return bot.Etc(user)
+			bot.Debug.Println(err)
 		}
 
-		if err != nil {
-			if strings.Contains(err.Error(), "message is not modified") {
-				callback := tgbotapi.NewCallback(query.ID, "Ничего не изменилось")
-				_, err = bot.TG.Request(callback)
-				if err != nil {
-					return nilMsg, err
-				}
-				bot.Debug.Println("Message is not modified")
-				return nilMsg, nil
-			} else if strings.Contains(err.Error(), "no lessons") {
-				callback := tgbotapi.NewCallback(query.ID, "Тут занятий уже нет")
-				_, err = bot.TG.Request(callback)
-				if err != nil {
-					return nilMsg, err
-				}
-				bot.Debug.Println(err)
-			}
-			return nilMsg, err
-		}
+		return nilMsg, err
 	}
+
 	return nilMsg, nil
 }

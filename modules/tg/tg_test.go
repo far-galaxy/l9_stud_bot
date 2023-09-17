@@ -30,11 +30,12 @@ func TestCheckEnv(t *testing.T) {
 	}
 
 	// Добавляем несуществующий ключ
-	env_keys = append(env_keys, "LOST_KEY")
+	envKeys = append(envKeys, "LOST_KEY")
 	if err := CheckEnv(); err != nil {
 		log.Println(err)
-		env_keys = env_keys[:len(env_keys)-1]
+		envKeys = envKeys[:len(envKeys)-1]
 	}
+	t.Log("ok")
 }
 
 func initTestBot(files database.LogFiles) *Bot {
@@ -61,6 +62,7 @@ func initTestBot(files database.LogFiles) *Bot {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	return bot
 }
 func TestInitBot(t *testing.T) {
@@ -73,6 +75,7 @@ func TestInitBot(t *testing.T) {
 	if err != nil {
 		log.Println(err)
 	}
+	t.Log("ok")
 }
 
 func TestInitUser(t *testing.T) {
@@ -90,6 +93,7 @@ func TestInitUser(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	t.Log("ok")
 }
 
 var dialog = []string{
@@ -156,6 +160,7 @@ func TestHandleUpdate(t *testing.T) {
 	if err != nil {
 		log.Println(err)
 	}
+	t.Log("ok")
 }
 
 var times = []string{
@@ -207,6 +212,7 @@ func TestSummary(t *testing.T) {
 	if err != nil {
 		log.Println(err)
 	}
+	t.Log("ok")
 	/* Оставим это на всякий случай
 	log.Println("Нажми на кнопку - получишь результат!")
 	bot.GetUpdates()
@@ -254,4 +260,5 @@ func TestGetWeekLessons(t *testing.T) {
 			log.Fatal(err)
 		}
 	}
+	t.Log("ok")
 }

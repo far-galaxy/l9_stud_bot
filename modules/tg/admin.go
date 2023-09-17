@@ -15,8 +15,9 @@ func (bot *Bot) AdminHandle(msg *tgbotapi.Message) (tgbotapi.Message, error) {
 	if strings.Contains(msg.Text, "/scream") {
 		return bot.Scream(msg)
 	} else if strings.Contains(msg.Text, "/stat") {
-		return bot.Stat(msg)
+		return bot.Stat()
 	}
+
 	return nilMsg, nil
 }
 
@@ -29,6 +30,7 @@ func (bot *Bot) Scream(msg *tgbotapi.Message) (tgbotapi.Message, error) {
 		0,
 		strings.TrimPrefix(msg.Text, "/scream"),
 	)
+	// FIXME: не терять клавиатуру
 	for _, u := range users {
 		scream.ChatID = u.TgId
 		if _, err := bot.TG.Send(scream); err != nil {
@@ -39,10 +41,11 @@ func (bot *Bot) Scream(msg *tgbotapi.Message) (tgbotapi.Message, error) {
 	}
 	scream.ChatID = bot.TestUser
 	scream.Text = "Сообщения отправлены"
+
 	return bot.TG.Send(scream)
 }
 
-func (bot *Bot) Stat(msg *tgbotapi.Message) (tgbotapi.Message, error) {
+func (bot *Bot) Stat() (tgbotapi.Message, error) {
 	total, err := bot.DB.Count(database.TgUser{})
 	if err != nil {
 		return nilMsg, err
@@ -68,5 +71,6 @@ func (bot *Bot) Stat(msg *tgbotapi.Message) (tgbotapi.Message, error) {
 		txt += fmt.Sprintf("%s | %s\n", r["GroupName"], r["UserCount"])
 	}
 	stat := tgbotapi.NewMessage(bot.TestUser, txt)
+
 	return bot.TG.Send(stat)
 }
