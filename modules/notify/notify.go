@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	"strings"
 	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
@@ -21,20 +20,20 @@ type Next struct {
 	Week   []database.Lesson
 }
 
-type NotifyType string
+type NoteType string
 
 const (
-	NextLesson NotifyType = "nextnote"
-	NextDay    NotifyType = "nextday"
-	NextWeek   NotifyType = "nextweek"
-	Changes    NotifyType = "changes"
-	Military   NotifyType = "mil"
+	NextLesson NoteType = "nextnote"
+	NextDay    NoteType = "nextday"
+	NextWeek   NoteType = "nextweek"
+	Changes    NoteType = "changes"
+	Military   NoteType = "mil"
 )
 
 type Notify struct {
-	NotifyType
+	NoteType
 	IsGroup   bool
-	SheduleId int64
+	SheduleID int64
 	Lesson    database.Lesson
 }
 
@@ -61,17 +60,17 @@ func CheckNext(db *xorm.Engine, now time.Time) ([]Notify, error) {
 	var notify []Notify
 	for _, n := range next {
 		notify = append(notify, Notify{
-			NotifyType: NextLesson,
-			IsGroup:    true,
-			SheduleId:  n.GroupId,
-			Lesson:     n,
+			NoteType:  NextLesson,
+			IsGroup:   true,
+			SheduleID: n.GroupId,
+			Lesson:    n,
 		})
 		if n.TeacherId != 0 {
 			notify = append(notify, Notify{
-				NotifyType: NextLesson,
-				IsGroup:    false,
-				SheduleId:  n.TeacherId,
-				Lesson:     n,
+				NoteType:  NextLesson,
+				IsGroup:   false,
+				SheduleID: n.TeacherId,
+				Lesson:    n,
 			})
 		}
 
@@ -81,35 +80,36 @@ func CheckNext(db *xorm.Engine, now time.Time) ([]Notify, error) {
 	last := ssau_parser.Diff(completed, next)
 
 	for _, l := range last {
-		var next_lesson database.Lesson
+		var nextLesson database.Lesson
 		if _, err := db.
 			Where(
 				"groupid = ? and begin > ?",
 				l.GroupId, l.Begin.Format("2006-01-02 15:04:05"),
 			).
 			Asc("begin").
-			Get(&next_lesson); err != nil {
+			Get(&nextLesson); err != nil {
 			return nil, err
 		}
 		// Разделяем, какие пары на этой неделе, какие на следующей
 
-		_, nl_week := next_lesson.Begin.ISOWeek()
-		_, now_week := now.ISOWeek()
+		_, nlWeek := nextLesson.Begin.ISOWeek()
+		_, nowWeek := now.ISOWeek()
 		note := Notify{
 			IsGroup:   true,
-			SheduleId: next_lesson.GroupId,
-			Lesson:    next_lesson,
+			SheduleID: nextLesson.GroupId,
+			Lesson:    nextLesson,
 		}
-		if nl_week == now_week {
-			note.NotifyType = NextDay
+		if nlWeek == nowWeek {
+			note.NoteType = NextDay
 		} else {
-			note.NotifyType = NextWeek
+			note.NoteType = NextWeek
 		}
 		if !slices.Contains(notify, note) {
 			notify = append(notify, note)
 		}
 
 	}
+
 	return notify, nil
 }
 
@@ -121,7 +121,7 @@ func StrNext(db *xorm.Engine, note Notify) (string, error) {
 	if !note.IsGroup {
 		query := database.Lesson{
 			Begin:     note.Lesson.Begin,
-			TeacherId: note.SheduleId,
+			TeacherId: note.SheduleID,
 		}
 		if err := db.Find(&pair, query); err != nil {
 			return "", err
@@ -136,6 +136,7 @@ func StrNext(db *xorm.Engine, note Notify) (string, error) {
 		return "", err
 	}
 	str += strPair
+
 	return str, nil
 }
 
@@ -159,8 +160,10 @@ func StrNextDay(bot *tg.Bot, note Notify) (string, error) {
 		}
 		str := "Сегодня больше ничего нет\n"
 		str += "Следующие занятия в " + tg.DayStr(day) + ":\n\n" + dayStr
+
 		return str, nil
 	}
+
 	return "", nil
 }
 
@@ -172,12 +175,12 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 		var users []database.TgUser
 		query := database.ShedulesInUser{
 			IsGroup:   note.IsGroup,
-			SheduleId: note.SheduleId,
+			SheduleId: note.SheduleID,
 		}
 		var txt string
 		var err error
 		var tempTime time.Time
-		switch note.NotifyType {
+		switch note.NoteType {
 		case NextLesson:
 			query.NextNote = true
 			txt, err = StrNext(bot.DB, note)
@@ -201,7 +204,7 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 			condition = "subgroup in (0, ?)"
 		}*/
 		if err := bot.DB.
-			UseBool(string(note.NotifyType)).
+			UseBool(string(note.NoteType)).
 			Table("ShedulesInUser").
 			Cols("TgId", "TgUser.L9Id").
 			Join("INNER", "TgUser", "TgUser.L9Id = ShedulesInUser.L9Id").
@@ -209,46 +212,44 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 			Find(&users, &query); err != nil {
 			log.Println(err)
 		}
-		for _, user := range users {
-			if !slices.Contains(ids, user.TgId) {
-				if note.NotifyType != NextWeek {
-					m, err := bot.SendMsg(&user, txt, tg.GeneralKeyboard(true))
-					if err != nil {
-						// Удаление пользователя, заблокировавшего бота
-						if !strings.Contains(err.Error(), "blocked by user") {
-							bot.DeleteUser(user)
-							continue
-						} else {
-							log.Println(err)
-						}
-					} else {
-						AddTemp(m, tempTime, bot)
-					}
-				} else {
-					if err = bot.GetWeekSummary(
-						note.Lesson.Begin,
-						&user,
-						database.ShedulesInUser{},
-						-1,
-						true,
-						"На этой неделе больше ничего нет\n\nНа фото расписание на следующую неделю",
-					); err != nil {
-						log.Println(err)
-						continue
-					}
-					if err = bot.CreateICS(
-						now,
-						&user,
-						database.ShedulesInUser{},
-						true,
-						-1,
-					); err != nil {
-						log.Println(err)
-						continue
-					}
-				}
-				ids = append(ids, user.TgId)
+		for i, user := range users {
+			if slices.Contains(ids, user.TgId) {
+				continue
 			}
+			if note.NoteType != NextWeek {
+				m, err := bot.SendMsg(&users[i], txt, tg.GeneralKeyboard(true))
+				if err != nil {
+					bot.CheckBlocked(err, user)
+				} else {
+					AddTemp(m, tempTime, bot)
+				}
+			} else {
+				if err = bot.GetWeekSummary(
+					note.Lesson.Begin,
+					&users[i],
+					database.ShedulesInUser{},
+					-1,
+					true,
+					"На этой неделе больше ничего нет\n\nНа фото расписание на следующую неделю",
+				); err != nil {
+					log.Println(err)
+
+					continue
+				}
+				if err = bot.CreateICS(
+					now,
+					&users[i],
+					database.ShedulesInUser{},
+					true,
+					-1,
+				); err != nil {
+					log.Println(err)
+
+					continue
+				}
+			}
+			ids = append(ids, user.TgId)
+
 		}
 	}
 }
@@ -271,12 +272,12 @@ func ClearTemp(bot *tg.Bot, now time.Time) {
 	if err := bot.DB.Where("destroy <= ?", now.Format("2006-01-02 15:04:05")).Find(&temp); err != nil {
 		log.Println(err)
 	}
-	for _, msg := range temp {
+	for i, msg := range temp {
 		del := tgbotapi.NewDeleteMessage(msg.TgId, msg.MessageId)
 		if _, err := bot.TG.Request(del); err != nil {
 			log.Println(err)
 		}
-		if _, err := bot.DB.Delete(&msg); err != nil {
+		if _, err := bot.DB.Delete(&temp[i]); err != nil {
 			log.Println(err)
 		}
 	}
@@ -325,6 +326,7 @@ func FirstMailing(bot *tg.Bot, now time.Time) {
 		msg, err := bot.TG.Send(mail)
 		if err != nil {
 			log.Println(err)
+
 			continue
 		}
 		AddTemp(msg, lesson.Begin.Add(15*time.Minute), bot)

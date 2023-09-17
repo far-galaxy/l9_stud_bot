@@ -86,4 +86,5 @@ func TestFirstMailing(t *testing.T) {
 	}
 	now, _ := time.Parse("2006-01-02 15:04 -07", "2023-02-06 07:15 +04")
 	FirstMailing(bot, now)
+	t.Log("ok")
 }

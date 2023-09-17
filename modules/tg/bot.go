@@ -283,3 +283,14 @@ func (bot *Bot) HandleCallback(query *tgbotapi.CallbackQuery, now time.Time) (tg
 
 	return nilMsg, nil
 }
+
+func (bot *Bot) CheckBlocked(err error, user database.TgUser) {
+	if !strings.Contains(err.Error(), "blocked by user") {
+		if err := bot.DeleteUser(user); err != nil {
+			log.Println(err)
+		}
+
+		return
+	}
+	log.Println(err)
+}
