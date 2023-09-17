@@ -1,4 +1,4 @@
-package ssau_parser
+package parser
 
 import (
 	"log"
@@ -38,6 +38,7 @@ func TestSearchInRasp(t *testing.T) {
 		HeadURL = url
 		pingQuery(queries[0])
 	}
+	t.Log("ok")
 }
 
 func pingQuery(query string) {
@@ -48,7 +49,7 @@ func pingQuery(query string) {
 	}
 }
 
-var groupUri = []string{
+var groupURI = []string{
 	"/rasp?groupId=100000000",
 	"/rasp?staffId=1",
 	"/aaa",
@@ -64,21 +65,22 @@ var weeks = []int{
 func TestDownloadShedule(t *testing.T) {
 	// headURL = "https://ssau.ru"
 	HeadURL = "http://127.0.0.1:5000"
-	for _, uri := range groupUri {
+	for _, uri := range groupURI {
 		for _, week := range weeks {
 			if _, err := DownloadShedule(uri, week); err != nil {
 				log.Println(err)
 			}
 		}
 	}
-	if _, err := DownloadSheduleById(100000000, true, 1); err != nil {
+	if _, err := DownloadSheduleByID(100000000, true, 1); err != nil {
 		log.Println(err)
 	}
-	if _, err := DownloadSheduleById(1, false, 1); err != nil {
+	if _, err := DownloadSheduleByID(1, false, 1); err != nil {
 		log.Println(err)
 	}
 	HeadURL = "http://127.0.0.1:5000/oops/"
-	if _, err := DownloadSheduleById(100000000, false, 1); err != nil {
+	if _, err := DownloadSheduleByID(100000000, false, 1); err != nil {
 		log.Println(err)
 	}
+	t.Log("ok")
 }

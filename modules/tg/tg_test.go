@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/parser"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -121,11 +121,11 @@ func TestHandleUpdate(t *testing.T) {
 		},
 	}
 	var messages []tgbotapi.Message
-	ssau_parser.HeadURL = "http://127.0.0.1:5000/prod"
+	parser.HeadURL = "http://127.0.0.1:5000/prod"
 	// Бот общается с ботом
 	for i, query := range dialog {
 		if i == len(dialog)-1 {
-			ssau_parser.HeadURL = "https://sasau.ru"
+			parser.HeadURL = "https://sasau.ru"
 		}
 		update.Message.Text = query
 		msg, err := bot.HandleUpdate(update)
@@ -185,7 +185,7 @@ func TestSummary(t *testing.T) {
 			From: &user,
 		},
 	}
-	ssau_parser.HeadURL = "http://127.0.0.1:5000/prod"
+	parser.HeadURL = "http://127.0.0.1:5000/prod"
 	// Ещё немного общения в разное время
 	var messages []tgbotapi.Message
 	for _, te := range times {
@@ -225,7 +225,7 @@ func TestSummary(t *testing.T) {
 }
 
 func TestGetWeekLessons(t *testing.T) {
-	ssau_parser.HeadURL = "http://127.0.0.1:5000/prod"
+	parser.HeadURL = "http://127.0.0.1:5000/prod"
 	files := database.OpenLogs()
 	defer files.CloseAll()
 	bot := initTestBot(files)
@@ -233,25 +233,25 @@ func TestGetWeekLessons(t *testing.T) {
 	bot.WkPath = "C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltoimage.exe"
 	user := database.TgUser{}
 	user.TgId, _ = strconv.ParseInt(os.Getenv("TELEGRAM_TEST_USER"), 0, 64)
-	shedules := []ssau_parser.WeekShedule{
+	shedules := []parser.WeekShedule{
 		{
-			SheduleId: 100000000,
+			SheduleID: 100000000,
 			IsGroup:   true,
 			Week:      1,
 		},
 		{
-			SheduleId: 3,
+			SheduleID: 3,
 			IsGroup:   false,
 			Week:      1,
 		},
 	}
 	now, _ := time.Parse("2006-01-02 15:04 -07", times[2])
 	for _, sh := range shedules {
-		err := sh.DownloadById(true)
+		err := sh.DownloadByID(true)
 		if err != nil {
 			log.Fatal(err)
 		}
-		_, _, err = ssau_parser.UpdateSchedule(bot.DB, sh)
+		_, _, err = parser.UpdateSchedule(bot.DB, sh)
 		if err != nil {
 			log.Fatal(err)
 		}

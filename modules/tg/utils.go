@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/parser"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -332,10 +332,10 @@ func KeywordContains(str string, keywords []string) bool {
 }
 
 // Меняем шило на мыло
-func Swap(sh ssau_parser.WeekShedule) database.ShedulesInUser {
+func Swap(sh parser.WeekShedule) database.ShedulesInUser {
 	return database.ShedulesInUser{
 		IsGroup:   sh.IsGroup,
-		SheduleId: sh.SheduleId,
+		SheduleId: sh.SheduleID,
 	}
 }
 

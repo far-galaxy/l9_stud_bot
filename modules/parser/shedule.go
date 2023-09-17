@@ -1,8 +1,8 @@
-package ssau_parser
+package parser
 
 import (
 	"bytes"
-	"crypto/md5"
+	"crypto/md5" // #nosec G501
 	"encoding/gob"
 	"errors"
 	"fmt"
@@ -20,20 +20,21 @@ func (sh *WeekShedule) Download(uri string, week int, uncover bool) error {
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
 // Загрузка, парсинг и раскрытие расписания в одной функции
 // Обязательно наличие IsGroup, SheduleId, Week в объекте
-func (sh *WeekShedule) DownloadById(uncover bool) error {
-	if sh.SheduleId == 0 {
+func (sh *WeekShedule) DownloadByID(uncover bool) error {
+	if sh.SheduleID == 0 {
 		return errors.New("schedule id not included")
 	}
 	if sh.Week == 0 {
 		return errors.New("week not included")
 	}
 
-	page, err := DownloadSheduleById(sh.SheduleId, sh.IsGroup, sh.Week)
+	page, err := DownloadSheduleByID(sh.SheduleID, sh.IsGroup, sh.Week)
 	if err != nil {
 		return err
 	}
@@ -41,6 +42,7 @@ func (sh *WeekShedule) DownloadById(uncover bool) error {
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -50,19 +52,19 @@ func (sh *WeekShedule) UncoverShedule() {
 	for _, line := range sh.Lessons {
 		for _, pair := range line {
 			for _, lesson := range pair.Lessons {
-				for i, gId := range lesson.GroupId {
-					if len(lesson.TeacherId) == 0 {
-						lesson.TeacherId = append(lesson.TeacherId, 0)
+				for i, gID := range lesson.GroupID {
+					if len(lesson.TeacherID) == 0 {
+						lesson.TeacherID = append(lesson.TeacherID, 0)
 					}
-					for _, tId := range lesson.TeacherId {
+					for _, tID := range lesson.TeacherID {
 						l := database.Lesson{
 							NumInShedule: pair.NumInShedule,
 							Type:         lesson.Type,
 							Name:         lesson.Name,
 							Begin:        pair.Begin,
 							End:          pair.End,
-							TeacherId:    tId,
-							GroupId:      gId,
+							TeacherId:    tID,
+							GroupId:      gID,
 							Place:        lesson.Place,
 							Comment:      lesson.Comment,
 							SubGroup:     int64(lesson.SubGroup[i]),
@@ -81,6 +83,7 @@ func (sh *WeekShedule) UncoverShedule() {
 func Compare(new []database.Lesson, old []database.Lesson) ([]database.Lesson, []database.Lesson) {
 	added := Diff(new, old)
 	deleted := Diff(old, new)
+
 	return added, deleted
 }
 
@@ -111,5 +114,6 @@ func Hash(s database.Lesson) string {
 	if err := gob.NewEncoder(&b).Encode(s); err != nil {
 		return "0x0"
 	}
-	return fmt.Sprintf("%x", md5.Sum(b.Bytes()))
+
+	return fmt.Sprintf("%x", md5.Sum(b.Bytes())) // #nosec G401
 }

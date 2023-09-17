@@ -1,4 +1,4 @@
-package ssau_parser
+package parser
 
 import (
 	"encoding/json"
@@ -14,8 +14,8 @@ import (
 
 // Результаты поиска
 type SearchResults []struct {
-	Id   int64
-	Url  string
+	ID   int64
+	URL  string
 	Text string
 }
 
@@ -135,18 +135,20 @@ func DownloadShedule(uri string, week int) (Page, error) {
 }
 
 // Загрузка страницы с расписанием из ssau.ru/rasp по ID и номеру недели (в семестре)
-func DownloadSheduleById(id int64, isGroup bool, week int) (Page, error) {
-	uri := GenerateUri(id, isGroup)
+func DownloadSheduleByID(id int64, isGroup bool, week int) (Page, error) {
+	uri := GenerateURI(id, isGroup)
+
 	return DownloadShedule(uri, week)
 }
 
 // Создать URI по ID и условию группа/преподаватель
-func GenerateUri(id int64, isGroup bool) string {
+func GenerateURI(id int64, isGroup bool) string {
 	var uri string
 	if isGroup {
 		uri = fmt.Sprintf("/rasp?groupId=%d", id)
 	} else {
 		uri = fmt.Sprintf("/rasp?staffId=%d", id)
 	}
+
 	return uri
 }

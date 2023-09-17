@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/parser"
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/tg"
 )
 
@@ -54,7 +54,7 @@ func TestCheckNext(t *testing.T) {
 		},
 	}
 	for _, l := range lessons {
-		l.Hash = ssau_parser.Hash(l)
+		l.Hash = parser.Hash(l)
 	}
 	if _, err := db.Insert(&lessons); err != nil {
 		t.Fatal(err)

@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/parser"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	td "github.com/mergestat/timediff"
 	"xorm.io/xorm"
@@ -238,13 +238,13 @@ func (bot *Bot) GetLessons(shedule database.ShedulesInUser, now time.Time, limit
 }
 
 // Загрузка расписания из ssau.ru/rasp
-func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule, now time.Time, fast bool) (
+func (bot *Bot) LoadShedule(shedule parser.WeekShedule, now time.Time, fast bool) (
 	[]database.Lesson,
 	[]database.Lesson,
 	error,
 ) {
-	sh := ssau_parser.WeekShedule{
-		SheduleId: shedule.SheduleId,
+	sh := parser.WeekShedule{
+		SheduleID: shedule.SheduleID,
 		IsGroup:   shedule.IsGroup,
 	}
 	var start, end int
@@ -258,14 +258,14 @@ func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule, now time.Time, fast
 	var add, del []database.Lesson
 	for week := start; week < end; week++ {
 		sh.Week = week
-		if err := sh.DownloadById(true); err != nil {
+		if err := sh.DownloadByID(true); err != nil {
 			if strings.Contains(err.Error(), "404") {
 				break
 			}
 
 			return nil, nil, err
 		}
-		a, d, err := ssau_parser.UpdateSchedule(bot.DB, sh)
+		a, d, err := parser.UpdateSchedule(bot.DB, sh)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -275,7 +275,7 @@ func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule, now time.Time, fast
 	// Обновляем время обновления
 	if len(add) > 0 || len(del) > 0 {
 		if sh.IsGroup {
-			gr := database.Group{GroupId: sh.SheduleId}
+			gr := database.Group{GroupId: sh.SheduleID}
 			if _, err := bot.DB.Get(&gr); err != nil {
 				return nil, nil, err
 			}
@@ -284,7 +284,7 @@ func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule, now time.Time, fast
 				return nil, nil, err
 			}
 		} else {
-			t := database.Teacher{TeacherId: sh.SheduleId}
+			t := database.Teacher{TeacherId: sh.SheduleID}
 			if _, err := bot.DB.Get(&t); err != nil {
 				return nil, nil, err
 			}

@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/parser"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/icza/gox/timex"
 )
@@ -203,7 +203,7 @@ func (bot *Bot) CreateWeekImg(
 			minDay = lesson.NumInShedule
 		}
 	}
-	var times []ssau_parser.Pair
+	var times []parser.Pair
 	var beginsSlice []time.Time
 	var endsSlice []time.Time
 	for b := range begins {
@@ -219,7 +219,7 @@ func (bot *Bot) CreateWeekImg(
 		return endsSlice[i].Before(endsSlice[j])
 	})
 	for i, b := range beginsSlice {
-		sh := ssau_parser.Pair{
+		sh := parser.Pair{
 			Begin: b,
 			End:   endsSlice[i],
 		}
@@ -246,7 +246,7 @@ func (bot *Bot) CreateWeekImg(
 			count += len(l)
 		}
 		if count == 0 {
-			nilPair := ssau_parser.Pair{}
+			nilPair := parser.Pair{}
 			if y == len(table) {
 				times = append(times, nilPair)
 			} else {
@@ -405,7 +405,7 @@ func (bot *Bot) CreateHTMLShedule(
 	header string,
 	shedule [][6][]database.Lesson,
 	dates []time.Time,
-	times []ssau_parser.Pair,
+	times []parser.Pair,
 ) string {
 	html := head
 	html += fmt.Sprintf("<div class=\"note\"><div id=\"week\">%s</div></div>\n", header)

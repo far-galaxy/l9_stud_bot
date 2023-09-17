@@ -1,4 +1,4 @@
-package ssau_parser
+package parser
 
 import (
 	"strconv"
@@ -23,8 +23,8 @@ type Lesson struct {
 	Type      string
 	Name      string
 	Place     string
-	TeacherId []int64
-	GroupId   []int64
+	TeacherID []int64
+	GroupID   []int64
 	Comment   string
 	SubGroup  []int
 	Hash      []byte
@@ -33,7 +33,7 @@ type Lesson struct {
 // Недельное расписание
 type WeekShedule struct {
 	IsGroup   bool
-	SheduleId int64
+	SheduleID int64
 	FullName  string
 	SpecName  string
 	Week      int               // Номер недели в семестре
@@ -56,16 +56,16 @@ func (sh *WeekShedule) Parse(p Page, uncover bool) error {
 	doc := p.Doc
 	GetSheduleInfo(doc, sh)
 
-	var raw_dates []string
+	var rawDates []string
 	doc.Find(".schedule__head-date").Each(func(i int, s *goquery.Selection) {
-		sh_date := s.Text()
-		raw_dates = append(raw_dates, sh_date)
+		shDate := s.Text()
+		rawDates = append(rawDates, shDate)
 	})
 
-	var raw_times []string
+	var rawTimes []string
 	doc.Find(".schedule__time-item").Each(func(i int, s *goquery.Selection) {
-		sh_time := s.Text() + "+04"
-		raw_times = append(raw_times, sh_time)
+		shTime := s.Text() + "+04"
+		rawTimes = append(rawTimes, shTime)
 	})
 
 	var lessons [][]Lesson
@@ -76,29 +76,29 @@ func (sh *WeekShedule) Parse(p Page, uncover bool) error {
 
 	var shedule [][]Pair
 
-	for t := 0; t < len(raw_times); t += 2 {
-		var time_line []Pair
-		for d, date := range raw_dates {
-			begin_raw := date + raw_times[t]
-			begin, err := time.Parse(" 02.01.2006 15:04 -07", begin_raw)
+	for t := 0; t < len(rawTimes); t += 2 {
+		var timeLine []Pair
+		for d, date := range rawDates {
+			beginRaw := date + rawTimes[t]
+			begin, err := time.Parse(" 02.01.2006 15:04 -07", beginRaw)
 			if err != nil {
 				return err
 			}
-			end_raw := date + raw_times[t+1]
-			end, err := time.Parse(" 02.01.2006 15:04 -07", end_raw)
+			endRaw := date + rawTimes[t+1]
+			end, err := time.Parse(" 02.01.2006 15:04 -07", endRaw)
 			if err != nil {
 				return err
 			}
-			idx := (len(raw_dates))*t/2 + d
+			idx := (len(rawDates))*t/2 + d
 			lesson := Pair{
 				Begin:        begin,
 				End:          end,
 				NumInShedule: hourMap[begin.Hour()],
 				Lessons:      lessons[idx],
 			}
-			time_line = append(time_line, lesson)
+			timeLine = append(timeLine, lesson)
 		}
-		shedule = append(shedule, time_line)
+		shedule = append(shedule, timeLine)
 	}
 
 	if len(shedule) > 2 {
@@ -114,13 +114,14 @@ func (sh *WeekShedule) Parse(p Page, uncover bool) error {
 								Name: "Окно",
 							}
 							if p.IsGroup {
-								window.GroupId = []int64{p.ID}
+								window.GroupID = []int64{p.ID}
 								window.SubGroup = []int{0}
 							} else {
-								window.TeacherId = []int64{p.ID}
+								window.TeacherID = []int64{p.ID}
 								window.SubGroup = []int{0}
 							}
 							shedule[y+1][x].Lessons = []Lesson{window}
+
 							break
 						}
 					}
@@ -131,9 +132,9 @@ func (sh *WeekShedule) Parse(p Page, uncover bool) error {
 		for y, line := range shedule {
 			for x, pair := range line {
 				if len(pair.Lessons) > 0 && pair.Lessons[0].Type == "mil" {
-					day_str := pair.Begin.Format("2006-01-02")
-					shedule[y][x].Begin, _ = time.Parse("2006-01-02 15:04 -07", day_str+" 08:30 +04")
-					shedule[y][x].End, _ = time.Parse("2006-01-02 15:04 -07", day_str+" 17:20 +04")
+					dayStr := pair.Begin.Format("2006-01-02")
+					shedule[y][x].Begin, _ = time.Parse("2006-01-02 15:04 -07", dayStr+" 08:30 +04")
+					shedule[y][x].End, _ = time.Parse("2006-01-02 15:04 -07", dayStr+" 17:20 +04")
 					for i := y + 1; i < len(shedule); i++ {
 						if len(shedule[i][x].Lessons) > 0 && shedule[i][x].Lessons[0].Type == "mil" {
 							shedule[i][x].Lessons = []Lesson{}
@@ -144,13 +145,14 @@ func (sh *WeekShedule) Parse(p Page, uncover bool) error {
 		}
 	}
 	sh.IsGroup = p.IsGroup
-	sh.SheduleId = p.ID
+	sh.SheduleID = p.ID
 	sh.Week = p.Week
 	sh.Lessons = shedule
 
 	if uncover {
 		sh.UncoverShedule()
 	}
+
 	return nil
 }
 
@@ -167,25 +169,25 @@ func ParseLesson(s *goquery.Selection, isGroup bool, sheduleId int64) []Lesson {
 		if strings.ToLower(lesson.Name) == "военная подготовка" {
 			lesson.Type = "mil"
 		} else {
-			l_type := name.AttrOr("class", "lesson-color-type-4")
-			t := strings.Split(l_type, " ")
-			l_type = t[len(t)-1]
-			type_idx, err := strconv.ParseInt(l_type[len(l_type)-1:], 0, 8)
+			lType := name.AttrOr("class", "lesson-color-type-4")
+			t := strings.Split(lType, " ")
+			lType = t[len(t)-1]
+			typeIdx, err := strconv.ParseInt(lType[len(lType)-1:], 0, 8)
 			if err != nil {
-				type_idx = 4
+				typeIdx = 4
 			}
-			lesson.Type = types[type_idx-1]
+			lesson.Type = types[typeIdx-1]
 		}
 
-		var teacherId []int64
-		var groupId []int64
+		var teacherID []int64
+		var groupID []int64
 
 		l.Find(".schedule__teacher a").Each(func(k int, gr *goquery.Selection) {
 			id, err := strconv.ParseInt(gr.AttrOr("href", "/rasp?staffId=")[14:], 0, 64)
 			if err != nil {
 				return
 			}
-			teacherId = append(teacherId, id)
+			teacherID = append(teacherID, id)
 		})
 
 		l.Find("a.schedule__group").Each(func(k int, gr *goquery.Selection) {
@@ -193,7 +195,7 @@ func ParseLesson(s *goquery.Selection, isGroup bool, sheduleId int64) []Lesson {
 			if err != nil {
 				return
 			}
-			groupId = append(groupId, id)
+			groupID = append(groupID, id)
 
 			// Вытягиваем подгруппу из преподавательского расписания
 			if !isGroup {
@@ -212,17 +214,17 @@ func ParseLesson(s *goquery.Selection, isGroup bool, sheduleId int64) []Lesson {
 
 		// Добавляем, собственно, группу или преподавателя настоящего расписания
 		if isGroup {
-			if !slices.Contains(groupId, sheduleId) {
-				groupId = append(groupId, sheduleId)
+			if !slices.Contains(groupID, sheduleId) {
+				groupID = append(groupID, sheduleId)
 			}
 		} else {
-			teacherId = append(teacherId, sheduleId)
+			teacherID = append(teacherID, sheduleId)
 		}
 
-		lesson.TeacherId = teacherId
-		lesson.GroupId = groupId
+		lesson.TeacherID = teacherID
+		lesson.GroupID = groupID
 
-		if isGroup && len(groupId) == 1 {
+		if isGroup && len(groupID) == 1 {
 			subgroup := strings.TrimSpace(l.Find(".schedule__groups span").First().Text())
 			if len(subgroup) != 0 {
 				subgroup = strings.Split(subgroup, ":")[1]
@@ -231,8 +233,8 @@ func ParseLesson(s *goquery.Selection, isGroup bool, sheduleId int64) []Lesson {
 			} else {
 				lesson.SubGroup = append(lesson.SubGroup, 0)
 			}
-		} else if isGroup && len(groupId) > 1 {
-			for range groupId {
+		} else if isGroup && len(groupID) > 1 {
+			for range groupID {
 				lesson.SubGroup = append(lesson.SubGroup, 0)
 			}
 		}
