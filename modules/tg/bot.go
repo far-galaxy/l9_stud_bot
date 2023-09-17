@@ -102,7 +102,7 @@ func (bot *Bot) SendMsg(user *database.TgUser, text string, markup interface{}) 
 // Получение данных о пользователе из БД и создание нового при необходимости
 func InitUser(db *xorm.Engine, user *tgbotapi.User) (*database.TgUser, error) {
 	id := user.ID
-	name := user.FirstName + " " + user.LastName
+	//name := user.FirstName + " " + user.LastName
 
 	var users []database.TgUser
 	err := db.Find(&users, &database.TgUser{TgId: id})
@@ -122,8 +122,8 @@ func InitUser(db *xorm.Engine, user *tgbotapi.User) (*database.TgUser, error) {
 		}
 
 		tg_user = database.TgUser{
-			L9Id:   l9id,
-			Name:   name,
+			L9Id: l9id,
+			//Name:   name,
 			TgId:   id,
 			PosTag: database.NotStarted,
 		}
