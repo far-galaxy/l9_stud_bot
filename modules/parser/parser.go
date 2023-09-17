@@ -74,75 +74,14 @@ func (sh *WeekShedule) Parse(p Page, uncover bool) error {
 		lessons = append(lessons, sl)
 	})
 
-	var shedule [][]Pair
-
-	for t := 0; t < len(rawTimes); t += 2 {
-		var timeLine []Pair
-		for d, date := range rawDates {
-			beginRaw := date + rawTimes[t]
-			begin, err := time.Parse(" 02.01.2006 15:04 -07", beginRaw)
-			if err != nil {
-				return err
-			}
-			endRaw := date + rawTimes[t+1]
-			end, err := time.Parse(" 02.01.2006 15:04 -07", endRaw)
-			if err != nil {
-				return err
-			}
-			idx := (len(rawDates))*t/2 + d
-			lesson := Pair{
-				Begin:        begin,
-				End:          end,
-				NumInShedule: hourMap[begin.Hour()],
-				Lessons:      lessons[idx],
-			}
-			timeLine = append(timeLine, lesson)
-		}
-		shedule = append(shedule, timeLine)
+	shedule, err := createPairArray(rawTimes, rawDates, lessons)
+	if err != nil {
+		return err
 	}
 
 	if len(shedule) > 2 {
-		// Ищем окна
-		for y, line := range shedule[1 : len(shedule)-1] {
-			for x, pair := range line {
-				if len(pair.Lessons) == 0 &&
-					len(shedule[y][x].Lessons) != 0 {
-					for i := y + 2; i < len(shedule); i++ {
-						if len(shedule[i][x].Lessons) != 0 {
-							window := Lesson{
-								Type: "window",
-								Name: "Окно",
-							}
-							if p.IsGroup {
-								window.GroupID = []int64{p.ID}
-								window.SubGroup = []int{0}
-							} else {
-								window.TeacherID = []int64{p.ID}
-								window.SubGroup = []int{0}
-							}
-							shedule[y+1][x].Lessons = []Lesson{window}
-
-							break
-						}
-					}
-				}
-			}
-		}
-		// Оставляем только первую пару военки
-		for y, line := range shedule {
-			for x, pair := range line {
-				if len(pair.Lessons) > 0 && pair.Lessons[0].Type == "mil" {
-					dayStr := pair.Begin.Format("2006-01-02")
-					shedule[y][x].Begin, _ = time.Parse("2006-01-02 15:04 -07", dayStr+" 08:30 +04")
-					shedule[y][x].End, _ = time.Parse("2006-01-02 15:04 -07", dayStr+" 17:20 +04")
-					for i := y + 1; i < len(shedule); i++ {
-						if len(shedule[i][x].Lessons) > 0 && shedule[i][x].Lessons[0].Type == "mil" {
-							shedule[i][x].Lessons = []Lesson{}
-						}
-					}
-				}
-			}
-		}
+		shedule = p.findWindows(shedule)
+		shedule = clearMilitary(shedule)
 	}
 	sh.IsGroup = p.IsGroup
 	sh.SheduleID = p.ID
@@ -156,28 +95,98 @@ func (sh *WeekShedule) Parse(p Page, uncover bool) error {
 	return nil
 }
 
+// Оставить только первую пару военки
+func clearMilitary(shedule [][]Pair) [][]Pair {
+	for y, line := range shedule {
+		for x, pair := range line {
+			if len(pair.Lessons) > 0 && pair.Lessons[0].Type == "mil" {
+				dayStr := pair.Begin.Format("2006-01-02")
+				shedule[y][x].Begin, _ = time.Parse("2006-01-02 15:04 -07", dayStr+" 08:30 +04")
+				shedule[y][x].End, _ = time.Parse("2006-01-02 15:04 -07", dayStr+" 17:20 +04")
+				for i := y + 1; i < len(shedule); i++ {
+					if len(shedule[i][x].Lessons) > 0 && shedule[i][x].Lessons[0].Type == "mil" {
+						shedule[i][x].Lessons = []Lesson{}
+					}
+				}
+			}
+		}
+	}
+
+	return shedule
+}
+
+// Поиск окон
+func (p *Page) findWindows(shedule [][]Pair) [][]Pair {
+	for y, line := range shedule[1 : len(shedule)-1] {
+		for x, pair := range line {
+			if len(pair.Lessons) == 0 &&
+				len(shedule[y][x].Lessons) != 0 {
+				for i := y + 2; i < len(shedule); i++ {
+					if len(shedule[i][x].Lessons) != 0 {
+						window := Lesson{
+							Type: "window",
+							Name: "Окно",
+						}
+						if p.IsGroup {
+							window.GroupID = []int64{p.ID}
+							window.SubGroup = []int{0}
+						} else {
+							window.TeacherID = []int64{p.ID}
+							window.SubGroup = []int{0}
+						}
+						shedule[y+1][x].Lessons = []Lesson{window}
+
+						break
+					}
+				}
+			}
+		}
+	}
+
+	return shedule
+}
+
+func createPairArray(rawTimes []string, rawDates []string, lessons [][]Lesson) ([][]Pair, error) {
+	var shedule [][]Pair
+	for t := 0; t < len(rawTimes); t += 2 {
+		var timeLine []Pair
+		for d, date := range rawDates {
+			beginRaw := date + rawTimes[t]
+			begin, err := time.Parse(" 02.01.2006 15:04 -07", beginRaw)
+			if err != nil {
+				return nil, err
+			}
+			endRaw := date + rawTimes[t+1]
+			end, err := time.Parse(" 02.01.2006 15:04 -07", endRaw)
+			if err != nil {
+				return nil, err
+			}
+			idx := (len(rawDates))*t/2 + d
+			lesson := Pair{
+				Begin:        begin,
+				End:          end,
+				NumInShedule: hourMap[begin.Hour()],
+				Lessons:      lessons[idx],
+			}
+			timeLine = append(timeLine, lesson)
+		}
+		shedule = append(shedule, timeLine)
+	}
+
+	return shedule, nil
+}
+
 var types = []string{"lect", "lab", "pract", "other", "exam", "cons", "kurs"}
 
 // Парсинг занятия
-func ParseLesson(s *goquery.Selection, isGroup bool, sheduleId int64) []Lesson {
+func ParseLesson(s *goquery.Selection, isGroup bool, sheduleID int64) []Lesson {
 	var lessons []Lesson
 	s.Find(".schedule__lesson").Each(func(j int, l *goquery.Selection) {
 		var lesson Lesson
 
 		name := l.Find("div.schedule__discipline").First()
 		lesson.Name = strings.TrimSpace(name.Text())
-		if strings.ToLower(lesson.Name) == "военная подготовка" {
-			lesson.Type = "mil"
-		} else {
-			lType := name.AttrOr("class", "lesson-color-type-4")
-			t := strings.Split(lType, " ")
-			lType = t[len(t)-1]
-			typeIdx, err := strconv.ParseInt(lType[len(lType)-1:], 0, 8)
-			if err != nil {
-				typeIdx = 4
-			}
-			lesson.Type = types[typeIdx-1]
-		}
+		lesson.parseType(name)
 
 		var teacherID []int64
 		var groupID []int64
@@ -196,48 +205,22 @@ func ParseLesson(s *goquery.Selection, isGroup bool, sheduleId int64) []Lesson {
 				return
 			}
 			groupID = append(groupID, id)
-
-			// Вытягиваем подгруппу из преподавательского расписания
-			if !isGroup {
-				group := gr.First().Text()
-				if idx := strings.Index(group, "("); idx != -1 {
-					if endIdx := strings.Index(group[idx:], ")"); endIdx != -1 {
-						if sub, err := strconv.Atoi(group[idx+1 : idx+endIdx]); err == nil {
-							lesson.SubGroup = append(lesson.SubGroup, sub)
-						}
-					}
-				} else {
-					lesson.SubGroup = append(lesson.SubGroup, 0)
-				}
-			}
+			lesson.parseTeacherSubgroups(isGroup, gr)
 		})
 
 		// Добавляем, собственно, группу или преподавателя настоящего расписания
 		if isGroup {
-			if !slices.Contains(groupID, sheduleId) {
-				groupID = append(groupID, sheduleId)
+			if !slices.Contains(groupID, sheduleID) {
+				groupID = append(groupID, sheduleID)
 			}
 		} else {
-			teacherID = append(teacherID, sheduleId)
+			teacherID = append(teacherID, sheduleID)
 		}
 
 		lesson.TeacherID = teacherID
 		lesson.GroupID = groupID
 
-		if isGroup && len(groupID) == 1 {
-			subgroup := strings.TrimSpace(l.Find(".schedule__groups span").First().Text())
-			if len(subgroup) != 0 {
-				subgroup = strings.Split(subgroup, ":")[1]
-				subgroupNum, _ := strconv.Atoi(strings.TrimSpace(subgroup))
-				lesson.SubGroup = append(lesson.SubGroup, subgroupNum)
-			} else {
-				lesson.SubGroup = append(lesson.SubGroup, 0)
-			}
-		} else if isGroup && len(groupID) > 1 {
-			for range groupID {
-				lesson.SubGroup = append(lesson.SubGroup, 0)
-			}
-		}
+		lesson.parseSubgroups(isGroup, groupID, l)
 
 		place := l.Find("div.schedule__place").First().Text()
 		place = strings.TrimSpace(place)
@@ -248,4 +231,54 @@ func ParseLesson(s *goquery.Selection, isGroup bool, sheduleId int64) []Lesson {
 	})
 
 	return lessons
+}
+
+// Вытягиваем подгруппу из преподавательского расписания
+func (lesson *Lesson) parseTeacherSubgroups(isGroup bool, gr *goquery.Selection) {
+	if !isGroup {
+		group := gr.First().Text()
+		if idx := strings.Index(group, "("); idx != -1 {
+			if endIdx := strings.Index(group[idx:], ")"); endIdx != -1 {
+				if sub, err := strconv.Atoi(group[idx+1 : idx+endIdx]); err == nil {
+					lesson.SubGroup = append(lesson.SubGroup, sub)
+				}
+			}
+		} else {
+			lesson.SubGroup = append(lesson.SubGroup, 0)
+		}
+	}
+}
+
+// Поиск подгрупп
+func (lesson *Lesson) parseSubgroups(isGroup bool, groupID []int64, l *goquery.Selection) {
+	if isGroup && len(groupID) == 1 {
+		subgroup := strings.TrimSpace(l.Find(".schedule__groups span").First().Text())
+		if len(subgroup) != 0 {
+			subgroup = strings.Split(subgroup, ":")[1]
+			subgroupNum, _ := strconv.Atoi(strings.TrimSpace(subgroup))
+			lesson.SubGroup = append(lesson.SubGroup, subgroupNum)
+		} else {
+			lesson.SubGroup = append(lesson.SubGroup, 0)
+		}
+	} else if isGroup && len(groupID) > 1 {
+		for range groupID {
+			lesson.SubGroup = append(lesson.SubGroup, 0)
+		}
+	}
+}
+
+// Определение типа занятия
+func (lesson *Lesson) parseType(name *goquery.Selection) {
+	if strings.ToLower(lesson.Name) == "военная подготовка" {
+		lesson.Type = "mil"
+	} else {
+		lType := name.AttrOr("class", "lesson-color-type-4")
+		t := strings.Split(lType, " ")
+		lType = t[len(t)-1]
+		typeIdx, err := strconv.ParseInt(lType[len(lType)-1:], 0, 8)
+		if err != nil {
+			typeIdx = 4
+		}
+		lesson.Type = types[typeIdx-1]
+	}
 }
