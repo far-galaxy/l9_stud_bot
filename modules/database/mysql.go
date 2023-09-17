@@ -7,7 +7,6 @@ import (
 	"os"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
 	"xorm.io/xorm"
 	xlog "xorm.io/xorm/log"
 	"xorm.io/xorm/names"
@@ -43,7 +42,12 @@ func (files *LogFiles) CloseAll() {
 }
 
 func Connect(db DB, logger *os.File) (*xorm.Engine, error) {
-	engine, err := xorm.NewEngine("mysql", fmt.Sprintf("%s:%s@tcp(localhost:3306)/%s?charset=utf8", db.User, db.Pass, db.Schema))
+	engine, err := xorm.NewEngine(
+		"mysql",
+		fmt.Sprintf(
+			"%s:%s@tcp(localhost:3306)/%s?charset=utf8",
+			db.User, db.Pass, db.Schema),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -65,11 +69,12 @@ func Connect(db DB, logger *os.File) (*xorm.Engine, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return engine, nil
 }
 
 func GenerateID(engine *xorm.Engine) (int64, error) {
-	id := rand.Int63n(899999999) + 100000000
+	id := rand.Int63n(899999999) + 100000000 // #nosec G404
 
 	exists, err := engine.ID(id).Exist(&User{})
 	if err != nil {
@@ -78,9 +83,9 @@ func GenerateID(engine *xorm.Engine) (int64, error) {
 
 	if exists {
 		return GenerateID(engine)
-	} else {
-		return id, nil
 	}
+
+	return id, nil
 }
 
 // TODO: изобрести раздорбление логов по дате
@@ -93,8 +98,8 @@ func CreateLog(name string) *os.File {
 	}
 	fileName := "./logs/" + name + ".log"
 	if _, err := os.Stat(fileName); !os.IsNotExist(err) {
-		new := fmt.Sprintf("./logs/%s.before.%s.log", name, time.Now().Format("06-02-01-15-04-05"))
-		err := os.Rename(fileName, new)
+		newFile := fmt.Sprintf("./logs/%s.before.%s.log", name, time.Now().Format("06-02-01-15-04-05"))
+		err := os.Rename(fileName, newFile)
 		if err != nil {
 			log.Fatal(err)
 		}
