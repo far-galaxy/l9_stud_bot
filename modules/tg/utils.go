@@ -134,6 +134,9 @@ func SummaryKeyboard(
 		),
 	}
 
+	if clickedButton == Week {
+		dt = 0
+	}
 	update := GenerateButtonTail(sheduleID, dt, shedule.IsGroup)
 	ics := []tgbotapi.InlineKeyboardButton{
 		tgbotapi.NewInlineKeyboardButtonData(

@@ -250,6 +250,7 @@ func (bot *Bot) LoadShedule(shedule parser.WeekShedule, now time.Time, fast bool
 	var start, end int
 	if fast {
 		_, start = now.ISOWeek()
+		start -= bot.Week
 		end = start + 1
 	} else {
 		start = 1
