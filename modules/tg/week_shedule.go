@@ -1,16 +1,18 @@
 package tg
 
 import (
+	"bytes"
 	"fmt"
 	"math"
 	"os"
 	"os/exec"
 	"sort"
 	"strings"
+	"text/template"
 	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/parser"
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssauparser"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/icza/gox/timex"
 )
@@ -203,7 +205,7 @@ func (bot *Bot) CreateWeekImg(
 			minDay = lesson.NumInShedule
 		}
 	}
-	var times []parser.Pair
+	var times []ssauparser.Pair
 	var beginsSlice []time.Time
 	var endsSlice []time.Time
 	for b := range begins {
@@ -219,7 +221,7 @@ func (bot *Bot) CreateWeekImg(
 		return endsSlice[i].Before(endsSlice[j])
 	})
 	for i, b := range beginsSlice {
-		sh := parser.Pair{
+		sh := ssauparser.Pair{
 			Begin: b,
 			End:   endsSlice[i],
 		}
@@ -246,7 +248,7 @@ func (bot *Bot) CreateWeekImg(
 			count += len(l)
 		}
 		if count == 0 {
-			nilPair := parser.Pair{}
+			nilPair := ssauparser.Pair{}
 			if y == len(table) {
 				times = append(times, nilPair)
 			} else {
@@ -372,25 +374,6 @@ func GeneratePath(sh database.ShedulesInUser, isPersonal bool, userID int64) str
 	return "shedules/" + path
 }
 
-// TODO: вынести в файл
-const head = `<html lang="ru">
-<head>
-<meta charset="UTF-8">
-<title>Тестовая страница с расписанием</title>
-<meta name='viewport' content='width=device-width,initial-scale=1'/>
-<meta name="mobile-web-app-capable" content="yes">
-</head>
-
-<style>
-.subj div,th.head,th.subj,th.time{border-radius:10px}.note,.subj p,th.head,th.time{font-family:monospace}.note div,.rasp div{background-color:#f0f8ff;padding:10px;text-align:center;border-radius:10px}.subj div #text,.subj p{display:none}html{font-size:1.5rem}body{background:black}table{table-layout:fixed;width:100%;border-spacing:5px 5px}.note div{margin:10px 0}.head p,.subj p,hr{margin:0}.rasp div{transition:.3s}th.head{background-color:#0ff;padding:5px;font-size:1.05rem}th.subj,th.time{background-color:#f0f8ff;padding:10px}th.time{font-size:1.1rem}.subj h2,.subj p{font-size:.85rem}th.subj:not(.lab,.lect,.pract,.other){background-color:#a9a9a9}.subj div{padding:5px}.subj p{color:#f0f8ff}.subj h2,.subj h3,.subj h5{font-family:monospace;text-align:left;margin:5px}.subj h3{font-size:.65rem}.subj h5{font-size:.7rem;font-weight:400}.lect div{background-color:#7fff00}.pract div{background-color:#dc143c}.lab div{background-color:#8a2be2}.mil div,.other div{background-color:#ff8c00}.window div{background-color:#00f}.cons div{background-color:green}.exam div{background-color:purple}.kurs div{background-color:orange}
-</style>
-
-<body>
-`
-const lessonHead = `<th class="subj %s" valign="top">
-<div><p></p></div>
-<h2>%s</h2><hr>`
-
 var shortWeekdays = [6]string{
 	"пн",
 	"вт",
@@ -400,107 +383,86 @@ var shortWeekdays = [6]string{
 	"сб",
 }
 
+type SheduleData struct {
+	IsGroup bool
+	Header  string
+	Week    []WeekHead
+	Lines   []Line
+}
+
+type WeekHead struct {
+	WeekDay string
+	Day     time.Time
+}
+
+type Line struct {
+	Begin    time.Time
+	End      time.Time
+	Lessons  [6][]database.Lesson
+	Teachers [6][]string
+	Groups   [6][]string
+}
+
 func (bot *Bot) CreateHTMLShedule(
 	isGroup bool,
 	header string,
 	shedule [][6][]database.Lesson,
 	dates []time.Time,
-	times []parser.Pair,
+	times []ssauparser.Pair,
 ) string {
-	html := head
-	html += fmt.Sprintf("<div class=\"note\"><div id=\"week\">%s</div></div>\n", header)
-	html += "<table class=\"rasp\">\n<tr><th class=\"head\" style=\"width: 4rem\">Время</th>\n"
-
-	for i, d := range dates {
-		day := d.Format("02")
-		html += fmt.Sprintf("<th class=\"head\">%s<p>%s</p></th>", shortWeekdays[i], day)
+	data := SheduleData{
+		IsGroup: isGroup,
+		Header:  header,
 	}
-	html += "</tr>\n"
+	for i, d := range dates {
+		data.Week = append(data.Week, WeekHead{WeekDay: shortWeekdays[i], Day: d})
+	}
+	tmpl, err := template.ParseFiles("templates/week_shedule.html")
+	if err != nil {
+		bot.Debug.Println(err)
+	}
 
 	for t, tline := range shedule {
-		var begin, end string
-		if times[t].Begin.IsZero() {
-			begin = ("--:--")
-			end = ("--:--")
-		} else {
-			begin = times[t].Begin.Format("15:04")
-			end = times[t].End.Format("15:04")
-		}
-		html += fmt.Sprintf("<tr>\n<th class=\"time\">%s<hr>%s</th>", begin, end)
+		var teachers, groups [6][]string
+
 		for i, l := range tline {
-
-			if len(l) > 0 && l[0].Type != "window" {
-				html += fmt.Sprintf(lessonHead, l[0].Type, l[0].Name)
-				if isGroup && l[0].TeacherId != 0 {
-					var t database.Teacher
-					if _, err := bot.DB.ID(l[0].TeacherId).Get(&t); err != nil {
-						bot.Debug.Println(err)
-					}
-					html += fmt.Sprintf("<h5 id=\"prep\">%s %s</h5>\n", t.FirstName, t.ShortName)
-				}
-				if l[0].Place != "" {
-					html += fmt.Sprintf("<h3>%s</h3>\n", l[0].Place)
-				}
-				if !isGroup {
-					var t database.Group
-					if _, err := bot.DB.ID(l[0].GroupId).Get(&t); err != nil {
-						bot.Debug.Println(err)
-					}
-					html += fmt.Sprintf("<h3>%s</h3>\n", t.GroupName)
-				}
-				if l[0].SubGroup != 0 {
-					html += fmt.Sprintf("<h3>Подгруппа: %d</h3>\n", l[0].SubGroup)
-				}
-				if l[0].Comment != "" {
-					html += fmt.Sprintf("<h3>%s</h3>\n", l[0].Comment)
-				}
-
-				if len(l) == 2 && isGroup {
-					html += "<hr>\n"
-					if l[0].Name != l[1].Name {
-						html += fmt.Sprintf("<div><p></p></div>\n<h2>%s</h2><hr>", l[1].Name)
-					}
-					if l[1].TeacherId != 0 {
-						var t database.Teacher
-						if _, err := bot.DB.ID(l[1].TeacherId).Get(&t); err != nil {
-							bot.Debug.Println(err)
-						}
-						html += fmt.Sprintf("<h5 id=\"prep\">%s %s</h5>\n", t.FirstName, t.ShortName)
-					}
-					if l[1].Place != "" {
-						html += fmt.Sprintf("<h3>%s</h3>\n", l[1].Place)
-					}
-					if l[1].SubGroup != 0 {
-						html += fmt.Sprintf("<h3>Подгруппа: %d</h3>\n", l[1].SubGroup)
-					}
-					if l[1].Comment != "" {
-						html += fmt.Sprintf("<h3>%s</h3>\n", l[1].Comment)
-					}
-				}
-				if len(l) > 1 && !isGroup {
-					for _, gr := range l[1:] {
-						var t database.Group
-						if _, err := bot.DB.ID(gr.GroupId).Get(&t); err != nil {
-							bot.Debug.Println(err)
-						}
-						html += fmt.Sprintf("<h3>%s</h3>\n", t.GroupName)
-						if gr.SubGroup != 0 {
-							html += fmt.Sprintf("<h3>Подгруппа: %d</h3>\n<hr>\n", l[1].SubGroup)
-						}
-					}
-				}
-
-				html += "</th>\n"
-
-			} else {
-				html += "<th class=\"subj\"></th>\n"
+			if len(l) == 0 || l[0].Type == "window" {
+				continue
 			}
-			if i%7 == 6 {
-				html += "</tr>\n"
+
+			if isGroup {
+				for p := range l {
+					var t database.Teacher
+					if _, err := bot.DB.ID(l[p].TeacherId).Get(&t); err != nil {
+						bot.Debug.Println(err)
+					}
+					teachers[i] = append(teachers[i], fmt.Sprintf("%s %s", t.FirstName, t.ShortName))
+				}
+			} else {
+				for p := range l {
+					var g database.Group
+					if _, err := bot.DB.ID(l[0].GroupId).Get(&g); err != nil {
+						bot.Debug.Println(err)
+					}
+					groups[p] = append(groups[p], g.GroupName)
+				}
 			}
 		}
+		data.Lines = append(data.Lines,
+			Line{
+				Begin:    times[t].Begin,
+				End:      times[t].End,
+				Lessons:  tline,
+				Teachers: teachers,
+			})
 	}
-	html += "</table></body></html>"
+
+	var rendered bytes.Buffer
+	err = tmpl.Execute(&rendered, data)
+	if err != nil {
+		bot.Debug.Println(err)
+	}
+	html := rendered.String()
 
 	return html
 }

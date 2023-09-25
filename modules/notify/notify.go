@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/parser"
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssauparser"
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/tg"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"golang.org/x/exp/slices"
@@ -77,7 +77,7 @@ func CheckNext(db *xorm.Engine, now time.Time) ([]Notify, error) {
 	}
 
 	// Отсеиваем последние пары дня
-	last := parser.Diff(completed, next)
+	last := ssauparser.Diff(completed, next)
 
 	for _, l := range last {
 		var nextLesson database.Lesson

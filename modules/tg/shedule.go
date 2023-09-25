@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/parser"
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssauparser"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	td "github.com/mergestat/timediff"
 	"xorm.io/xorm"
@@ -238,12 +238,12 @@ func (bot *Bot) GetLessons(shedule database.ShedulesInUser, now time.Time, limit
 }
 
 // Загрузка расписания из ssau.ru/rasp
-func (bot *Bot) LoadShedule(shedule parser.WeekShedule, now time.Time, fast bool) (
+func (bot *Bot) LoadShedule(shedule ssauparser.WeekShedule, now time.Time, fast bool) (
 	[]database.Lesson,
 	[]database.Lesson,
 	error,
 ) {
-	sh := parser.WeekShedule{
+	sh := ssauparser.WeekShedule{
 		SheduleID: shedule.SheduleID,
 		IsGroup:   shedule.IsGroup,
 	}
@@ -266,7 +266,7 @@ func (bot *Bot) LoadShedule(shedule parser.WeekShedule, now time.Time, fast bool
 
 			return nil, nil, err
 		}
-		a, d, err := parser.UpdateSchedule(bot.DB, sh)
+		a, d, err := ssauparser.UpdateSchedule(bot.DB, sh)
 		if err != nil {
 			return nil, nil, err
 		}

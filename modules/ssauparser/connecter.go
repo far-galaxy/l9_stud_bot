@@ -1,4 +1,4 @@
-package parser
+package ssauparser
 
 import (
 	"encoding/json"

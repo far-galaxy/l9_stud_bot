@@ -8,14 +8,14 @@ import (
 	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/parser"
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssauparser"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
 var TestDB = database.DB{
-	User:   "test",
-	Pass:   "TESTpass1!",
-	Schema: "testdb",
+	User:   "root",
+	Pass:   "18064",
+	Schema: "l9_db_test",
 }
 
 var TestUser = tgbotapi.User{
@@ -38,7 +38,7 @@ func TestCheckEnv(t *testing.T) {
 	t.Log("ok")
 }
 
-func initTestBot(files database.LogFiles) *Bot {
+func InitTestBot(files database.LogFiles) *Bot {
 	if err := CheckEnv(); err != nil {
 		log.Fatal(err)
 	}
@@ -68,7 +68,7 @@ func initTestBot(files database.LogFiles) *Bot {
 func TestInitBot(t *testing.T) {
 	files := database.OpenLogs()
 	defer files.CloseAll()
-	initTestBot(files)
+	InitTestBot(files)
 
 	// Тестируем неправильный токен
 	_, err := InitBot(files, TestDB, os.Getenv("TELEGRAM_APITOKEN")+"oops", "test")
@@ -81,7 +81,7 @@ func TestInitBot(t *testing.T) {
 func TestInitUser(t *testing.T) {
 	files := database.OpenLogs()
 	defer files.CloseAll()
-	bot := initTestBot(files)
+	bot := InitTestBot(files)
 
 	// Я новенький
 	_, err := InitUser(bot.DB, &TestUser)
@@ -109,7 +109,7 @@ var dialog = []string{
 func TestHandleUpdate(t *testing.T) {
 	files := database.OpenLogs()
 	defer files.CloseAll()
-	bot := initTestBot(files)
+	bot := InitTestBot(files)
 
 	user := TestUser
 	user.ID, _ = strconv.ParseInt(os.Getenv("TELEGRAM_TEST_USER"), 0, 64)
@@ -121,11 +121,11 @@ func TestHandleUpdate(t *testing.T) {
 		},
 	}
 	var messages []tgbotapi.Message
-	parser.HeadURL = "http://127.0.0.1:5000/prod"
+	ssauparser.HeadURL = "http://127.0.0.1:5000/prod"
 	// Бот общается с ботом
 	for i, query := range dialog {
 		if i == len(dialog)-1 {
-			parser.HeadURL = "https://sasau.ru"
+			ssauparser.HeadURL = "https://sasau.ru"
 		}
 		update.Message.Text = query
 		msg, err := bot.HandleUpdate(update)
@@ -176,7 +176,7 @@ var times = []string{
 func TestSummary(t *testing.T) {
 	files := database.OpenLogs()
 	defer files.CloseAll()
-	bot := initTestBot(files)
+	bot := InitTestBot(files)
 
 	user := TestUser
 	user.ID, _ = strconv.ParseInt(os.Getenv("TELEGRAM_TEST_USER"), 0, 64)
@@ -185,7 +185,7 @@ func TestSummary(t *testing.T) {
 			From: &user,
 		},
 	}
-	parser.HeadURL = "http://127.0.0.1:5000/prod"
+	ssauparser.HeadURL = "http://127.0.0.1:5000/prod"
 	// Ещё немного общения в разное время
 	var messages []tgbotapi.Message
 	for _, te := range times {
@@ -225,15 +225,15 @@ func TestSummary(t *testing.T) {
 }
 
 func TestGetWeekLessons(t *testing.T) {
-	parser.HeadURL = "http://127.0.0.1:5000/prod"
+	ssauparser.HeadURL = "http://127.0.0.1:5000/prod"
 	files := database.OpenLogs()
 	defer files.CloseAll()
-	bot := initTestBot(files)
+	bot := InitTestBot(files)
 	bot.Week = 5
 	bot.WkPath = "C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltoimage.exe"
 	user := database.TgUser{}
 	user.TgId, _ = strconv.ParseInt(os.Getenv("TELEGRAM_TEST_USER"), 0, 64)
-	shedules := []parser.WeekShedule{
+	shedules := []ssauparser.WeekShedule{
 		{
 			SheduleID: 100000000,
 			IsGroup:   true,
@@ -251,7 +251,7 @@ func TestGetWeekLessons(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		_, _, err = parser.UpdateSchedule(bot.DB, sh)
+		_, _, err = ssauparser.UpdateSchedule(bot.DB, sh)
 		if err != nil {
 			log.Fatal(err)
 		}

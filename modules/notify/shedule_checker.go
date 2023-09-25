@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/parser"
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssauparser"
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/tg"
 )
 
@@ -32,7 +32,7 @@ func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 	if _, err := bot.DB.ID(group.GroupId).Update(group); err != nil {
 		log.Println(err)
 	}
-	sh := parser.WeekShedule{
+	sh := ssauparser.WeekShedule{
 		IsGroup:   true,
 		SheduleID: group.GroupId,
 	}

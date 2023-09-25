@@ -10,7 +10,7 @@ import (
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/notify"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/parser"
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssauparser"
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/tg"
 	"github.com/robfig/cron/v3"
 )
@@ -22,7 +22,7 @@ func main() {
 	if err := tg.CheckEnv(); err != nil {
 		log.Fatal(err)
 	}
-	parser.HeadURL = os.Getenv("RASP_URL")
+	ssauparser.HeadURL = os.Getenv("RASP_URL")
 	logs := database.OpenLogs()
 	defer logs.CloseAll()
 	log.SetOutput(io.MultiWriter(os.Stderr, logs.ErrorFile))

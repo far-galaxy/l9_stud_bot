@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/parser"
+	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssauparser"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"xorm.io/builder"
 )
@@ -49,7 +49,7 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 	}
 
 	// Поиск на сайте
-	list, siteErr := parser.SearchInRasp(query)
+	list, siteErr := ssauparser.SearchInRasp(query)
 
 	// Добавляем результаты поиска на сайте к результатам из БД
 	allGroups, allTeachers := AppendSearchResults(list, groups, teachers)
@@ -65,11 +65,11 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 			sheduleID = allTeachers[0].TeacherId
 			isGroup = false
 		}
-		shedule := parser.WeekShedule{
+		shedule := ssauparser.WeekShedule{
 			IsGroup:   isGroup,
 			SheduleID: sheduleID,
 		}
-		notExists, _ := parser.CheckGroupOrTeacher(bot.DB, shedule)
+		notExists, _ := ssauparser.CheckGroupOrTeacher(bot.DB, shedule)
 
 		return bot.ReturnSummary(notExists, user.PosTag == database.Add, user, shedule, now)
 
@@ -107,7 +107,7 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 }
 
 func AppendSearchResults(
-	list parser.SearchResults,
+	list ssauparser.SearchResults,
 	groups []database.Group,
 	teachers []database.Teacher,
 ) (
@@ -140,7 +140,7 @@ func AppendSearchResults(
 				}
 			}
 			if !exists {
-				teacher := parser.ParseTeacherName(elem.Text)
+				teacher := ssauparser.ParseTeacherName(elem.Text)
 				teacher.TeacherId = elem.ID
 				allTeachers = append(allTeachers, teacher)
 			}
@@ -154,7 +154,7 @@ func (bot *Bot) ReturnSummary(
 	notExists bool,
 	isAdd bool,
 	user *database.TgUser,
-	shedule parser.WeekShedule,
+	shedule ssauparser.WeekShedule,
 	now time.Time,
 ) (
 	tgbotapi.Message,
@@ -226,11 +226,11 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 	if err != nil {
 		return err
 	}
-	shedule := parser.WeekShedule{
+	shedule := ssauparser.WeekShedule{
 		IsGroup:   isGroup,
 		SheduleID: groupID,
 	}
-	notExists, _ := parser.CheckGroupOrTeacher(bot.DB, shedule)
+	notExists, _ := ssauparser.CheckGroupOrTeacher(bot.DB, shedule)
 	del := tgbotapi.NewDeleteMessage(query.From.ID, query.Message.MessageID)
 	if _, err := bot.TG.Request(del); err != nil {
 		return err
