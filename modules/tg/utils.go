@@ -24,6 +24,18 @@ func GeneralKeyboard(options bool) tgbotapi.ReplyKeyboardMarkup {
 	return key
 }
 
+// Основные кнопки действий с автоопределением необходимости кнопки "Настройки"
+func (bot *Bot) AutoGenKeyboard(user *database.TgUser) tgbotapi.ReplyKeyboardMarkup {
+	options := database.ShedulesInUser{
+		L9Id: user.L9Id,
+	}
+	if _, err := bot.DB.Get(&options); err != nil {
+		bot.Debug.Println(err)
+	}
+
+	return GeneralKeyboard(options.UID != 0)
+}
+
 // Inline-кнопка отмены
 func CancelKey() tgbotapi.InlineKeyboardMarkup {
 	markup := [][]tgbotapi.InlineKeyboardButton{
@@ -134,10 +146,13 @@ func SummaryKeyboard(
 		),
 	}
 
+	var update string
 	if clickedButton == Week {
-		dt = 0
+		update = GenerateButtonTail(sheduleID, 0, shedule.IsGroup)
+	} else {
+		update = GenerateButtonTail(sheduleID, dt, shedule.IsGroup)
 	}
-	update := GenerateButtonTail(sheduleID, dt, shedule.IsGroup)
+
 	ics := []tgbotapi.InlineKeyboardButton{
 		tgbotapi.NewInlineKeyboardButtonData(
 			"🗓 Скачать .ics",

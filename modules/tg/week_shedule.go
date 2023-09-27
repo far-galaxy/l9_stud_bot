@@ -171,8 +171,6 @@ func (bot *Bot) CreateWeekImg(
 		return err
 	}
 	if len(lessons) == 0 {
-		// TODO: сделать костыль поизящнее и предупреждать, если неделя пустая
-		// TODO: так же проработать нулевую неделю
 		next, err := bot.GetWeekLessons(shedule, week+1)
 		if err != nil {
 			return err
@@ -426,7 +424,7 @@ func (bot *Bot) CreateHTMLShedule(
 		var teachers, groups [6][]string
 
 		for i, l := range tline {
-			if len(l) == 0 || l[0].Type == "window" {
+			if len(l) == 0 || l[0].Type == database.Window {
 				continue
 			}
 
@@ -502,11 +500,10 @@ func (bot *Bot) CreateICS(
 	txt := "BEGIN:VCALENDAR\n" + "VERSION:2.0\n" + "CALSCALE:GREGORIAN\n" + "METHOD:REQUEST\n"
 	if len(lessons) != 0 {
 		for _, lesson := range lessons {
-			// TODO: создать тип типов занятий
-			if lesson.Type == "window" {
+			if lesson.Type == database.Window {
 				continue
 			}
-			if lesson.Type == "mil" && !shedule.Military {
+			if lesson.Type == database.Military && !shedule.Military {
 				continue
 			}
 			l := "BEGIN:VEVENT\n"
@@ -535,7 +532,7 @@ func (bot *Bot) CreateICS(
 				desc += fmt.Sprintf("%s\\n", lesson.Comment)
 			}
 			l += fmt.Sprintf("DESCRIPTION:%s\n", desc)
-			if lesson.Type != "mil" {
+			if lesson.Type != database.Military {
 				l += fmt.Sprintf("LOCATION:%s / %s\n", Comm[lesson.Type], lesson.Place)
 			}
 			l += "END:VEVENT\n"
@@ -562,6 +559,7 @@ func (bot *Bot) CreateICS(
 			doc.Caption = "📖 Инструкция: https://bit.ly/ics_upload\n\n" +
 				"‼️ Удалите старые занятия данной недели из календаря, если они есть"
 		}
+		doc.ReplyMarkup = bot.AutoGenKeyboard(user)
 		_, err := bot.TG.Send(doc)
 		if err != nil {
 			return err

@@ -90,8 +90,8 @@ func isGroupExists(db *xorm.Engine, groupID int64) (database.Group, error) {
 }
 
 // Проверка наличия группы или преподавателя в БД и добавление при необходимости
+//
 // Возвращает истину, если группы/преподавателя раньше не было
-// TODO: Добавить проверку изменений в полях данных
 func CheckGroupOrTeacher(db *xorm.Engine, sh WeekShedule) (bool, error) {
 	if sh.IsGroup {
 		group, err := isGroupExists(db, sh.SheduleID)
@@ -118,6 +118,8 @@ func CheckGroupOrTeacher(db *xorm.Engine, sh WeekShedule) (bool, error) {
 			return true, nil
 		}
 	} else {
+		// TODO: Добавить проверку изменений в полях данных
+		// (делать совместно с личным преп. расписанием, иначе бессмысленно)
 		var teachers []database.Teacher
 		tc, err := db.FindAndCount(&teachers, database.Teacher{TeacherId: sh.SheduleID})
 		if err != nil {

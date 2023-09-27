@@ -30,9 +30,9 @@ func (bot *Bot) Scream(msg *tgbotapi.Message) (tgbotapi.Message, error) {
 		0,
 		strings.TrimPrefix(msg.Text, "/scream"),
 	)
-	// FIXME: не терять клавиатуру
-	for _, u := range users {
+	for i, u := range users {
 		scream.ChatID = u.TgId
+		scream.ReplyMarkup = bot.AutoGenKeyboard(&users[i])
 		if _, err := bot.TG.Send(scream); err != nil {
 			if !strings.Contains(err.Error(), "blocked by user") {
 				bot.Debug.Println(err)

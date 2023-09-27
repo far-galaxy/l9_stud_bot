@@ -20,7 +20,7 @@ type Pair struct {
 
 // Отдельные занятия внутри пары
 type Lesson struct {
-	Type      string
+	Type      database.Kind
 	Name      string
 	Place     string
 	TeacherID []int64
@@ -99,12 +99,12 @@ func (sh *WeekShedule) Parse(p Page, uncover bool) error {
 func clearMilitary(shedule [][]Pair) [][]Pair {
 	for y, line := range shedule {
 		for x, pair := range line {
-			if len(pair.Lessons) > 0 && pair.Lessons[0].Type == "mil" {
-				dayStr := pair.Begin.Format("2006-01-02")
-				shedule[y][x].Begin, _ = time.Parse("2006-01-02 15:04 -07", dayStr+" 08:30 +04")
-				shedule[y][x].End, _ = time.Parse("2006-01-02 15:04 -07", dayStr+" 17:20 +04")
+			if len(pair.Lessons) > 0 && pair.Lessons[0].Type == database.Military {
+				//dayStr := pair.Begin.Format("2006-01-02")
+				//shedule[y][x].Begin, _ = time.Parse("2006-01-02 15:04 -07", dayStr+" 08:30 +04")
+				//shedule[y][x].End, _ = time.Parse("2006-01-02 15:04 -07", dayStr+" 17:20 +04")
 				for i := y + 1; i < len(shedule); i++ {
-					if len(shedule[i][x].Lessons) > 0 && shedule[i][x].Lessons[0].Type == "mil" {
+					if len(shedule[i][x].Lessons) > 0 && shedule[i][x].Lessons[0].Type == database.Military {
 						shedule[i][x].Lessons = []Lesson{}
 					}
 				}
@@ -176,7 +176,10 @@ func createPairArray(rawTimes []string, rawDates []string, lessons [][]Lesson) (
 	return shedule, nil
 }
 
-var types = []string{"lect", "lab", "pract", "other", "exam", "cons", "kurs"}
+var types = []database.Kind{
+	database.Lection, database.Lab, database.Practice,
+	database.Other, database.Exam, database.Consult, database.CourseWork,
+}
 
 // Парсинг занятия
 func ParseLesson(s *goquery.Selection, isGroup bool, sheduleID int64) []Lesson {
@@ -270,14 +273,14 @@ func (lesson *Lesson) parseSubgroups(isGroup bool, groupID []int64, l *goquery.S
 // Определение типа занятия
 func (lesson *Lesson) parseType(name *goquery.Selection) {
 	if strings.ToLower(lesson.Name) == "военная подготовка" {
-		lesson.Type = "mil"
+		lesson.Type = database.Military
 	} else {
 		lType := name.AttrOr("class", "lesson-color-type-4")
 		t := strings.Split(lType, " ")
 		lType = t[len(t)-1]
 		typeIdx, err := strconv.ParseInt(lType[len(lType)-1:], 0, 8)
 		if err != nil {
-			typeIdx = 4
+			lesson.Type = database.Other
 		}
 		lesson.Type = types[typeIdx-1]
 	}

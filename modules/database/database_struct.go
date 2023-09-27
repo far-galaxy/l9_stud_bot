@@ -17,6 +17,8 @@ const (
 	Delete     Position = "del"         // Отключается от группы
 )
 
+// TODO: к v.1.0 исправить названия
+
 // Пользователь Telegram
 type TgUser struct {
 	L9Id   int64 `xorm:"pk"`
@@ -60,11 +62,25 @@ type Teacher struct {
 	LastCheck time.Time
 }
 
+type Kind string //Тип занятий
+
+const (
+	Lection    Kind = "lect"
+	Practice   Kind = "pract"
+	Lab        Kind = "lab"
+	Other      Kind = "other"
+	Military   Kind = "mil"
+	Window     Kind = "window"
+	Exam       Kind = "exam"
+	Consult    Kind = "cons"
+	CourseWork Kind = "kurs"
+)
+
 // Занятие
 type Lesson struct {
 	LessonId     int64 `xorm:"pk autoincr"`
 	NumInShedule int
-	Type         string
+	Type         Kind
 	Name         string
 	GroupId      int64
 	Begin        time.Time

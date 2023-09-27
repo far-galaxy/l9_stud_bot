@@ -105,7 +105,7 @@ func strChanges(add []database.Lesson, str string, isAdd bool) string {
 func ShortPairStr(lesson database.Lesson) string {
 	beginStr := fmt.Sprintf(lesson.Begin.Format("02 %s 15:04"), tg.Month[lesson.Begin.Month()-1])
 	var endStr string
-	if lesson.Type == "mil" {
+	if lesson.Type == database.Military {
 		endStr = "∞"
 	} else {
 		endStr = lesson.End.Format("15:04")

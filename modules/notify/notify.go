@@ -130,7 +130,7 @@ func StrNext(db *xorm.Engine, note Notify) (string, error) {
 		pair = append(pair, note.Lesson)
 	}
 
-	str := "Следующая пара:\n\n"
+	str := "Сейчас будет:\n\n"
 	strPair, err := tg.PairToStr(pair, db, note.IsGroup)
 	if err != nil {
 		return "", err
@@ -188,8 +188,6 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 		case NextDay:
 			query.NextDay = true
 			txt, err = StrNextDay(bot, note)
-			// TODO: установить время удаления на момент сообщения о начале пар
-			tempTime = note.Lesson.Begin.Add(-60 * time.Minute)
 		case NextWeek:
 			query.NextWeek = true
 		}
@@ -221,28 +219,13 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 				if err != nil {
 					bot.CheckBlocked(err, user)
 				} else {
+					if note.NoteType == NextDay {
+						getNextDayTemp(user, bot, &tempTime, note)
+					}
 					AddTemp(m, tempTime, bot)
 				}
 			} else {
-				if err = bot.GetWeekSummary(
-					note.Lesson.Begin,
-					&users[i],
-					database.ShedulesInUser{},
-					-1,
-					true,
-					"На этой неделе больше ничего нет\n\nНа фото расписание на следующую неделю",
-				); err != nil {
-					log.Println(err)
-
-					continue
-				}
-				if err = bot.CreateICS(
-					now,
-					&users[i],
-					database.ShedulesInUser{},
-					true,
-					-1,
-				); err != nil {
+				if err := sendNextWeek(bot, note, &users[i], now); err != nil {
 					log.Println(err)
 
 					continue
@@ -252,6 +235,43 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 
 		}
 	}
+}
+
+// Рассылка уведомлений о следующей неделе
+func sendNextWeek(bot *tg.Bot, note Notify, user *database.TgUser, now time.Time) error {
+	if err := bot.GetWeekSummary(
+		note.Lesson.Begin,
+		user,
+		database.ShedulesInUser{},
+		-1,
+		true,
+		"На этой неделе больше ничего нет\n\nНа фото расписание на следующую неделю",
+	); err != nil {
+		return err
+	}
+
+	return bot.CreateICS(
+		now,
+		user,
+		database.ShedulesInUser{},
+		true,
+		-1,
+	)
+}
+
+// Получить время удаления уведомления о следующем дне
+func getNextDayTemp(user database.TgUser, bot *tg.Bot, tempTime *time.Time, note Notify) {
+	shInfo := database.ShedulesInUser{
+		L9Id: user.L9Id,
+	}
+	_, err := bot.DB.Get(&shInfo)
+	if err != nil {
+		bot.Debug.Println(err)
+
+		return
+	}
+	dt := -1 * shInfo.FirstTime
+	*tempTime = note.Lesson.Begin.Add(time.Duration(dt) * time.Minute)
 }
 
 // Добавить сообщение в список временных

@@ -266,6 +266,7 @@ func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQue
 
 func (bot *Bot) Etc(user *database.TgUser) (tgbotapi.Message, error) {
 	msg := tgbotapi.NewMessage(user.TgId, "Oй!")
+	msg.ReplyMarkup = bot.AutoGenKeyboard(user)
 
 	return bot.TG.Send(msg)
 }

@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql" // Иначе не работает
 	"xorm.io/xorm"
 	xlog "xorm.io/xorm/log"
 	"xorm.io/xorm/names"

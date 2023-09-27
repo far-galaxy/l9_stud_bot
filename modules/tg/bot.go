@@ -28,7 +28,6 @@ type Bot struct {
 	Build     string
 }
 
-// TODO: завернуть в структуру
 var envKeys = []string{
 	"TELEGRAM_APITOKEN",
 	"TELEGRAM_TEST_USER",
@@ -176,16 +175,11 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 	if err != nil {
 		return nilMsg, err
 	}
-	options := database.ShedulesInUser{
-		L9Id: user.L9Id,
-	}
-	if _, err := bot.DB.Get(&options); err != nil {
-		return nilMsg, err
-	}
+
 	bot.Debug.Printf("Message [%d:%d] <%s> %s", user.L9Id, user.TgId, user.Name, msg.Text)
 	bot.Messages++
 	if strings.Contains(msg.Text, "/help") {
-		return bot.SendMsg(user, bot.HelpTxt, GeneralKeyboard(options.UID != 0))
+		return bot.SendMsg(user, bot.HelpTxt, bot.AutoGenKeyboard(user))
 	}
 	if strings.Contains(msg.Text, "/start") && user.PosTag != database.NotStarted {
 		if err := bot.DeleteUser(*user); err != nil {
@@ -215,7 +209,7 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 			return bot.SendMsg(
 				user,
 				"Кнопки действий выданы",
-				GeneralKeyboard(options.UID != 0),
+				bot.AutoGenKeyboard(user),
 			)
 		} else if KeywordContains(msg.Text, AdminKey) && user.TgId == bot.TestUser {
 			return bot.AdminHandle(msg)

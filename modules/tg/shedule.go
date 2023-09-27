@@ -346,28 +346,28 @@ func GroupPairs(lessons []database.Lesson) [][]database.Lesson {
 	return shedule
 }
 
-var Icons = map[string]string{
-	"lect":   "📗",
-	"pract":  "📕",
-	"lab":    "📘",
-	"other":  "📙",
-	"mil":    "🫡",
-	"window": "🏝",
-	"exam":   "💀",
-	"cons":   "🗨",
-	"kurs":   "🤯",
+var Icons = map[database.Kind]string{
+	database.Lection:    "📗",
+	database.Practice:   "📕",
+	database.Lab:        "📘",
+	database.Other:      "📙",
+	database.Military:   "🫡",
+	database.Window:     "🏝",
+	database.Exam:       "💀",
+	database.Consult:    "🗨",
+	database.CourseWork: "🤯",
 }
 
-var Comm = map[string]string{
-	"lect":   "Лекция",
-	"pract":  "Практика",
-	"lab":    "Лаба",
-	"other":  "Прочее",
-	"mil":    "",
-	"window": "",
-	"exam":   "Экзамен",
-	"cons":   "Консультация",
-	"kurs":   "Курсовая",
+var Comm = map[database.Kind]string{
+	database.Lection:    "Лекция",
+	database.Practice:   "Практика",
+	database.Lab:        "Лаба",
+	database.Other:      "Прочее",
+	database.Military:   "",
+	database.Window:     "",
+	database.Exam:       "Экзамен",
+	database.Consult:    "Консультация",
+	database.CourseWork: "Курсовая",
 }
 
 // Конвертация занятий с текст
@@ -375,7 +375,7 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine, isGroup bool) (string, e
 	var str string
 	beginStr := pair[0].Begin.Format("15:04")
 	var endStr string
-	if pair[0].Type == "mil" {
+	if pair[0].Type == database.Military {
 		endStr = "∞"
 	} else {
 		endStr = pair[0].End.Format("15:04")
