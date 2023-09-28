@@ -6,14 +6,21 @@ import (
 	"strings"
 	"time"
 
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	td "github.com/mergestat/timediff"
+	"stud.l9labs.ru/bot/modules/database"
+	"stud.l9labs.ru/bot/modules/ssauparser"
 	"xorm.io/xorm"
 )
 
-func (bot *Bot) GetPersonal(now time.Time, user *database.TgUser, editMsg ...tgbotapi.Message) (tgbotapi.Message, error) {
+func (bot *Bot) GetPersonal(
+	now time.Time,
+	user *database.TgUser,
+	editMsg ...tgbotapi.Message,
+) (
+	tgbotapi.Message,
+	error,
+) {
 	shedule := database.ShedulesInUser{L9Id: user.L9Id}
 	exists, err := bot.DB.Get(&shedule)
 	if err != nil {
@@ -33,10 +40,10 @@ func (bot *Bot) GetPersonal(now time.Time, user *database.TgUser, editMsg ...tgb
 				"(в формате 2305 или 2305-240502D)",
 			tgbotapi.ReplyKeyboardRemove{RemoveKeyboard: true},
 		)
-	} else {
-		return nilMsg, bot.GetWeekSummary(now, user, shedule, -1, true, "")
-		//return bot.GetSummary(now, user, shedules, true, editMsg...)
 	}
+
+	return nilMsg, bot.GetWeekSummary(now, user, shedule, -1, true, "", editMsg...)
+
 }
 
 // Получить краткую сводку
@@ -125,16 +132,17 @@ func (bot *Bot) GetShortSummary(
 			isPersonal,
 			0,
 		)
+
 		return bot.EditOrSend(user.TgId, str, "", markup, editMsg...)
 
-	} else {
-		return bot.EditOrSend(
-			user.TgId,
-			"Ой! Занятий не обнаружено ):",
-			"",
-			tgbotapi.InlineKeyboardMarkup{},
-			editMsg...)
 	}
+
+	return bot.EditOrSend(
+		user.TgId,
+		"Ой! Занятий не обнаружено ):",
+		"",
+		tgbotapi.InlineKeyboardMarkup{},
+		editMsg...)
 }
 
 // Актуализация запроса на расписание для персональных расписаний
@@ -144,6 +152,7 @@ func (bot *Bot) ActShedule(isPersonal bool, user *database.TgUser, shedule *data
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -181,6 +190,7 @@ func (bot *Bot) GetDaySummary(
 
 		if firstPair.Day() != day.Day() {
 			str = fmt.Sprintf("В %s, занятий нет", dayStr)
+
 			return bot.EditOrSend(user.TgId, str, "", markup, editMsg...)
 		}
 		str = fmt.Sprintf("Расписание на %s\n\n", dayStr)
@@ -192,11 +202,11 @@ func (bot *Bot) GetDaySummary(
 			return nilMsg, err
 		}
 		str += day
+
 		return bot.EditOrSend(user.TgId, str, "", markup, editMsg...)
-	} else {
-		return bot.SendMsg(user, "Ой! Пар не обнаружено ):", GeneralKeyboard(true))
 	}
 
+	return bot.SendMsg(user, "Ой! Пар не обнаружено ):", GeneralKeyboard(true))
 }
 
 // Строка даты формата "среду, 1 января"
@@ -207,6 +217,7 @@ func DayStr(day time.Time) string {
 		day.Day(),
 		Month[day.Month()-1],
 	)
+
 	return dayStr
 }
 
@@ -227,18 +238,19 @@ func (bot *Bot) GetLessons(shedule database.ShedulesInUser, now time.Time, limit
 }
 
 // Загрузка расписания из ssau.ru/rasp
-func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule, now time.Time, fast bool) (
+func (bot *Bot) LoadShedule(shedule ssauparser.WeekShedule, now time.Time, fast bool) (
 	[]database.Lesson,
 	[]database.Lesson,
 	error,
 ) {
-	sh := ssau_parser.WeekShedule{
-		SheduleId: shedule.SheduleId,
+	sh := ssauparser.WeekShedule{
+		SheduleID: shedule.SheduleID,
 		IsGroup:   shedule.IsGroup,
 	}
 	var start, end int
 	if fast {
 		_, start = now.ISOWeek()
+		start -= bot.Week
 		end = start + 1
 	} else {
 		start = 1
@@ -247,13 +259,14 @@ func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule, now time.Time, fast
 	var add, del []database.Lesson
 	for week := start; week < end; week++ {
 		sh.Week = week
-		if err := sh.DownloadById(true); err != nil {
+		if err := sh.DownloadByID(true); err != nil {
 			if strings.Contains(err.Error(), "404") {
 				break
 			}
+
 			return nil, nil, err
 		}
-		a, d, err := ssau_parser.UpdateSchedule(bot.DB, sh)
+		a, d, err := ssauparser.UpdateSchedule(bot.DB, sh)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -263,7 +276,7 @@ func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule, now time.Time, fast
 	// Обновляем время обновления
 	if len(add) > 0 || len(del) > 0 {
 		if sh.IsGroup {
-			gr := database.Group{GroupId: sh.SheduleId}
+			gr := database.Group{GroupId: sh.SheduleID}
 			if _, err := bot.DB.Get(&gr); err != nil {
 				return nil, nil, err
 			}
@@ -272,7 +285,7 @@ func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule, now time.Time, fast
 				return nil, nil, err
 			}
 		} else {
-			t := database.Teacher{TeacherId: sh.SheduleId}
+			t := database.Teacher{TeacherId: sh.SheduleID}
 			if _, err := bot.DB.Get(&t); err != nil {
 				return nil, nil, err
 			}
@@ -282,6 +295,7 @@ func (bot *Bot) LoadShedule(shedule ssau_parser.WeekShedule, now time.Time, fast
 			}
 		}
 	}
+
 	return add, del, nil
 }
 
@@ -296,18 +310,19 @@ func CreateCondition(shedule database.ShedulesInUser) string {
 		groups = append(groups, strconv.FormatInt(shedule.SheduleId, 10))
 	}
 
-	var condition, teachers_str, groups_str string
+	var condition, teachersStr, groupsStr string
 	if len(groups) > 0 {
-		groups_str = strings.Join(groups, ",")
-		condition = "groupId in (" + groups_str + ") "
+		groupsStr = strings.Join(groups, ",")
+		condition = "groupId in (" + groupsStr + ") "
 	}
 	if len(teachers) > 0 {
 		if len(condition) > 0 {
 			condition += " or "
 		}
-		teachers_str += strings.Join(teachers, ",")
-		condition += "teacherId in (" + teachers_str + ") "
+		teachersStr += strings.Join(teachers, ",")
+		condition += "teacherId in (" + teachersStr + ") "
 	}
+
 	return condition
 }
 
@@ -316,42 +331,43 @@ func GroupPairs(lessons []database.Lesson) [][]database.Lesson {
 	var shedule [][]database.Lesson
 	var pair []database.Lesson
 
-	l_idx := 0
+	lIdx := 0
 
-	for l_idx < len(lessons) {
-		day := lessons[l_idx].Begin
-		for l_idx < len(lessons) && lessons[l_idx].Begin == day {
-			pair = append(pair, lessons[l_idx])
-			l_idx++
+	for lIdx < len(lessons) {
+		day := lessons[lIdx].Begin
+		for lIdx < len(lessons) && lessons[lIdx].Begin == day {
+			pair = append(pair, lessons[lIdx])
+			lIdx++
 		}
 		shedule = append(shedule, pair)
 		pair = []database.Lesson{}
 	}
+
 	return shedule
 }
 
-var Icons = map[string]string{
-	"lect":   "📗",
-	"pract":  "📕",
-	"lab":    "📘",
-	"other":  "📙",
-	"mil":    "🫡",
-	"window": "🏝",
-	"exam":   "💀",
-	"cons":   "🗨",
-	"kurs":   "🤯",
+var Icons = map[database.Kind]string{
+	database.Lection:    "📗",
+	database.Practice:   "📕",
+	database.Lab:        "📘",
+	database.Other:      "📙",
+	database.Military:   "🫡",
+	database.Window:     "🏝",
+	database.Exam:       "💀",
+	database.Consult:    "🗨",
+	database.CourseWork: "🤯",
 }
 
-var Comm = map[string]string{
-	"lect":   "Лекция",
-	"pract":  "Практика",
-	"lab":    "Лаба",
-	"other":  "Прочее",
-	"mil":    "",
-	"window": "",
-	"exam":   "Экзамен",
-	"cons":   "Консультация",
-	"kurs":   "Курсовая",
+var Comm = map[database.Kind]string{
+	database.Lection:    "Лекция",
+	database.Practice:   "Практика",
+	database.Lab:        "Лаба",
+	database.Other:      "Прочее",
+	database.Military:   "",
+	database.Window:     "",
+	database.Exam:       "Экзамен",
+	database.Consult:    "Консультация",
+	database.CourseWork: "Курсовая",
 }
 
 // Конвертация занятий с текст
@@ -359,7 +375,7 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine, isGroup bool) (string, e
 	var str string
 	beginStr := pair[0].Begin.Format("15:04")
 	var endStr string
-	if pair[0].Type == "mil" {
+	if pair[0].Type == database.Military {
 		endStr = "∞"
 	} else {
 		endStr = pair[0].End.Format("15:04")
@@ -373,8 +389,8 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine, isGroup bool) (string, e
 	}
 
 	for i, sublesson := range pair {
-		type_emoji := Icons[sublesson.Type] + " " + Comm[sublesson.Type]
-		str += fmt.Sprintf("%s %s\n", type_emoji, sublesson.Name)
+		typeEmoji := Icons[sublesson.Type] + " " + Comm[sublesson.Type]
+		str += fmt.Sprintf("%s %s\n", typeEmoji, sublesson.Name)
 		if sublesson.Place != "" {
 			str += fmt.Sprintf("🧭 %s\n", sublesson.Place)
 		}
@@ -418,6 +434,7 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine, isGroup bool) (string, e
 	}
 
 	str += "------------------------------------------\n"
+
 	return str, nil
 }
 
@@ -436,5 +453,6 @@ func (bot *Bot) StrDayShedule(lessons [][]database.Lesson, isGroup bool) (string
 			break
 		}
 	}
+
 	return str, nil
 }

@@ -20,6 +20,7 @@ func handleError(err error) {
 
 func TestCreateLog(t *testing.T) {
 	CreateLog("log")
+	t.Log("ok")
 }
 
 func TestConnect(t *testing.T) {
@@ -29,4 +30,5 @@ func TestConnect(t *testing.T) {
 	handleError(err)
 	_, err = Connect(TestDB, logs.DBLogFile)
 	handleError(err)
+	t.Log("ok")
 }

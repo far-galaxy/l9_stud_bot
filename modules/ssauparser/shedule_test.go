@@ -1,4 +1,4 @@
-package ssau_parser
+package ssauparser
 
 import (
 	"log"
@@ -22,35 +22,37 @@ func TestDownload(t *testing.T) {
 		IsGroup: false,
 		Week:    4,
 	}
-	err = sh.DownloadById(true)
+	err = sh.DownloadByID(true)
 	handleError(err)
 
 	sh = WeekShedule{
-		SheduleId: 123456789,
+		SheduleID: 123456789,
 		IsGroup:   false,
 	}
-	err = sh.DownloadById(true)
+	err = sh.DownloadByID(true)
 	handleError(err)
+	t.Log("ok")
 }
 
 func TestSheduleCompare(t *testing.T) {
 	HeadURL = "http://127.0.0.1:5000"
 	sh := WeekShedule{
-		SheduleId: 123456789,
+		SheduleID: 123456789,
 		IsGroup:   true,
 		Week:      6,
 	}
-	err := sh.DownloadById(true)
+	err := sh.DownloadByID(true)
 	handleError(err)
 
-	new_sh := WeekShedule{
-		SheduleId: 123456789,
+	newSh := WeekShedule{
+		SheduleID: 123456789,
 		IsGroup:   true,
 		Week:      7,
 	}
-	err = new_sh.DownloadById(true)
+	err = newSh.DownloadByID(true)
 	handleError(err)
 
-	add, del := Compare(new_sh.Uncovered, sh.Uncovered)
+	add, del := Compare(newSh.Uncovered, sh.Uncovered)
 	log.Println(add, del)
+	t.Log("ok")
 }

@@ -7,15 +7,15 @@ import (
 	"testing"
 	"time"
 
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"stud.l9labs.ru/bot/modules/database"
+	"stud.l9labs.ru/bot/modules/ssauparser"
 )
 
 var TestDB = database.DB{
-	User:   "test",
-	Pass:   "TESTpass1!",
-	Schema: "testdb",
+	User:   "root",
+	Pass:   "18064",
+	Schema: "l9_db_test",
 }
 
 var TestUser = tgbotapi.User{
@@ -30,14 +30,15 @@ func TestCheckEnv(t *testing.T) {
 	}
 
 	// Добавляем несуществующий ключ
-	env_keys = append(env_keys, "LOST_KEY")
+	envKeys = append(envKeys, "LOST_KEY")
 	if err := CheckEnv(); err != nil {
 		log.Println(err)
-		env_keys = env_keys[:len(env_keys)-1]
+		envKeys = envKeys[:len(envKeys)-1]
 	}
+	t.Log("ok")
 }
 
-func initTestBot(files database.LogFiles) *Bot {
+func InitTestBot(files database.LogFiles) *Bot {
 	if err := CheckEnv(); err != nil {
 		log.Fatal(err)
 	}
@@ -61,24 +62,26 @@ func initTestBot(files database.LogFiles) *Bot {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	return bot
 }
 func TestInitBot(t *testing.T) {
 	files := database.OpenLogs()
 	defer files.CloseAll()
-	initTestBot(files)
+	InitTestBot(files)
 
 	// Тестируем неправильный токен
 	_, err := InitBot(files, TestDB, os.Getenv("TELEGRAM_APITOKEN")+"oops", "test")
 	if err != nil {
 		log.Println(err)
 	}
+	t.Log("ok")
 }
 
 func TestInitUser(t *testing.T) {
 	files := database.OpenLogs()
 	defer files.CloseAll()
-	bot := initTestBot(files)
+	bot := InitTestBot(files)
 
 	// Я новенький
 	_, err := InitUser(bot.DB, &TestUser)
@@ -90,6 +93,7 @@ func TestInitUser(t *testing.T) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	t.Log("ok")
 }
 
 var dialog = []string{
@@ -105,7 +109,7 @@ var dialog = []string{
 func TestHandleUpdate(t *testing.T) {
 	files := database.OpenLogs()
 	defer files.CloseAll()
-	bot := initTestBot(files)
+	bot := InitTestBot(files)
 
 	user := TestUser
 	user.ID, _ = strconv.ParseInt(os.Getenv("TELEGRAM_TEST_USER"), 0, 64)
@@ -117,11 +121,11 @@ func TestHandleUpdate(t *testing.T) {
 		},
 	}
 	var messages []tgbotapi.Message
-	ssau_parser.HeadURL = "http://127.0.0.1:5000/prod"
+	ssauparser.HeadURL = "http://127.0.0.1:5000/prod"
 	// Бот общается с ботом
 	for i, query := range dialog {
 		if i == len(dialog)-1 {
-			ssau_parser.HeadURL = "https://sasau.ru"
+			ssauparser.HeadURL = "https://sasau.ru"
 		}
 		update.Message.Text = query
 		msg, err := bot.HandleUpdate(update)
@@ -156,6 +160,7 @@ func TestHandleUpdate(t *testing.T) {
 	if err != nil {
 		log.Println(err)
 	}
+	t.Log("ok")
 }
 
 var times = []string{
@@ -171,7 +176,7 @@ var times = []string{
 func TestSummary(t *testing.T) {
 	files := database.OpenLogs()
 	defer files.CloseAll()
-	bot := initTestBot(files)
+	bot := InitTestBot(files)
 
 	user := TestUser
 	user.ID, _ = strconv.ParseInt(os.Getenv("TELEGRAM_TEST_USER"), 0, 64)
@@ -180,7 +185,7 @@ func TestSummary(t *testing.T) {
 			From: &user,
 		},
 	}
-	ssau_parser.HeadURL = "http://127.0.0.1:5000/prod"
+	ssauparser.HeadURL = "http://127.0.0.1:5000/prod"
 	// Ещё немного общения в разное время
 	var messages []tgbotapi.Message
 	for _, te := range times {
@@ -207,6 +212,7 @@ func TestSummary(t *testing.T) {
 	if err != nil {
 		log.Println(err)
 	}
+	t.Log("ok")
 	/* Оставим это на всякий случай
 	log.Println("Нажми на кнопку - получишь результат!")
 	bot.GetUpdates()
@@ -219,33 +225,33 @@ func TestSummary(t *testing.T) {
 }
 
 func TestGetWeekLessons(t *testing.T) {
-	ssau_parser.HeadURL = "http://127.0.0.1:5000/prod"
+	ssauparser.HeadURL = "http://127.0.0.1:5000/prod"
 	files := database.OpenLogs()
 	defer files.CloseAll()
-	bot := initTestBot(files)
+	bot := InitTestBot(files)
 	bot.Week = 5
 	bot.WkPath = "C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltoimage.exe"
 	user := database.TgUser{}
 	user.TgId, _ = strconv.ParseInt(os.Getenv("TELEGRAM_TEST_USER"), 0, 64)
-	shedules := []ssau_parser.WeekShedule{
+	shedules := []ssauparser.WeekShedule{
 		{
-			SheduleId: 100000000,
+			SheduleID: 100000000,
 			IsGroup:   true,
 			Week:      1,
 		},
 		{
-			SheduleId: 3,
+			SheduleID: 3,
 			IsGroup:   false,
 			Week:      1,
 		},
 	}
 	now, _ := time.Parse("2006-01-02 15:04 -07", times[2])
 	for _, sh := range shedules {
-		err := sh.DownloadById(true)
+		err := sh.DownloadByID(true)
 		if err != nil {
 			log.Fatal(err)
 		}
-		_, _, err = ssau_parser.UpdateSchedule(bot.DB, sh)
+		_, _, err = ssauparser.UpdateSchedule(bot.DB, sh)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -254,4 +260,5 @@ func TestGetWeekLessons(t *testing.T) {
 			log.Fatal(err)
 		}
 	}
+	t.Log("ok")
 }

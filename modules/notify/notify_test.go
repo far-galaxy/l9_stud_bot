@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/tg"
+	"stud.l9labs.ru/bot/modules/database"
+	"stud.l9labs.ru/bot/modules/ssauparser"
+	"stud.l9labs.ru/bot/modules/tg"
 )
 
 var TestDB = database.DB{
@@ -54,7 +54,7 @@ func TestCheckNext(t *testing.T) {
 		},
 	}
 	for _, l := range lessons {
-		l.Hash = ssau_parser.Hash(l)
+		l.Hash = ssauparser.Hash(l)
 	}
 	if _, err := db.Insert(&lessons); err != nil {
 		t.Fatal(err)
@@ -86,4 +86,5 @@ func TestFirstMailing(t *testing.T) {
 	}
 	now, _ := time.Parse("2006-01-02 15:04 -07", "2023-02-06 07:15 +04")
 	FirstMailing(bot, now)
+	t.Log("ok")
 }

@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"time"
 
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/notify"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/tg"
 	"github.com/robfig/cron/v3"
+	"stud.l9labs.ru/bot/modules/database"
+	"stud.l9labs.ru/bot/modules/notify"
+	"stud.l9labs.ru/bot/modules/ssauparser"
+	"stud.l9labs.ru/bot/modules/tg"
 )
 
 var build string
@@ -22,7 +22,7 @@ func main() {
 	if err := tg.CheckEnv(); err != nil {
 		log.Fatal(err)
 	}
-	ssau_parser.HeadURL = os.Getenv("RASP_URL")
+	ssauparser.HeadURL = os.Getenv("RASP_URL")
 	logs := database.OpenLogs()
 	defer logs.CloseAll()
 	log.SetOutput(io.MultiWriter(os.Stderr, logs.ErrorFile))

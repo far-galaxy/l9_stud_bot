@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssau_parser"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"stud.l9labs.ru/bot/modules/database"
+	"stud.l9labs.ru/bot/modules/ssauparser"
 	"xorm.io/builder"
 )
 
@@ -21,15 +21,16 @@ func (bot *Bot) Start(user *database.TgUser) (tgbotapi.Message, error) {
 	if err != nil {
 		return nilMsg, err
 	}
+
 	return bot.SendMsg(
 		user,
-		`Привет! У меня можно посмотреть в удобном формате <b>ближайшие пары</b>, расписание <b>по дням</b> и даже <b>по неделям</b>!
-Просто напиши мне <b>номер группы</b> или <b>фамилию преподавателя</b>
-
-Также можно получать уведомления о своих занятиях по кнопке <b>Моё расписание</b>👇
-
-‼ Внимание! Бот ещё находится на стадии испытаний, поэтому могут возникать ошибки в его работе.
-Рекомендуется сверять настоящее расписание и обо всех ошибках сообщать в чат @chat_l9_stud_bot или по контактам в /help`,
+		"Привет! У меня можно посмотреть в удобном формате <b>ближайшие пары</b>"+
+			", расписание <b>по дням</b> и даже <b>по неделям</b>!\n"+
+			"Просто напиши мне <b>номер группы</b> или <b>фамилию преподавателя</b>\n\n"+
+			"Также можно получать уведомления о своих занятиях по кнопке <b>Моё расписание</b>👇\n\n"+
+			"‼ Внимание! Бот ещё находится на стадии испытаний, поэтому могут возникать ошибки в его работе.\n"+
+			"Рекомендуется сверять настоящее расписание и обо всех ошибках сообщать в чат"+
+			"@chat_l9_stud_bot или по контактам в /help",
 		GeneralKeyboard(false),
 	)
 }
@@ -48,59 +49,29 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 	}
 
 	// Поиск на сайте
-	list, siteErr := ssau_parser.SearchInRasp(query)
-
-	allGroups := groups
-	allTeachers := teachers
+	list, siteErr := ssauparser.SearchInRasp(query)
 
 	// Добавляем результаты поиска на сайте к результатам из БД
-	for _, elem := range list {
-		if strings.Contains(elem.Url, "group") {
-			exists := false
-			for _, group := range groups {
-				if elem.Id == group.GroupId {
-					exists = true
-					break
-				}
-			}
-			if !exists {
-				allGroups = append(allGroups, database.Group{GroupId: elem.Id, GroupName: elem.Text})
-			}
-		}
-		if strings.Contains(elem.Url, "staff") {
-			exists := false
-			for _, teacher := range teachers {
-				if elem.Id == teacher.TeacherId {
-					exists = true
-					break
-				}
-			}
-			if !exists {
-				teacher := ssau_parser.ParseTeacherName(elem.Text)
-				teacher.TeacherId = elem.Id
-				allTeachers = append(allTeachers, teacher)
-			}
-		}
-	}
+	allGroups, allTeachers := AppendSearchResults(list, groups, teachers)
 
 	// Если получен единственный результат, сразу выдать (подключить) расписание
 	if len(allGroups) == 1 || len(allTeachers) == 1 {
-		var sheduleId int64
+		var sheduleID int64
 		var isGroup bool
 		if len(allGroups) == 1 {
-			sheduleId = allGroups[0].GroupId
+			sheduleID = allGroups[0].GroupId
 			isGroup = true
 		} else {
-			sheduleId = allTeachers[0].TeacherId
+			sheduleID = allTeachers[0].TeacherId
 			isGroup = false
 		}
-		shedule := ssau_parser.WeekShedule{
+		shedule := ssauparser.WeekShedule{
 			IsGroup:   isGroup,
-			SheduleId: sheduleId,
+			SheduleID: sheduleID,
 		}
-		not_exists, _ := ssau_parser.CheckGroupOrTeacher(bot.DB, shedule)
-		// TODO: проверять подключенные ранее расписания
-		return bot.ReturnSummary(not_exists, user.PosTag == database.Add, user, shedule, now)
+		notExists, _ := ssauparser.CheckGroupOrTeacher(bot.DB, shedule)
+
+		return bot.ReturnSummary(notExists, user.PosTag == database.Add, user, shedule, now)
 
 		// Если получено несколько групп
 	} else if len(allGroups) != 0 {
@@ -126,6 +97,7 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 		} else {
 			txt = "К сожалению, я ничего не нашёл ):\nПроверь свой запрос"
 		}
+
 		return bot.SendMsg(
 			user,
 			txt,
@@ -134,17 +106,61 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 	}
 }
 
+func AppendSearchResults(
+	list ssauparser.SearchResults,
+	groups []database.Group,
+	teachers []database.Teacher,
+) (
+	[]database.Group,
+	[]database.Teacher,
+) {
+	allGroups := groups
+	allTeachers := teachers
+	for _, elem := range list {
+		if strings.Contains(elem.URL, "group") {
+			exists := false
+			for _, group := range groups {
+				if elem.ID == group.GroupId {
+					exists = true
+
+					break
+				}
+			}
+			if !exists {
+				allGroups = append(allGroups, database.Group{GroupId: elem.ID, GroupName: elem.Text})
+			}
+		}
+		if strings.Contains(elem.URL, "staff") {
+			exists := false
+			for _, teacher := range teachers {
+				if elem.ID == teacher.TeacherId {
+					exists = true
+
+					break
+				}
+			}
+			if !exists {
+				teacher := ssauparser.ParseTeacherName(elem.Text)
+				teacher.TeacherId = elem.ID
+				allTeachers = append(allTeachers, teacher)
+			}
+		}
+	}
+
+	return allGroups, allTeachers
+}
+
 func (bot *Bot) ReturnSummary(
-	not_exists bool,
+	notExists bool,
 	isAdd bool,
 	user *database.TgUser,
-	shedule ssau_parser.WeekShedule,
+	shedule ssauparser.WeekShedule,
 	now time.Time,
 ) (
 	tgbotapi.Message,
 	error,
 ) {
-	if not_exists {
+	if notExists {
 		msg := tgbotapi.NewMessage(user.TgId, "Загружаю расписание...\nЭто займёт некоторое время")
 		Smsg, _ := bot.TG.Send(msg)
 		_, _, err := bot.LoadShedule(shedule, now, false)
@@ -180,6 +196,7 @@ func (bot *Bot) ReturnSummary(
 		if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
 			return nilMsg, err
 		}
+
 		return bot.SendMsg(
 			user,
 			"Расписание успешно подключено!\n"+
@@ -188,9 +205,10 @@ func (bot *Bot) ReturnSummary(
 				"которыми можно управлять в панели <b>Настройки</b>\n",
 			GeneralKeyboard(true),
 		)
-	} else {
-		return nilMsg, bot.GetWeekSummary(now, user, Swap(shedule), -1, false, "")
 	}
+
+	return nilMsg, bot.GetWeekSummary(now, user, Swap(shedule), -1, false, "")
+
 }
 
 // Получить расписание из кнопки
@@ -204,20 +222,21 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 	}
 	isGroup := data[1] == "group"
 	isAdd := data[0] == "true"
-	groupId, err := strconv.ParseInt(data[2], 0, 64)
+	groupID, err := strconv.ParseInt(data[2], 0, 64)
 	if err != nil {
 		return err
 	}
-	shedule := ssau_parser.WeekShedule{
+	shedule := ssauparser.WeekShedule{
 		IsGroup:   isGroup,
-		SheduleId: groupId,
+		SheduleID: groupID,
 	}
-	not_exists, _ := ssau_parser.CheckGroupOrTeacher(bot.DB, shedule)
+	notExists, _ := ssauparser.CheckGroupOrTeacher(bot.DB, shedule)
 	del := tgbotapi.NewDeleteMessage(query.From.ID, query.Message.MessageID)
 	if _, err := bot.TG.Request(del); err != nil {
 		return err
 	}
-	_, err = bot.ReturnSummary(not_exists, isAdd, user, shedule, now[0])
+	_, err = bot.ReturnSummary(notExists, isAdd, user, shedule, now[0])
+
 	return err
 }
 
@@ -230,35 +249,25 @@ func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQue
 	if len(now) == 0 {
 		now = append(now, time.Now())
 	}
-
-	if data[2] == "personal" {
-		switch sumType {
-		case Day:
-			_, err = bot.GetDaySummary(now[0], user, shedule, dt, true, *query.Message)
-		case Week:
-			err = bot.GetWeekSummary(now[0], user, shedule, dt, true, "", *query.Message)
-		case ICS:
-			err = bot.CreateICS(now[0], user, shedule, true, dt, *query)
-		default:
-			_, err = bot.GetShortSummary(now[0], user, shedule, true, *query.Message)
-		}
-	} else {
-		switch sumType {
-		case Day:
-			_, err = bot.GetDaySummary(now[0], user, shedule, dt, false, *query.Message)
-		case Week:
-			err = bot.GetWeekSummary(now[0], user, shedule, dt, false, "", *query.Message)
-		case ICS:
-			err = bot.CreateICS(now[0], user, shedule, false, dt, *query)
-		default:
-			_, err = bot.GetShortSummary(now[0], user, shedule, false, *query.Message)
-		}
+	isPersonal := data[2] == "personal"
+	switch sumType {
+	case Day:
+		_, err = bot.GetDaySummary(now[0], user, shedule, dt, isPersonal, *query.Message)
+	case Week:
+		err = bot.GetWeekSummary(now[0], user, shedule, dt, isPersonal, "", *query.Message)
+	case ICS:
+		err = bot.CreateICS(now[0], user, shedule, isPersonal, dt, *query)
+	default:
+		_, err = bot.GetShortSummary(now[0], user, shedule, isPersonal, *query.Message)
 	}
+
 	return err
 }
 
 func (bot *Bot) Etc(user *database.TgUser) (tgbotapi.Message, error) {
 	msg := tgbotapi.NewMessage(user.TgId, "Oй!")
+	msg.ReplyMarkup = bot.AutoGenKeyboard(user)
+
 	return bot.TG.Send(msg)
 }
 
@@ -275,8 +284,9 @@ func (bot *Bot) Cancel(user *database.TgUser, query *tgbotapi.CallbackQuery) err
 			return err
 		}
 	}
-	delete := tgbotapi.NewDeleteMessage(query.From.ID, query.Message.MessageID)
-	_, err = bot.TG.Request(delete)
+	del := tgbotapi.NewDeleteMessage(query.From.ID, query.Message.MessageID)
+	_, err = bot.TG.Request(del)
+
 	return err
 }
 
@@ -299,10 +309,11 @@ func (bot *Bot) DeleteGroup(user *database.TgUser, text string) (tgbotapi.Messag
 		if _, err := bot.DB.UseBool("IsPersonal").Delete(&files); err != nil {
 			return nilMsg, err
 		}
+
 		return bot.SendMsg(user, "Группа отключена", GeneralKeyboard(false))
-	} else {
-		return bot.SendMsg(user, "Действие отменено", GeneralKeyboard(true))
 	}
+
+	return bot.SendMsg(user, "Действие отменено", GeneralKeyboard(true))
 }
 
 func (bot *Bot) SetFirstTime(msg *tgbotapi.Message, user *database.TgUser) (tgbotapi.Message, error) {
@@ -341,5 +352,6 @@ func (bot *Bot) SetFirstTime(msg *tgbotapi.Message, user *database.TgUser) (tgbo
 	if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
 		return nilMsg, err
 	}
+
 	return bot.SendMsg(user, "Время установлено", GeneralKeyboard(true))
 }

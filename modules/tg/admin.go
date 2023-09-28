@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"stud.l9labs.ru/bot/modules/database"
 )
 
 var AdminKey = []string{"scream", "stat"}
@@ -15,8 +15,9 @@ func (bot *Bot) AdminHandle(msg *tgbotapi.Message) (tgbotapi.Message, error) {
 	if strings.Contains(msg.Text, "/scream") {
 		return bot.Scream(msg)
 	} else if strings.Contains(msg.Text, "/stat") {
-		return bot.Stat(msg)
+		return bot.Stat()
 	}
+
 	return nilMsg, nil
 }
 
@@ -29,8 +30,9 @@ func (bot *Bot) Scream(msg *tgbotapi.Message) (tgbotapi.Message, error) {
 		0,
 		strings.TrimPrefix(msg.Text, "/scream"),
 	)
-	for _, u := range users {
+	for i, u := range users {
 		scream.ChatID = u.TgId
+		scream.ReplyMarkup = bot.AutoGenKeyboard(&users[i])
 		if _, err := bot.TG.Send(scream); err != nil {
 			if !strings.Contains(err.Error(), "blocked by user") {
 				bot.Debug.Println(err)
@@ -39,10 +41,11 @@ func (bot *Bot) Scream(msg *tgbotapi.Message) (tgbotapi.Message, error) {
 	}
 	scream.ChatID = bot.TestUser
 	scream.Text = "Сообщения отправлены"
+
 	return bot.TG.Send(scream)
 }
 
-func (bot *Bot) Stat(msg *tgbotapi.Message) (tgbotapi.Message, error) {
+func (bot *Bot) Stat() (tgbotapi.Message, error) {
 	total, err := bot.DB.Count(database.TgUser{})
 	if err != nil {
 		return nilMsg, err
@@ -68,5 +71,6 @@ func (bot *Bot) Stat(msg *tgbotapi.Message) (tgbotapi.Message, error) {
 		txt += fmt.Sprintf("%s | %s\n", r["GroupName"], r["UserCount"])
 	}
 	stat := tgbotapi.NewMessage(bot.TestUser, txt)
+
 	return bot.TG.Send(stat)
 }

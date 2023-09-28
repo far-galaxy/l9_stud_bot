@@ -1,10 +1,10 @@
-package ssau_parser
+package ssauparser
 
 import (
 	"log"
 	"testing"
 
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
+	"stud.l9labs.ru/bot/modules/database"
 	"xorm.io/xorm"
 )
 
@@ -19,6 +19,7 @@ func prepareDB() *xorm.Engine {
 	db, err := database.Connect(TestDB, logs.DBLogFile)
 	if err != nil {
 		log.Println(err)
+
 		return nil
 	}
 	defer logs.CloseAll()
@@ -29,6 +30,7 @@ func prepareDB() *xorm.Engine {
 	handleError(err)
 	_, err = db.Where("lessonid >= 0").Delete(&database.Lesson{})
 	handleError(err)
+
 	return db
 }
 
@@ -37,11 +39,11 @@ func TestCheckGroupOrTeacher(t *testing.T) {
 
 	HeadURL = "http://127.0.0.1:5000"
 	sh := WeekShedule{
-		SheduleId: 123456789,
+		SheduleID: 123456789,
 		IsGroup:   true,
 		Week:      6,
 	}
-	err := sh.DownloadById(false)
+	err := sh.DownloadByID(false)
 	handleError(err)
 	_, err = CheckGroupOrTeacher(db, sh)
 	handleError(err)
@@ -51,43 +53,45 @@ func TestCheckGroupOrTeacher(t *testing.T) {
 
 	// Проверяем преподавателя
 	sh = WeekShedule{
-		SheduleId: 5,
+		SheduleID: 5,
 		IsGroup:   false,
 		Week:      4,
 	}
-	err = sh.DownloadById(false)
+	err = sh.DownloadByID(false)
 	handleError(err)
 	_, err = CheckGroupOrTeacher(db, sh)
 	handleError(err)
+	t.Log("ok")
 }
 
 func TestUpdateSchedule(t *testing.T) {
 	db := prepareDB()
 	HeadURL = "http://127.0.0.1:5000"
 	sh := WeekShedule{
-		SheduleId: 123456789,
+		SheduleID: 123456789,
 		IsGroup:   true,
 		Week:      6,
 	}
-	err := sh.DownloadById(true)
+	err := sh.DownloadByID(true)
 	handleError(err)
 	_, _, err = UpdateSchedule(db, sh)
 	handleError(err)
 
 	sh.Week = 7
-	err = sh.DownloadById(true)
+	err = sh.DownloadByID(true)
 	handleError(err)
 	_, _, err = UpdateSchedule(db, sh)
 	handleError(err)
 
 	// Проверяем преподавателя
 	sh = WeekShedule{
-		SheduleId: 5,
+		SheduleID: 5,
 		IsGroup:   false,
 		Week:      4,
 	}
-	err = sh.DownloadById(true)
+	err = sh.DownloadByID(true)
 	handleError(err)
 	_, _, err = UpdateSchedule(db, sh)
 	handleError(err)
+	t.Log("ok")
 }
