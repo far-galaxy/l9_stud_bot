@@ -4,7 +4,7 @@ import (
 	"log"
 	"testing"
 
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
+	"stud.l9labs.ru/bot/modules/database"
 	"xorm.io/xorm"
 )
 

@@ -5,9 +5,9 @@ import (
 	"log"
 	"time"
 
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssauparser"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/tg"
+	"stud.l9labs.ru/bot/modules/database"
+	"stud.l9labs.ru/bot/modules/ssauparser"
+	"stud.l9labs.ru/bot/modules/tg"
 )
 
 func CheckShedules(bot *tg.Bot, now time.Time) {

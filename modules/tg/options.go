@@ -3,8 +3,8 @@ package tg
 import (
 	"fmt"
 
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"stud.l9labs.ru/bot/modules/database"
 )
 
 var bell = map[bool]string{true: "🔔", false: "🔕"}

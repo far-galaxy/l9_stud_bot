@@ -11,10 +11,10 @@ import (
 	"text/template"
 	"time"
 
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssauparser"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/icza/gox/timex"
+	"stud.l9labs.ru/bot/modules/database"
+	"stud.l9labs.ru/bot/modules/ssauparser"
 )
 
 var days = [6]string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}

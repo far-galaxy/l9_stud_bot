@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssauparser"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"stud.l9labs.ru/bot/modules/database"
+	"stud.l9labs.ru/bot/modules/ssauparser"
 	"xorm.io/builder"
 )
 

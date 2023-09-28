@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/ssauparser"
+	"stud.l9labs.ru/bot/modules/database"
+	"stud.l9labs.ru/bot/modules/ssauparser"
 )
 
 func TestCreateHTMLShedule(t *testing.T) {

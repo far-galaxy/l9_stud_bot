@@ -7,7 +7,7 @@ import (
 	"errors"
 	"fmt"
 
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
+	"stud.l9labs.ru/bot/modules/database"
 )
 
 // Загрузка, парсинг и раскрытие расписания в одной функции по URI и номеру недели

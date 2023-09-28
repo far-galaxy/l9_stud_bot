@@ -1,4 +1,4 @@
-module git.l9labs.ru/anufriev.g.a/l9_stud_bot
+module stud.l9labs.ru/bot
 
 go 1.20
 

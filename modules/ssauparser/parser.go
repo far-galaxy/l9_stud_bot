@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"git.l9labs.ru/anufriev.g.a/l9_stud_bot/modules/database"
 	"github.com/PuerkitoBio/goquery"
 	"golang.org/x/exp/slices"
+	"stud.l9labs.ru/bot/modules/database"
 )
 
 // Пара, состоящая из занятий
