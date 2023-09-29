@@ -1,6 +1,7 @@
 __pycache__
 config.json
 logs
+*.log
 stuff
 shedules
 *.wpr

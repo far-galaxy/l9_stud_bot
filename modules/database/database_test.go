@@ -23,6 +23,13 @@ func TestCreateLog(t *testing.T) {
 	t.Log("ok")
 }
 
+func TestInitLog(t *testing.T) {
+	mainLog := InitLog("log")
+	log.SetOutput(mainLog)
+	log.Println("testing")
+	t.Log("ok")
+}
+
 func TestConnect(t *testing.T) {
 	logs := OpenLogs()
 	defer logs.CloseAll()
