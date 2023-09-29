@@ -38,11 +38,11 @@ func TestCheckEnv(t *testing.T) {
 	t.Log("ok")
 }
 
-func InitTestBot(files database.LogFiles) *Bot {
+func InitTestBot() *Bot {
 	if err := CheckEnv(); err != nil {
 		log.Fatal(err)
 	}
-	bot, err := InitBot(files, TestDB, os.Getenv("TELEGRAM_APITOKEN"), "test")
+	bot, err := InitBot(TestDB, os.Getenv("TELEGRAM_APITOKEN"), "test")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -66,12 +66,10 @@ func InitTestBot(files database.LogFiles) *Bot {
 	return bot
 }
 func TestInitBot(t *testing.T) {
-	files := database.OpenLogs()
-	defer files.CloseAll()
-	InitTestBot(files)
+	InitTestBot()
 
 	// Тестируем неправильный токен
-	_, err := InitBot(files, TestDB, os.Getenv("TELEGRAM_APITOKEN")+"oops", "test")
+	_, err := InitBot(TestDB, os.Getenv("TELEGRAM_APITOKEN")+"oops", "test")
 	if err != nil {
 		log.Println(err)
 	}
@@ -79,9 +77,7 @@ func TestInitBot(t *testing.T) {
 }
 
 func TestInitUser(t *testing.T) {
-	files := database.OpenLogs()
-	defer files.CloseAll()
-	bot := InitTestBot(files)
+	bot := InitTestBot()
 
 	// Я новенький
 	_, err := InitUser(bot.DB, &TestUser)
@@ -107,9 +103,7 @@ var dialog = []string{
 }
 
 func TestHandleUpdate(t *testing.T) {
-	files := database.OpenLogs()
-	defer files.CloseAll()
-	bot := InitTestBot(files)
+	bot := InitTestBot()
 
 	user := TestUser
 	user.ID, _ = strconv.ParseInt(os.Getenv("TELEGRAM_TEST_USER"), 0, 64)
@@ -174,9 +168,7 @@ var times = []string{
 }
 
 func TestSummary(t *testing.T) {
-	files := database.OpenLogs()
-	defer files.CloseAll()
-	bot := InitTestBot(files)
+	bot := InitTestBot()
 
 	user := TestUser
 	user.ID, _ = strconv.ParseInt(os.Getenv("TELEGRAM_TEST_USER"), 0, 64)
@@ -226,9 +218,7 @@ func TestSummary(t *testing.T) {
 
 func TestGetWeekLessons(t *testing.T) {
 	ssauparser.HeadURL = "http://127.0.0.1:5000/prod"
-	files := database.OpenLogs()
-	defer files.CloseAll()
-	bot := InitTestBot(files)
+	bot := InitTestBot()
 	bot.Week = 5
 	bot.WkPath = "C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltoimage.exe"
 	user := database.TgUser{}

@@ -5,9 +5,11 @@ import (
 	"log"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql" // Иначе не работает
+	rotatelogs "github.com/lestrrat/go-file-rotatelogs"
 	"xorm.io/xorm"
 	xlog "xorm.io/xorm/log"
 	"xorm.io/xorm/names"
@@ -19,30 +21,10 @@ type DB struct {
 	Schema string
 }
 
-type LogFiles struct {
-	DebugFile *os.File
-	ErrorFile *os.File
-	TgLogFile *os.File
-	DBLogFile *os.File
-}
-
-func OpenLogs() (files LogFiles) {
-	return LogFiles{
-		DebugFile: CreateLog("messages"),
-		ErrorFile: CreateLog("error"),
-		TgLogFile: CreateLog("tg"),
-		DBLogFile: CreateLog("sql"),
-	}
-}
-
-func (files *LogFiles) CloseAll() {
-	files.DebugFile.Close()
-	files.ErrorFile.Close()
-	files.TgLogFile.Close()
-	files.DBLogFile.Close()
-}
-
-func Connect(db DB, logger *os.File) (*xorm.Engine, error) {
+// Подключение к базе данных
+//
+// Пока доступен только mysql, но xorm умеет и в другие БД
+func Connect(db DB, logger *rotatelogs.RotateLogs) (*xorm.Engine, error) {
 	engine, err := xorm.NewEngine(
 		"mysql",
 		fmt.Sprintf(
@@ -74,6 +56,7 @@ func Connect(db DB, logger *os.File) (*xorm.Engine, error) {
 	return engine, nil
 }
 
+// Генерация уникального номера для таблицы User
 func GenerateID(engine *xorm.Engine) (int64, error) {
 	id := rand.Int63n(899999999) + 100000000 // #nosec G404
 
@@ -89,26 +72,38 @@ func GenerateID(engine *xorm.Engine) (int64, error) {
 	return id, nil
 }
 
-// TODO: изобрести раздорбление логов по дате
-func CreateLog(name string) *os.File {
+// Инициализация логгера
+//
+// Каждые 24 часа будет создаваться новый файл, логи старше 14 дней удаляются.
+// Также создаётся симлинк актуального лога "name.log"
+func InitLog(name string) *rotatelogs.RotateLogs {
+	// Создание папки с логами
 	if _, err := os.Stat("logs"); os.IsNotExist(err) {
 		err = os.Mkdir("logs", os.ModePerm)
 		if err != nil {
-			log.Fatal("failed create log folder")
+			log.Fatal("failed create logs folder")
 		}
 	}
-	fileName := "./logs/" + name + ".log"
-	if _, err := os.Stat(fileName); !os.IsNotExist(err) {
-		newFile := fmt.Sprintf("./logs/%s.before.%s.log", name, time.Now().Format("06-02-01-15-04-05"))
-		err := os.Rename(fileName, newFile)
-		if err != nil {
-			log.Fatal(err)
-		}
-	}
-	logFile, err := os.Create(fileName)
+	// Определяем абсолютный путь, иначе не заработает симлинк
+	ex, err := os.Executable()
 	if err != nil {
-		log.Fatalf("failed open %s.log file: %s", name, err)
+		log.Fatal(err)
 	}
-	//defer logFile.Close()
-	return logFile
+	abspath, err := filepath.Abs(filepath.Dir(ex))
+	if err != nil {
+		log.Fatal(err)
+	}
+	// Непосредственно файл лога
+	path := fmt.Sprintf("%s/logs/%s.log", abspath, name)
+	writer, err := rotatelogs.New(
+		fmt.Sprintf("%s.%s", path, "%Y-%m-%d.%H%M%S"),
+		rotatelogs.WithLinkName(fmt.Sprintf("%s/logs/%s.log", abspath, name)),
+		rotatelogs.WithMaxAge(time.Hour*24*14),
+		rotatelogs.WithRotationTime(time.Hour*24),
+	)
+	if err != nil {
+		log.Fatalf("failed to Initialize Log File %s: %s", name, err)
+	}
+
+	return writer
 }

@@ -15,14 +15,12 @@ var TestDB = database.DB{
 }
 
 func prepareDB() *xorm.Engine {
-	logs := database.OpenLogs()
-	db, err := database.Connect(TestDB, logs.DBLogFile)
+	db, err := database.Connect(TestDB, database.InitLog("sql"))
 	if err != nil {
 		log.Println(err)
 
 		return nil
 	}
-	defer logs.CloseAll()
 	// Очистка всех данных для теста
 	_, err = db.Where("groupid > 0").Delete(&database.Group{})
 	handleError(err)

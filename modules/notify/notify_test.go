@@ -18,9 +18,7 @@ var TestDB = database.DB{
 }
 
 func TestCheckNext(t *testing.T) {
-	files := database.OpenLogs()
-	defer files.CloseAll()
-	db, err := database.Connect(TestDB, files.DBLogFile)
+	db, err := database.Connect(TestDB, database.InitLog("sql"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,10 +67,7 @@ func TestFirstMailing(t *testing.T) {
 	if err := tg.CheckEnv(); err != nil {
 		log.Fatal(err)
 	}
-	logs := database.OpenLogs()
-	defer logs.CloseAll()
 	bot, err := tg.InitBot(
-		logs,
 		database.DB{
 			User:   os.Getenv("MYSQL_USER"),
 			Pass:   os.Getenv("MYSQL_PASS"),
