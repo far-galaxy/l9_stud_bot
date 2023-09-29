@@ -9,6 +9,7 @@ shedules
 *.env
 .vscode
 *.html
+!week_shedule.html
 *.pdf
 help.txt
 main

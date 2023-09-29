@@ -156,7 +156,8 @@ func SummaryKeyboard(
 	ics := []tgbotapi.InlineKeyboardButton{
 		tgbotapi.NewInlineKeyboardButtonData(
 			"🗓 Скачать .ics",
-			SummaryPrefix+string(ICS)+update,
+			SummaryPrefix+string(ICS)+
+				GenerateButtonTail(sheduleID, dt, shedule.IsGroup),
 		),
 	}
 

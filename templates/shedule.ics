@@ -1,0 +1,15 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+CALSCALE:GREGORIAN
+METHOD:PUBLISH
+X-WR-TIMEZONE:Europe/Samara
+{{range .}}
+BEGIN:VEVENT
+DTSTART:{{.Begin.Format "20060102T150405Z"}}
+DTEND:{{.End.Format "20060102T150405Z"}}
+DESCRIPTION:{{.TeacherName}}{{if ne .SubGroup 0}}\nПодгруппа: {{.SubGroup}}{{end}}{{if ne .Comment ""}}\nКомментарий:{{.Comment}}{{end}}
+LOCATION:{{if ne .TypeStr ""}}{{.TypeStr}} / {{end}}{{.Place}}
+SUMMARY: {{.TypeIcon}} {{.Name}} {{if ne .SubGroup 0}}({{.SubGroup}}){{end}}
+END:VEVENT
+{{end}}
+END:VCALENDAR

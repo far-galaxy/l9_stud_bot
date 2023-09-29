@@ -381,6 +381,10 @@ var shortWeekdays = [6]string{
 	"сб",
 }
 
+const lessonHead = `<th class="subj %s" valign="top">
+<div><p></p></div>
+<h2>%s</h2><hr>`
+
 type SheduleData struct {
 	IsGroup bool
 	Header  string
@@ -394,13 +398,12 @@ type WeekHead struct {
 }
 
 type Line struct {
-	Begin    time.Time
-	End      time.Time
-	Lessons  [6][]database.Lesson
-	Teachers [6][]string
-	Groups   [6][]string
+	Begin   time.Time
+	End     time.Time
+	Lessons [6]string
 }
 
+// TODO: подумать о своём поведении и сделать эти процессы покрасивее
 func (bot *Bot) CreateHTMLShedule(
 	isGroup bool,
 	header string,
@@ -420,38 +423,23 @@ func (bot *Bot) CreateHTMLShedule(
 		bot.Debug.Println(err)
 	}
 
+	var lessonLine [6]string
 	for t, tline := range shedule {
-		var teachers, groups [6][]string
 
 		for i, l := range tline {
 			if len(l) == 0 || l[0].Type == database.Window {
+				lessonLine[i] = "<th class=\"subj\"></th>\n"
+
 				continue
 			}
 
-			if isGroup {
-				for p := range l {
-					var t database.Teacher
-					if _, err := bot.DB.ID(l[p].TeacherId).Get(&t); err != nil {
-						bot.Debug.Println(err)
-					}
-					teachers[i] = append(teachers[i], fmt.Sprintf("%s %s", t.FirstName, t.ShortName))
-				}
-			} else {
-				for p := range l {
-					var g database.Group
-					if _, err := bot.DB.ID(l[0].GroupId).Get(&g); err != nil {
-						bot.Debug.Println(err)
-					}
-					groups[p] = append(groups[p], g.GroupName)
-				}
-			}
+			lessonLine[i] = LessonHTML(bot, l, isGroup)
 		}
 		data.Lines = append(data.Lines,
 			Line{
-				Begin:    times[t].Begin,
-				End:      times[t].End,
-				Lessons:  tline,
-				Teachers: teachers,
+				Begin:   times[t].Begin,
+				End:     times[t].End,
+				Lessons: lessonLine,
 			})
 	}
 
@@ -463,6 +451,92 @@ func (bot *Bot) CreateHTMLShedule(
 	html := rendered.String()
 
 	return html
+}
+
+// Вёрстка пары в HTML
+func LessonHTML(bot *Bot, l []database.Lesson, isGroup bool) string {
+	var lessonStr string
+	lessonStr += fmt.Sprintf(lessonHead, l[0].Type, l[0].Name)
+	if isGroup && l[0].TeacherId != 0 {
+		var t database.Teacher
+		if _, err := bot.DB.ID(l[0].TeacherId).Get(&t); err != nil {
+			bot.Debug.Println(err)
+		}
+		lessonStr += fmt.Sprintf("<h5 id=\"prep\">%s %s</h5>\n", t.FirstName, t.ShortName)
+	}
+	if l[0].Place != "" {
+		lessonStr += fmt.Sprintf("<h3>%s</h3>\n", l[0].Place)
+	}
+	if !isGroup {
+		var t database.Group
+		if _, err := bot.DB.ID(l[0].GroupId).Get(&t); err != nil {
+			bot.Debug.Println(err)
+		}
+		lessonStr += fmt.Sprintf("<h3>%s</h3>\n", t.GroupName)
+	}
+	if l[0].SubGroup != 0 {
+		lessonStr += fmt.Sprintf("<h3>Подгруппа: %d</h3>\n", l[0].SubGroup)
+	}
+	if l[0].Comment != "" {
+		lessonStr += fmt.Sprintf("<h3>%s</h3>\n", l[0].Comment)
+	}
+
+	if len(l) == 2 && isGroup {
+		lessonStr = addSecondSubgroup(lessonStr, l, bot)
+	}
+	if len(l) > 1 && !isGroup {
+		for _, gr := range l[1:] {
+			var t database.Group
+			if _, err := bot.DB.ID(gr.GroupId).Get(&t); err != nil {
+				bot.Debug.Println(err)
+			}
+			lessonStr += fmt.Sprintf("<h3>%s</h3>\n", t.GroupName)
+			if gr.SubGroup != 0 {
+				lessonStr += fmt.Sprintf("<h3>Подгруппа: %d</h3>\n<hr>\n", l[1].SubGroup)
+			}
+		}
+	}
+
+	lessonStr += "</th>\n"
+
+	return lessonStr
+}
+
+func addSecondSubgroup(lessonStr string, l []database.Lesson, bot *Bot) string {
+	lessonStr += "<hr>\n"
+	if l[0].Name != l[1].Name {
+		lessonStr += fmt.Sprintf("<div><p></p></div>\n<h2>%s</h2><hr>", l[1].Name)
+	}
+	if l[1].TeacherId != 0 {
+		var t database.Teacher
+		if _, err := bot.DB.ID(l[1].TeacherId).Get(&t); err != nil {
+			bot.Debug.Println(err)
+		}
+		lessonStr += fmt.Sprintf("<h5 id=\"prep\">%s %s</h5>\n", t.FirstName, t.ShortName)
+	}
+	if l[1].Place != "" {
+		lessonStr += fmt.Sprintf("<h3>%s</h3>\n", l[1].Place)
+	}
+	if l[1].SubGroup != 0 {
+		lessonStr += fmt.Sprintf("<h3>Подгруппа: %d</h3>\n", l[1].SubGroup)
+	}
+	if l[1].Comment != "" {
+		lessonStr += fmt.Sprintf("<h3>%s</h3>\n", l[1].Comment)
+	}
+
+	return lessonStr
+}
+
+type LessonStr struct {
+	TypeIcon    string
+	TypeStr     string
+	Name        string
+	Begin       time.Time
+	End         time.Time
+	SubGroup    int64
+	TeacherName string
+	Place       string
+	Comment     string
 }
 
 // Создание и отправка .ics файла с расписанием указанной недели для приложений календаря
@@ -497,48 +571,11 @@ func (bot *Bot) CreateICS(
 	if err != nil {
 		return err
 	}
-	txt := "BEGIN:VCALENDAR\n" + "VERSION:2.0\n" + "CALSCALE:GREGORIAN\n" + "METHOD:REQUEST\n"
 	if len(lessons) != 0 {
-		for _, lesson := range lessons {
-			if lesson.Type == database.Window {
-				continue
-			}
-			if lesson.Type == database.Military && !shedule.Military {
-				continue
-			}
-			l := "BEGIN:VEVENT\n"
-			l += lesson.Begin.Format("DTSTART;TZID=Europe/Samara:20060102T150405Z\n")
-			l += lesson.End.Format("DTEND;TZID=Europe/Samara:20060102T150405Z\n")
-			if lesson.SubGroup == 0 {
-				l += fmt.Sprintf("SUMMARY:%s%s\n", Icons[lesson.Type], lesson.Name)
-			} else {
-				l += fmt.Sprintf(
-					"SUMMARY:%s%s (%d)\n",
-					Icons[lesson.Type],
-					lesson.Name,
-					lesson.SubGroup,
-				)
-			}
-			var desc string
-			if lesson.TeacherId != 0 {
-				var t database.Teacher
-				_, err := bot.DB.ID(lesson.TeacherId).Get(&t)
-				if err != nil {
-					return err
-				}
-				desc = fmt.Sprintf("%s %s\\n", t.FirstName, t.LastName)
-			}
-			if lesson.Comment != "" {
-				desc += fmt.Sprintf("%s\\n", lesson.Comment)
-			}
-			l += fmt.Sprintf("DESCRIPTION:%s\n", desc)
-			if lesson.Type != database.Military {
-				l += fmt.Sprintf("LOCATION:%s / %s\n", Comm[lesson.Type], lesson.Place)
-			}
-			l += "END:VEVENT\n"
-			txt += l
+		txt, err := bot.GenerateICS(lessons, shedule)
+		if err != nil {
+			bot.Debug.Println(err)
 		}
-		txt += "END:VCALENDAR"
 
 		var fileName string
 		if isPersonal {
@@ -554,14 +591,13 @@ func (bot *Bot) CreateICS(
 
 		doc := tgbotapi.NewDocument(user.TgId, icsFileBytes)
 		if isCompleted {
-			doc.Caption = "А это файл для приложения календаря:\n https://bit.ly/ics_upload"
+			doc.Caption = "А это файл для приложения календаря\n\nhttps://bit.ly/ics_upload"
 		} else {
 			doc.Caption = "📖 Инструкция: https://bit.ly/ics_upload\n\n" +
-				"‼️ Удалите старые занятия данной недели из календаря, если они есть"
+				"‼️ Удалите старые  занятия данной недели из календаря, если они есть"
 		}
 		doc.ReplyMarkup = bot.AutoGenKeyboard(user)
-		_, err := bot.TG.Send(doc)
-		if err != nil {
+		if _, err := bot.TG.Send(doc); err != nil {
 			return err
 		}
 		if len(query) != 0 {
@@ -573,4 +609,58 @@ func (bot *Bot) CreateICS(
 	}
 
 	return nil
+}
+
+// Создание непосредственно ICS файла
+func (bot *Bot) GenerateICS(
+	lessons []database.Lesson,
+	shedule database.ShedulesInUser,
+) (
+	string,
+	error,
+) {
+	var strLessons []LessonStr
+	for _, lesson := range lessons {
+		if lesson.Type == database.Window {
+			continue
+		}
+		if lesson.Type == database.Military && !shedule.Military {
+			continue
+		}
+		var teacherName string
+		if lesson.TeacherId != 0 {
+			var t database.Teacher
+			_, err := bot.DB.ID(lesson.TeacherId).Get(&t)
+			if err != nil {
+				return "", err
+			}
+			teacherName = fmt.Sprintf("%s %s", t.FirstName, t.LastName)
+		}
+
+		l := LessonStr{
+			TypeIcon:    Icons[lesson.Type],
+			TypeStr:     Comm[lesson.Type],
+			Name:        lesson.Name,
+			Begin:       lesson.Begin.UTC(),
+			End:         lesson.End.UTC(),
+			SubGroup:    lesson.SubGroup,
+			TeacherName: teacherName,
+			Place:       lesson.Place,
+			Comment:     lesson.Comment,
+		}
+		strLessons = append(strLessons, l)
+	}
+
+	tmpl, err := template.ParseFiles("templates/shedule.ics")
+	if err != nil {
+		return "", err
+	}
+	var rendered bytes.Buffer
+	err = tmpl.Execute(&rendered, strLessons)
+	if err != nil {
+		return "", err
+	}
+	txt := rendered.String()
+
+	return txt, nil
 }

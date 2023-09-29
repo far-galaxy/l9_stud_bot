@@ -1,0 +1,172 @@
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Тестовая страница с расписанием</title>
+<meta name='viewport' content='width=device-width,initial-scale=1'/>
+<meta name="mobile-web-app-capable" content="yes">
+</head>
+
+<style>
+.subj div,
+th.head,
+th.subj,
+th.time {
+	border-radius: 10px
+}
+
+.note,
+.subj p,
+th.head,
+th.time {
+	font-family: monospace
+}
+
+.note div,
+.rasp div {
+	background-color: #f0f8ff;
+	padding: 10px;
+	text-align: center;
+	border-radius: 10px
+}
+
+.subj div #text,
+.subj p {
+	display: none
+}
+
+html {
+	font-size: 1.5rem
+}
+
+body {
+	background: black
+}
+
+table {
+	table-layout: fixed;
+	width: 100%;
+	border-spacing: 5px 5px
+}
+
+.note div {
+	margin: 10px 0
+}
+
+.head p,
+.subj p,
+hr {
+	margin: 0
+}
+
+.rasp div {
+	transition: .3s
+}
+
+th.head {
+	background-color: #0ff;
+	padding: 5px;
+	font-size: 1.05rem
+}
+
+th.subj,
+th.time {
+	background-color: #f0f8ff;
+	padding: 10px
+}
+
+th.time {
+	font-size: 1.1rem
+}
+
+.subj h2,
+.subj p {
+	font-size: .85rem
+}
+
+th.subj:not(.lab, .lect, .pract, .other) {
+	background-color: #a9a9a9
+}
+
+.subj div {
+	padding: 5px
+}
+
+.subj p {
+	color: #f0f8ff
+}
+
+.subj h2,
+.subj h3,
+.subj h5 {
+	font-family: monospace;
+	text-align: left;
+	margin: 5px
+}
+
+.subj h3 {
+	font-size: .65rem
+}
+
+.subj h5 {
+	font-size: .7rem;
+	font-weight: 400
+}
+
+.lect div {
+	background-color: #7fff00
+}
+
+.pract div {
+	background-color: #dc143c
+}
+
+.lab div {
+	background-color: #8a2be2
+}
+
+.mil div,
+.other div {
+	background-color: #ff8c00
+}
+
+.window div {
+	background-color: #00f
+}
+
+.cons div {
+	background-color: green
+}
+
+.exam div {
+	background-color: purple
+}
+
+.kurs div {
+	background-color: orange
+}
+</style>
+
+<body>
+    <div class="note"><div id="week">{{.Header}}</div></div>
+    <table class="rasp">
+        <tr>
+            <th class="head" style="width: 4rem">Время</th>
+            {{range .Week}}
+			<th class="head">{{.WeekDay}}<p>{{.Day.Format "02"}}</p></th>
+			{{end}}
+        </tr>
+		{{range .Lines}}
+		<tr>
+			<th class="time">
+				{{if .Begin.IsZero}} --:-- {{else}} {{.Begin.Format "15:04"}} {{end}}
+				<hr>
+				{{if .End.IsZero}} --:-- {{else}} {{.End.Format "15:04"}} {{end}}
+			</th>
+			{{range .Lessons}}
+				{{.}}
+			{{end}}
+		</tr>
+		{{end}}
+    </table>
+</body>
+</html>
