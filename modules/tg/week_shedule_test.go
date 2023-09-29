@@ -10,9 +10,7 @@ import (
 )
 
 func TestCreateHTMLShedule(t *testing.T) {
-	files := database.OpenLogs()
-	defer files.CloseAll()
-	bot := InitTestBot(files)
+	bot := InitTestBot()
 
 	if _, err := bot.DB.InsertOne(
 		database.Teacher{

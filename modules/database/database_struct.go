@@ -7,6 +7,7 @@ type User struct {
 	L9Id int64 `xorm:"pk"`
 }
 
+// Позиция пользователя в чате
 type Position string
 
 const (
@@ -17,15 +18,17 @@ const (
 	Delete     Position = "del"         // Отключается от группы
 )
 
-// TODO: к v.1.0 исправить названия
+// TODO: к v1 исправить названия
 
 // Пользователь Telegram
 type TgUser struct {
 	L9Id   int64 `xorm:"pk"`
 	TgId   int64
-	Name   string
+	Name   string // XXX: должно быть удалено в v1
 	PosTag Position
 }
+
+// TODO: переименовать к v1 в Options
 
 // Подключённое к пользователю расписание
 type ShedulesInUser struct {
@@ -62,7 +65,8 @@ type Teacher struct {
 	LastCheck time.Time
 }
 
-type Kind string //Тип занятий
+// Тип занятий
+type Kind string
 
 const (
 	Lection    Kind = "lect"
@@ -92,7 +96,7 @@ type Lesson struct {
 	Hash         string
 }
 
-// Файлы, залитые в Telegream
+// Файлы, залитые в Telegram
 type FileType string
 
 const (

@@ -55,10 +55,10 @@ func CheckEnv() error {
 }
 
 // Полная инициализация бота со стороны Telegram и БД
-func InitBot(files database.LogFiles, db database.DB, token string, build string) (*Bot, error) {
+func InitBot(db database.DB, token string, build string) (*Bot, error) {
 	var bot Bot
 	bot.Build = build
-	engine, err := database.Connect(db, files.DBLogFile)
+	engine, err := database.Connect(db, database.InitLog("sql"))
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func InitBot(files database.LogFiles, db database.DB, token string, build string
 	}
 	bot.TG.Debug = true
 	//logger := log.New(io.MultiWriter(os.Stdout, database.CreateLog("tg")), "", log.LstdFlags)
-	logger := log.New(files.TgLogFile, "", log.LstdFlags)
+	logger := log.New(database.InitLog("tg"), "", log.LstdFlags)
 	err = tgbotapi.SetLogger(logger)
 	if err != nil {
 		return nil, err
@@ -79,7 +79,7 @@ func InitBot(files database.LogFiles, db database.DB, token string, build string
 	bot.GetUpdates()
 
 	log.Printf("Authorized on account %s", bot.TG.Self.UserName)
-	bot.Debug = log.New(io.MultiWriter(os.Stderr, files.DebugFile), "", log.LstdFlags)
+	bot.Debug = log.New(io.MultiWriter(os.Stderr, database.InitLog("messages")), "", log.LstdFlags)
 
 	return &bot, nil
 }

@@ -23,9 +23,7 @@ func main() {
 		log.Fatal(err)
 	}
 	ssauparser.HeadURL = os.Getenv("RASP_URL")
-	logs := database.OpenLogs()
-	defer logs.CloseAll()
-	log.SetOutput(io.MultiWriter(os.Stderr, logs.ErrorFile))
+	log.SetOutput(io.MultiWriter(os.Stderr, database.InitLog("error")))
 	help, err := os.ReadFile("help.txt")
 	if err != nil {
 		log.Fatal(err)
@@ -33,7 +31,6 @@ func main() {
 
 	// bot.Debug = log.New(io.MultiWriter(os.Stderr, database.CreateLog("messages")), "", log.LstdFlags)
 	mainbot, err = tg.InitBot(
-		logs,
 		database.DB{
 			User:   os.Getenv("MYSQL_USER"),
 			Pass:   os.Getenv("MYSQL_PASS"),

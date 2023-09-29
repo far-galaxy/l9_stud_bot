@@ -18,11 +18,6 @@ func handleError(err error) {
 	}
 }
 
-func TestCreateLog(t *testing.T) {
-	CreateLog("log")
-	t.Log("ok")
-}
-
 func TestInitLog(t *testing.T) {
 	mainLog := InitLog("log")
 	log.SetOutput(mainLog)
@@ -31,11 +26,9 @@ func TestInitLog(t *testing.T) {
 }
 
 func TestConnect(t *testing.T) {
-	logs := OpenLogs()
-	defer logs.CloseAll()
-	_, err := Connect(TestDB, logs.DBLogFile)
+	_, err := Connect(TestDB, InitLog("sql"))
 	handleError(err)
-	_, err = Connect(TestDB, logs.DBLogFile)
+	_, err = Connect(TestDB, InitLog("sql"))
 	handleError(err)
 	t.Log("ok")
 }
