@@ -31,6 +31,7 @@ func TestCreateHTMLShedule(t *testing.T) {
 			Type:      "lect",
 			Name:      "Занимательная астрология",
 			TeacherId: 1,
+			Place:     "Дурка",
 		},
 	}
 	line[1] = []database.Lesson{{
@@ -44,6 +45,30 @@ func TestCreateHTMLShedule(t *testing.T) {
 			Name:      "АААА",
 			TeacherId: 1,
 			SubGroup:  1,
+			Comment:   "aaa",
+		},
+		{
+			Type:      "pract",
+			Name:      "АААА",
+			TeacherId: 1,
+			SubGroup:  2,
+			Comment:   "aaa",
+			Place:     "Снова дурка",
+		},
+	}
+	line[3] = []database.Lesson{
+		{
+			Type:      "lect",
+			Name:      "АААА",
+			TeacherId: 1,
+			SubGroup:  1,
+			Comment:   "aaa",
+		},
+		{
+			Type:      "lect",
+			Name:      "БББ",
+			TeacherId: 1,
+			SubGroup:  2,
 			Comment:   "aaa",
 		},
 	}
@@ -68,7 +93,20 @@ func TestCreateHTMLShedule(t *testing.T) {
 		dates,
 		times,
 	)
-	f, _ := os.Create("test.html")
+	f, _ := os.Create("test_group.html")
+	defer f.Close()
+	if _, err := f.WriteString(html); err != nil {
+		t.Fatal(err)
+	}
+
+	html = bot.CreateHTMLShedule(
+		false,
+		"Тест",
+		shedule,
+		dates,
+		times,
+	)
+	f, _ = os.Create("test_staff.html")
 	defer f.Close()
 	if _, err := f.WriteString(html); err != nil {
 		t.Fatal(err)
