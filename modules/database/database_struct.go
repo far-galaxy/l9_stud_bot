@@ -123,3 +123,11 @@ type TempMsg struct {
 	MessageId int
 	Destroy   time.Time
 }
+
+// Данные о чате, в который добавили бота
+type GroupChatInfo struct {
+	ID        int64 `xorm:"pk autoincr"`
+	ChatID    int64 `xorm:"unique"`
+	IsGroup   bool
+	SheduleID int64
+}

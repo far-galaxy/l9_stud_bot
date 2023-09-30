@@ -48,6 +48,7 @@ func Connect(db DB, logger *rotatelogs.RotateLogs) (*xorm.Engine, error) {
 		&ShedulesInUser{},
 		&File{},
 		&TempMsg{},
+		&GroupChatInfo{},
 	)
 	if err != nil {
 		return nil, err

@@ -13,6 +13,7 @@ import (
 )
 
 var nilMsg = tgbotapi.Message{}
+var nilKey = tgbotapi.InlineKeyboardMarkup{InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{}}
 
 // Приветственное сообщение
 func (bot *Bot) Start(user *database.TgUser) (tgbotapi.Message, error) {
@@ -180,6 +181,24 @@ func (bot *Bot) ReturnSummary(
 				"Личное расписание пока не работает с преподавателями :(\n"+
 					"Приносим извинения за временные неудобства",
 				GeneralKeyboard(false),
+			)
+		}
+		// Групповые чаты
+		if user.TgId < 0 {
+			group := database.GroupChatInfo{
+				ChatID:    user.TgId,
+				IsGroup:   shedule.IsGroup,
+				SheduleID: shedule.SheduleID,
+			}
+			if _, err := bot.DB.UseBool().Update(&group); err != nil {
+				return nilMsg, err
+			}
+
+			return bot.SendMsg(
+				user,
+				"Расписание успешно подключено!\n"+
+					"Теперь по команде /shedule@l9_stud_bot ты сможешь открыть расписание на текущую неделю",
+				GeneralKeyboard(true),
 			)
 		}
 		sh := Swap(shedule)

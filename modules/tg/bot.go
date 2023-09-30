@@ -5,16 +5,19 @@ import (
 	"io"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
 	"stud.l9labs.ru/bot/modules/database"
+	"stud.l9labs.ru/bot/modules/ssauparser"
 	"xorm.io/xorm"
 )
 
 type Bot struct {
+	Name      string
 	TG        *tgbotapi.BotAPI
 	DB        *xorm.Engine
 	TestUser  int64
@@ -78,7 +81,8 @@ func InitBot(db database.DB, token string, build string) (*Bot, error) {
 	}
 	bot.GetUpdates()
 
-	log.Printf("Authorized on account %s", bot.TG.Self.UserName)
+	bot.Name = bot.TG.Self.UserName
+	log.Printf("Authorized on account %s", bot.Name)
 	bot.Debug = log.New(io.MultiWriter(os.Stderr, database.InitLog("messages")), "", log.LstdFlags)
 
 	return &bot, nil
@@ -166,11 +170,131 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 	if update.CallbackQuery != nil {
 		return bot.HandleCallback(update.CallbackQuery, now[0])
 	}
+	if update.InlineQuery != nil {
+		return bot.HandleInlineQuery(update)
+	}
+	if update.MyChatMember != nil {
+		return bot.ChatActions(update)
+	}
 
 	return nilMsg, nil
 }
 
+// TODO: заняться перестановкой функций по файлам
+
+func (bot *Bot) ChatActions(update tgbotapi.Update) (tgbotapi.Message, error) {
+	action := update.MyChatMember
+
+	if action.NewChatMember.Status == "member" &&
+		action.OldChatMember.Status != "administrator" {
+		msg := tgbotapi.NewMessage(
+			action.Chat.ID,
+			"Привет! Ты меня добавил в чат, и теперь можно смотерть расписание прямо отсюда :)",
+		)
+		group := database.GroupChatInfo{
+			ChatID: action.Chat.ID,
+		}
+		if _, err := bot.DB.InsertOne(group); err != nil {
+			return nilMsg, err
+		}
+
+		return bot.TG.Send(msg)
+	} else if action.NewChatMember.Status == "administrator" {
+		msg := tgbotapi.NewMessage(
+			action.Chat.ID,
+			"Не думаю, что есть необходимость делать меня администратором\n"+
+				"А то вдруг начнётся восстание машин и я случайно поудаляю ваши чаты (:",
+		)
+
+		return bot.TG.Send(msg)
+	}
+
+	return nilMsg, nil
+}
+
+func (bot *Bot) HandleInlineQuery(update tgbotapi.Update) (tgbotapi.Message, error) {
+	isGroupChat := update.InlineQuery.ChatType == "group"
+	query := update.InlineQuery
+	var results []interface{}
+	if len(query.Query) < 3 {
+		results = append(results, tgbotapi.NewInlineQueryResultArticleHTML(
+			"1",
+			"Запрос слишком короткий...",
+			"Запрос слишком короткий...",
+		))
+
+		return bot.SendInlineResult(query.ID, results)
+	}
+
+	list, siteErr := ssauparser.SearchInRasp(query.Query)
+	if siteErr != nil {
+		results = append(results, tgbotapi.NewInlineQueryResultArticleHTML(
+			"1",
+			"Ошибка на стороне сайта",
+			"Ошибка на стороне сайта",
+		))
+
+		return bot.SendInlineResult(query.ID, results)
+	}
+
+	if len(list) == 0 {
+		results = append(results, tgbotapi.NewInlineQueryResultArticleHTML(
+			"1",
+			"Ничего не найдено ):",
+			"Ничего не найдено ):",
+		))
+
+		return bot.SendInlineResult(query.ID, results)
+	}
+
+	for i, res := range list {
+		isGroup := strings.Contains(res.URL, "group")
+		var q string
+		postfix := ""
+		if isGroupChat {
+			postfix = fmt.Sprintf("@%s", bot.Name)
+		}
+		command := "/staff"
+		if isGroup {
+			command = "/group"
+		}
+		q = fmt.Sprintf("%s%s %d", command, postfix, res.ID)
+
+		results = append(results, tgbotapi.NewInlineQueryResultArticleHTML(
+			fmt.Sprintf("%d", i+1),
+			res.Text,
+			q,
+		))
+
+	}
+
+	return bot.SendInlineResult(query.ID, results)
+}
+
+// Отправка результатов Inline-запроса
+func (bot *Bot) SendInlineResult(queryID string, results []interface{}) (tgbotapi.Message, error) {
+	ans := tgbotapi.InlineConfig{
+		InlineQueryID: queryID,
+		IsPersonal:    true,
+		CacheTime:     0,
+		Results:       results,
+	}
+	_, err := bot.TG.Request(ans)
+
+	return nilMsg, err
+}
+
 func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Message, error) {
+	// Игнорируем "сообщения" о входе в чат
+	if len(msg.NewChatMembers) != 0 || msg.LeftChatMember != nil {
+		return nilMsg, nil
+	}
+	if msg.Chat.Type == "group" &&
+		len(msg.Entities) != 0 &&
+		msg.Entities[0].Type == "bot_command" {
+
+		return bot.HandleGroup(msg, now)
+	}
 	user, err := InitUser(bot.DB, msg.From)
 	if err != nil {
 		return nilMsg, err
@@ -211,6 +335,8 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 				"Кнопки действий выданы",
 				bot.AutoGenKeyboard(user),
 			)
+		} else if KeywordContains(msg.Text, []string{"/group", "/staff"}) {
+			return bot.GetSheduleFromCmd(now, user, msg.Text)
 		} else if KeywordContains(msg.Text, AdminKey) && user.TgId == bot.TestUser {
 			return bot.AdminHandle(msg)
 		}
@@ -226,6 +352,78 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 	default:
 		return bot.Etc(user)
 	}
+}
+
+// Получение расписания из команды /{group, staff} ID_ расписания
+func (bot *Bot) GetSheduleFromCmd(
+	now time.Time,
+	user *database.TgUser,
+	query string,
+) (
+	tgbotapi.Message,
+	error,
+) {
+	isGroup := strings.Contains(query, "/group")
+	cmd := strings.Split(query, " ")
+	if len(cmd) == 1 {
+		return bot.SendMsg(user, "Необходимо указать ID расписания",
+			nilKey)
+	}
+	sheduleID, err := strconv.ParseInt(cmd[1], 10, 64)
+	if err != nil {
+		return bot.SendMsg(user, "Некорректный ID расписания",
+			nilKey)
+	}
+	shedule := ssauparser.WeekShedule{
+		IsGroup:   isGroup,
+		SheduleID: sheduleID,
+	}
+	notExists, _ := ssauparser.CheckGroupOrTeacher(bot.DB, shedule)
+
+	return bot.ReturnSummary(notExists, user.PosTag == database.Add, user, shedule, now)
+}
+
+func (bot *Bot) HandleGroup(msg *tgbotapi.Message, now time.Time) (tgbotapi.Message, error) {
+	group := database.GroupChatInfo{
+		ChatID: msg.Chat.ID,
+	}
+	if _, err := bot.DB.Get(&group); err != nil {
+		return nilMsg, err
+	}
+	bot.Debug.Printf("ChatCommand [%d] %s", group.ChatID, msg.Text)
+
+	// TODO: добавить игнор команд для групповых чатов в ЛС
+	/*
+		if strings.Contains(msg.Text, "/add") {
+			cmd := strings.Split(msg.Text, " ")
+			if len(cmd) == 1 {
+				ans := tgbotapi.NewMessage(
+					group.ChatID,
+					"Необходимо указать запрос прямо в команде!\n"+
+						"Например, /add@l9_stud_bot 2405-240502D",
+				)
+
+				return bot.TG.Send(ans)
+			}
+			fakeUser := database.TgUser{
+				TgId:   group.ChatID,
+				PosTag: database.Ready,
+			}
+
+			return bot.Find(now, &fakeUser, cmd[1])
+		}*/
+	if KeywordContains(msg.Text, []string{"/group", "/staff"}) {
+		fakeUser := database.TgUser{
+			TgId:   group.ChatID,
+			PosTag: database.Ready,
+		}
+
+		return bot.GetSheduleFromCmd(now, &fakeUser, msg.Text)
+	}
+	ans := tgbotapi.NewMessage(msg.Chat.ID, "Исполняю команду")
+	ans.ReplyMarkup = CancelKey()
+
+	return bot.TG.Send(ans)
 }
 
 func (bot *Bot) HandleCallback(query *tgbotapi.CallbackQuery, now time.Time) (tgbotapi.Message, error) {

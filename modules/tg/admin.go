@@ -11,7 +11,6 @@ import (
 var AdminKey = []string{"scream", "stat"}
 
 func (bot *Bot) AdminHandle(msg *tgbotapi.Message) (tgbotapi.Message, error) {
-	nilMsg := tgbotapi.Message{}
 	if strings.Contains(msg.Text, "/scream") {
 		return bot.Scream(msg)
 	} else if strings.Contains(msg.Text, "/stat") {

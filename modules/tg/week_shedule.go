@@ -104,7 +104,7 @@ func (bot *Bot) GetWeekSummary(
 	}
 	// Если всё есть, скидываем, что есть
 	markup := tgbotapi.InlineKeyboardMarkup{}
-	if caption == "" || (caption != "" && isCompleted) {
+	if (caption == "" || (caption != "" && isCompleted)) && user.TgId > 0 {
 		markup = SummaryKeyboard(
 			Week,
 			shedule,
@@ -314,7 +314,7 @@ func (bot *Bot) CreateWeekImg(
 	photo := tgbotapi.NewPhoto(user.TgId, photoFileBytes)
 	photo.Caption = caption
 	isCompleted := strings.Contains(caption, "На этой неделе больше занятий нет")
-	if caption == "" || isCompleted {
+	if (caption == "" || isCompleted) && user.TgId > 0 {
 		photo.ReplyMarkup = SummaryKeyboard(
 			Week,
 			shedule,
