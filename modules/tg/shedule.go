@@ -28,16 +28,12 @@ func (bot *Bot) GetPersonal(
 	}
 
 	if !exists {
-		user.PosTag = database.Add
-		if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
-			return tgbotapi.Message{}, err
-		}
-
 		return bot.SendMsg(
 			user,
-			"У тебя пока никакого расписания не подключено\n"+
-				"Введи <b>номер группы</b>\n"+
-				"(в формате 2305 или 2305-240502D)",
+			"У тебя пока никакого расписания не подключено\n\n"+
+				"Введи <b>номер группы</b> "+
+				"(в формате 2305 или 2305-240502D), "+
+				"и в появившемся расписании нажми <b>🔔 Подключить уведомления</b>",
 			tgbotapi.ReplyKeyboardRemove{RemoveKeyboard: true},
 		)
 	}
@@ -126,11 +122,13 @@ func (bot *Bot) GetShortSummary(
 			}
 
 		}
+		connectButton := !isPersonal && !bot.IsThereUserShedule(user)
 		markup := SummaryKeyboard(
 			Near,
 			shedule,
 			isPersonal,
 			0,
+			connectButton,
 		)
 
 		return bot.EditOrSend(user.TgId, str, "", markup, editMsg...)
@@ -186,7 +184,8 @@ func (bot *Bot) GetDaySummary(
 		firstPair := pairs[0][0].Begin
 		dayStr := DayStr(day)
 
-		markup := SummaryKeyboard(Day, shedule, isPersonal, dt)
+		connectButton := !isPersonal && !bot.IsThereUserShedule(user)
+		markup := SummaryKeyboard(Day, shedule, isPersonal, dt, connectButton)
 
 		if firstPair.Day() != day.Day() {
 			str = fmt.Sprintf("В %s, занятий нет", dayStr)
@@ -206,7 +205,7 @@ func (bot *Bot) GetDaySummary(
 		return bot.EditOrSend(user.TgId, str, "", markup, editMsg...)
 	}
 
-	return bot.SendMsg(user, "Ой! Пар не обнаружено ):", GeneralKeyboard(true))
+	return bot.SendMsg(user, "Ой! Пар не обнаружено ):", nil)
 }
 
 // Строка даты формата "среду, 1 января"

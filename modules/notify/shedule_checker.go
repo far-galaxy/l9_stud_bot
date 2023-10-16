@@ -71,7 +71,7 @@ func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 			log.Println(err)
 		}
 		for i := range users {
-			if _, err := bot.SendMsg(&users[i], str, tg.GeneralKeyboard(true)); nil != err {
+			if _, err := bot.SendMsg(&users[i], str, nil); nil != err {
 				log.Println(err)
 			}
 		}

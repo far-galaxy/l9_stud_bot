@@ -27,12 +27,15 @@ func (bot *Bot) Start(user *database.TgUser) (tgbotapi.Message, error) {
 		user,
 		"Привет! У меня можно посмотреть в удобном формате <b>ближайшие пары</b>"+
 			", расписание <b>по дням</b> и даже <b>по неделям</b>!\n"+
-			"Просто напиши мне <b>номер группы</b> или <b>фамилию преподавателя</b>\n\n"+
-			"Также можно получать уведомления о своих занятиях по кнопке <b>Моё расписание</b>👇\n\n"+
+			"Просто напиши мне <b>номер группы</b> или <b>фамилию преподавателя</b>\n"+
+			fmt.Sprintf("(чтобы более удобно искать своё расписание, напиши сначала @%s , ", bot.Name)+
+			"затем уже нужный запрос)\n\n"+
+			"Также можно получать уведомления о своих занятиях, нажав на кнопку "+
+			"<b>🔔 Подключить уведомления</b> в появившемся расписании\n\n"+
 			"‼ Внимание! Бот ещё находится на стадии испытаний, поэтому могут возникать ошибки в его работе.\n"+
-			"Рекомендуется сверять настоящее расписание и обо всех ошибках сообщать в чат"+
+			"Рекомендуется сверять настоящее расписание и обо всех ошибках сообщать в чат "+
 			"@chat_l9_stud_bot или по контактам в /help",
-		GeneralKeyboard(false),
+		nilKey,
 	)
 }
 
@@ -102,7 +105,7 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 		return bot.SendMsg(
 			user,
 			txt,
-			GeneralKeyboard(false),
+			nilKey,
 		)
 	}
 }
@@ -180,7 +183,7 @@ func (bot *Bot) ReturnSummary(
 				user,
 				"Личное расписание пока не работает с преподавателями :(\n"+
 					"Приносим извинения за временные неудобства",
-				GeneralKeyboard(false),
+				nilKey,
 			)
 		}
 		// Групповые чаты
@@ -198,7 +201,7 @@ func (bot *Bot) ReturnSummary(
 				user,
 				"Расписание успешно подключено!\n"+
 					"Теперь по команде /shedule@l9_stud_bot ты сможешь открыть расписание на текущую неделю",
-				GeneralKeyboard(true),
+				nilKey,
 			)
 		}
 		sh := Swap(shedule)
@@ -222,7 +225,7 @@ func (bot *Bot) ReturnSummary(
 				"Теперь можно смотреть свои занятия по кнопке <b>Моё расписание</b>👇\n\n"+
 				"Также ты будешь получать уведомления о занятиях, "+
 				"которыми можно управлять в панели <b>Настройки</b>\n",
-			GeneralKeyboard(true),
+			nil,
 		)
 	}
 
@@ -276,6 +279,8 @@ func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQue
 		err = bot.GetWeekSummary(now[0], user, shedule, dt, isPersonal, "", *query.Message)
 	case ICS:
 		err = bot.CreateICS(now[0], user, shedule, isPersonal, dt, *query)
+	case Connect:
+		_, err = bot.ConnectShedule(user, shedule, *query.Message)
 	default:
 		_, err = bot.GetShortSummary(now[0], user, shedule, isPersonal, *query.Message)
 	}
@@ -283,9 +288,50 @@ func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQue
 	return err
 }
 
+func (bot *Bot) ConnectShedule(
+	user *database.TgUser,
+	sh database.ShedulesInUser,
+	editMsg ...tgbotapi.Message,
+) (
+	tgbotapi.Message,
+	error,
+) {
+	if !sh.IsGroup {
+		return bot.SendMsg(
+			user,
+			"Личное расписание пока не работает с преподавателями :(\n"+
+				"Приносим извинения за временные неудобства",
+			nilKey,
+		)
+	}
+	sh.L9Id = user.L9Id
+	sh.FirstTime = 45
+	sh.First = true
+	sh.NextNote = true
+	sh.NextDay = true
+	sh.NextWeek = true
+	if _, err := bot.DB.InsertOne(&sh); err != nil {
+		return nilMsg, err
+	}
+	user.PosTag = database.Ready
+	if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
+		return nilMsg, err
+	}
+
+	return bot.EditOrSend(
+		user.TgId,
+		"Расписание успешно подключено!\n"+
+			"Теперь можно смотреть свои занятия по команде <b>/schedule</b>\n\n"+
+			"Также ты будешь получать уведомления о занятиях, "+
+			"которыми можно управлять по команде <b>/options</b>\n",
+		"",
+		nilKey,
+		editMsg[0],
+	)
+}
+
 func (bot *Bot) Etc(user *database.TgUser) (tgbotapi.Message, error) {
 	msg := tgbotapi.NewMessage(user.TgId, "Oй!")
-	msg.ReplyMarkup = bot.AutoGenKeyboard(user)
 
 	return bot.TG.Send(msg)
 }
@@ -329,10 +375,10 @@ func (bot *Bot) DeleteGroup(user *database.TgUser, text string) (tgbotapi.Messag
 			return nilMsg, err
 		}
 
-		return bot.SendMsg(user, "Группа отключена", GeneralKeyboard(false))
+		return bot.SendMsg(user, "Группа отключена", nil)
 	}
 
-	return bot.SendMsg(user, "Действие отменено", GeneralKeyboard(true))
+	return bot.SendMsg(user, "Действие отменено", nil)
 }
 
 func (bot *Bot) SetFirstTime(msg *tgbotapi.Message, user *database.TgUser) (tgbotapi.Message, error) {
@@ -372,5 +418,5 @@ func (bot *Bot) SetFirstTime(msg *tgbotapi.Message, user *database.TgUser) (tgbo
 		return nilMsg, err
 	}
 
-	return bot.SendMsg(user, "Время установлено", GeneralKeyboard(true))
+	return bot.SendMsg(user, "Время установлено", nil)
 }

@@ -66,9 +66,8 @@ func main() {
 		log.Fatal(err)
 	}
 	c.Start()
-	sheduleTicker := time.NewTicker(time.Duration(shedulePeriod) * time.Minute)
+	sheduleCheck()
 	log.Println("Started")
-	defer sheduleTicker.Stop()
 	for update := range *mainbot.Updates {
 		now := time.Now()
 		_, err := mainbot.HandleUpdate(update, now)

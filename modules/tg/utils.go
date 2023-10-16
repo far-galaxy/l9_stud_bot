@@ -10,22 +10,8 @@ import (
 	"stud.l9labs.ru/bot/modules/ssauparser"
 )
 
-// Основные кнопки действий: "Моё расписание" и "Настройки" (опционально)
-func GeneralKeyboard(options bool) tgbotapi.ReplyKeyboardMarkup {
-	keyboard := [][]tgbotapi.KeyboardButton{{
-		tgbotapi.NewKeyboardButton("Моё расписание"),
-	}}
-	if options {
-		keyboard = append(keyboard, []tgbotapi.KeyboardButton{tgbotapi.NewKeyboardButton("Настройки")})
-	}
-	key := tgbotapi.NewReplyKeyboard(keyboard...)
-	key.ResizeKeyboard = true
-
-	return key
-}
-
-// Основные кнопки действий с автоопределением необходимости кнопки "Настройки"
-func (bot *Bot) AutoGenKeyboard(user *database.TgUser) tgbotapi.ReplyKeyboardMarkup {
+// Проверить, ести ли у пользователя уже подключенное расписание
+func (bot *Bot) IsThereUserShedule(user *database.TgUser) bool {
 	options := database.ShedulesInUser{
 		L9Id: user.L9Id,
 	}
@@ -33,7 +19,7 @@ func (bot *Bot) AutoGenKeyboard(user *database.TgUser) tgbotapi.ReplyKeyboardMar
 		bot.Debug.Println(err)
 	}
 
-	return GeneralKeyboard(options.UID != 0)
+	return options.UID != 0
 }
 
 // Inline-кнопка отмены
@@ -110,6 +96,7 @@ const (
 	Day           SummaryType = "day"
 	Week          SummaryType = "week"
 	ICS           SummaryType = "ics"
+	Connect       SummaryType = "connect"
 )
 
 // Inline-клавиатура карточки с расписанием
@@ -118,6 +105,7 @@ func SummaryKeyboard(
 	shedule database.ShedulesInUser,
 	isPersonal bool,
 	dt int,
+	connectButton bool,
 ) tgbotapi.InlineKeyboardMarkup {
 	var sheduleID int64
 	if isPersonal {
@@ -190,6 +178,11 @@ func SummaryKeyboard(
 		markup = [][]tgbotapi.InlineKeyboardButton{
 			arrows, day, week,
 		}
+	}
+	if connectButton && shedule.IsGroup {
+		markup = append(markup, []tgbotapi.InlineKeyboardButton{
+			tgbotapi.NewInlineKeyboardButtonData("🔔 Подключить уведомления", SummaryPrefix+string(Connect)+update),
+		})
 	}
 
 	return tgbotapi.InlineKeyboardMarkup{InlineKeyboard: markup}
@@ -298,8 +291,6 @@ func (bot *Bot) EditOrSend(
 		msg := tgbotapi.NewMessage(id, str)
 		if len(markup.InlineKeyboard) != 0 {
 			msg.ReplyMarkup = &markup
-		} else {
-			msg.ReplyMarkup = GeneralKeyboard(false)
 		}
 		msg.ParseMode = tgbotapi.ModeHTML
 
@@ -330,6 +321,8 @@ func ParseQuery(data []string) (SummaryType, database.ShedulesInUser, int, error
 		sumType = Week
 	case "ics":
 		sumType = ICS
+	case "connect":
+		sumType = Connect
 	default:
 		sumType = Near
 	}

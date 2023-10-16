@@ -22,8 +22,8 @@ const (
 
 // Пользователь Telegram
 type TgUser struct {
-	L9Id   int64 `xorm:"pk"`
-	TgId   int64
+	L9Id   int64  `xorm:"pk"`
+	TgId   int64  // TODO: переименовать в ChatID в v1
 	Name   string // XXX: должно быть удалено в v1
 	PosTag Position
 }

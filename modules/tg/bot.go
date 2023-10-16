@@ -218,6 +218,7 @@ func (bot *Bot) ChatActions(update tgbotapi.Update) (tgbotapi.Message, error) {
 	return nilMsg, nil
 }
 
+// Обработка Inline-запроса по поиску расписания
 func (bot *Bot) HandleInlineQuery(update tgbotapi.Update) (tgbotapi.Message, error) {
 	isGroupChat := update.InlineQuery.ChatType == "group"
 	query := update.InlineQuery
@@ -231,7 +232,7 @@ func (bot *Bot) HandleInlineQuery(update tgbotapi.Update) (tgbotapi.Message, err
 
 		return bot.SendInlineResult(query.ID, results)
 	}
-
+	// TODO: искать расписания из БД
 	list, siteErr := ssauparser.SearchInRasp(query.Query)
 	if siteErr != nil {
 		results = append(results, tgbotapi.NewInlineQueryResultArticleHTML(
@@ -309,7 +310,7 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 	bot.Debug.Printf("Message [%d:%d] <%s> %s", user.L9Id, user.TgId, user.Name, msg.Text)
 	bot.Messages++
 	if strings.Contains(msg.Text, "/help") {
-		return bot.SendMsg(user, bot.HelpTxt, bot.AutoGenKeyboard(user))
+		return bot.SendMsg(user, bot.HelpTxt, nilKey)
 	}
 	if strings.Contains(msg.Text, "/start") && user.PosTag != database.NotStarted {
 		if err := bot.DeleteUser(*user); err != nil {
@@ -331,15 +332,15 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 	case database.NotStarted:
 		return bot.Start(user)
 	case database.Ready:
-		if msg.Text == "Моё расписание" {
+		if strings.Contains(msg.Text, "/schedule") {
 			return bot.GetPersonal(now, user)
-		} else if msg.Text == "Настройки" {
+		} else if strings.Contains(msg.Text, "/options") {
 			return bot.GetOptions(user)
 		} else if strings.Contains(msg.Text, "/keyboard") {
 			return bot.SendMsg(
 				user,
 				"Кнопки действий выданы",
-				bot.AutoGenKeyboard(user),
+				nil,
 			)
 		} else if KeywordContains(msg.Text, []string{"/group", "/staff"}) {
 			return bot.GetSheduleFromCmd(now, user, msg.Text)
