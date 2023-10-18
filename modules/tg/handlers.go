@@ -9,7 +9,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"stud.l9labs.ru/bot/modules/database"
 	"stud.l9labs.ru/bot/modules/ssauparser"
-	"xorm.io/builder"
 )
 
 var nilMsg = tgbotapi.Message{}
@@ -39,121 +38,7 @@ func (bot *Bot) Start(user *database.TgUser) (tgbotapi.Message, error) {
 	)
 }
 
-// Поиск расписания по запросу
-func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbotapi.Message, error) {
-	// Поиск в БД
-	var groups []database.Group
-	if err := bot.DB.Where(builder.Like{"GroupName", query}).Find(&groups); err != nil {
-		return nilMsg, err
-	}
-
-	var teachers []database.Teacher
-	if err := bot.DB.Where(builder.Like{"FirstName", query}).Find(&teachers); err != nil {
-		return nilMsg, err
-	}
-
-	// Поиск на сайте
-	list, siteErr := ssauparser.SearchInRasp(query)
-
-	// Добавляем результаты поиска на сайте к результатам из БД
-	allGroups, allTeachers := AppendSearchResults(list, groups, teachers)
-
-	// Если получен единственный результат, сразу выдать (подключить) расписание
-	if len(allGroups) == 1 || len(allTeachers) == 1 {
-		var sheduleID int64
-		var isGroup bool
-		if len(allGroups) == 1 {
-			sheduleID = allGroups[0].GroupId
-			isGroup = true
-		} else {
-			sheduleID = allTeachers[0].TeacherId
-			isGroup = false
-		}
-		shedule := ssauparser.WeekShedule{
-			IsGroup:   isGroup,
-			SheduleID: sheduleID,
-		}
-		notExists, _ := ssauparser.CheckGroupOrTeacher(bot.DB, shedule)
-
-		return bot.ReturnSummary(notExists, user.PosTag == database.Add, user, shedule, now)
-
-		// Если получено несколько групп
-	} else if len(allGroups) != 0 {
-		return bot.SendMsg(
-			user,
-			"Вот что я нашёл\nВыбери нужную группу",
-			GenerateKeyboard(GenerateGroupsArray(allGroups, user.PosTag == database.Add)),
-		)
-		// Если получено несколько преподавателей
-	} else if len(allTeachers) != 0 {
-		return bot.SendMsg(
-			user,
-			"Вот что я нашёл\nВыбери нужного преподавателя",
-			GenerateKeyboard(GenerateTeachersArray(allTeachers, user.PosTag == database.Add)),
-		)
-		// Если ничего не получено
-	} else {
-		var txt string
-		if siteErr != nil {
-			bot.Debug.Printf("sasau error: %s", siteErr)
-			txt = "К сожалению, у меня ничего не нашлось, а на сайте ssau.ru/rasp произошла какая-то ошибка :(\n" +
-				"Повтори попытку позже"
-		} else {
-			txt = "К сожалению, я ничего не нашёл ):\nПроверь свой запрос"
-		}
-
-		return bot.SendMsg(
-			user,
-			txt,
-			nilKey,
-		)
-	}
-}
-
-func AppendSearchResults(
-	list ssauparser.SearchResults,
-	groups []database.Group,
-	teachers []database.Teacher,
-) (
-	[]database.Group,
-	[]database.Teacher,
-) {
-	allGroups := groups
-	allTeachers := teachers
-	for _, elem := range list {
-		if strings.Contains(elem.URL, "group") {
-			exists := false
-			for _, group := range groups {
-				if elem.ID == group.GroupId {
-					exists = true
-
-					break
-				}
-			}
-			if !exists {
-				allGroups = append(allGroups, database.Group{GroupId: elem.ID, GroupName: elem.Text})
-			}
-		}
-		if strings.Contains(elem.URL, "staff") {
-			exists := false
-			for _, teacher := range teachers {
-				if elem.ID == teacher.TeacherId {
-					exists = true
-
-					break
-				}
-			}
-			if !exists {
-				teacher := ssauparser.ParseTeacherName(elem.Text)
-				teacher.TeacherId = elem.ID
-				allTeachers = append(allTeachers, teacher)
-			}
-		}
-	}
-
-	return allGroups, allTeachers
-}
-
+// Выдача расписания
 func (bot *Bot) ReturnSummary(
 	notExists bool,
 	isAdd bool,
@@ -262,6 +147,7 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 	return err
 }
 
+// Обработка нажатия кнопки в карточке с расписанием
 func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQuery, now ...time.Time) error {
 	data := strings.Split(query.Data, "_")
 	sumType, shedule, dt, err := ParseQuery(data)
@@ -288,6 +174,7 @@ func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQue
 	return err
 }
 
+// Подключение уведомлений
 func (bot *Bot) ConnectShedule(
 	user *database.TgUser,
 	sh database.ShedulesInUser,

@@ -13,6 +13,35 @@ import (
 	"xorm.io/xorm"
 )
 
+// Получение расписания из команды /{group, staff} ID_ расписания
+func (bot *Bot) GetSheduleFromCmd(
+	now time.Time,
+	user *database.TgUser,
+	query string,
+) (
+	tgbotapi.Message,
+	error,
+) {
+	isGroup := strings.Contains(query, "/group")
+	cmd := strings.Split(query, " ")
+	if len(cmd) == 1 {
+		return bot.SendMsg(user, "Необходимо указать ID расписания",
+			nilKey)
+	}
+	sheduleID, err := strconv.ParseInt(cmd[1], 10, 64)
+	if err != nil {
+		return bot.SendMsg(user, "Некорректный ID расписания",
+			nilKey)
+	}
+	shedule := ssauparser.WeekShedule{
+		IsGroup:   isGroup,
+		SheduleID: sheduleID,
+	}
+	notExists, _ := ssauparser.CheckGroupOrTeacher(bot.DB, shedule)
+
+	return bot.ReturnSummary(notExists, user.PosTag == database.Add, user, shedule, now)
+}
+
 func (bot *Bot) GetPersonal(
 	now time.Time,
 	user *database.TgUser,
