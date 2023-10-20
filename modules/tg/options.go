@@ -69,7 +69,8 @@ func (bot *Bot) HandleOptions(user *database.TgUser, query *tgbotapi.CallbackQue
 			return err
 		}
 		txt := fmt.Sprintf(
-			"Введи время в минутах, за которое мне надо сообщить о начале занятий\n"+
+			"Введи время в минутах, за которое мне надо сообщить о начале занятий"+
+				"(от 15 до 240 минут)\n"+
 				"Сейчас установлено %d минут",
 			options.FirstTime,
 		)

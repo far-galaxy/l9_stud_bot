@@ -183,6 +183,22 @@ func (bot *Bot) ConnectShedule(
 	tgbotapi.Message,
 	error,
 ) {
+	shedules := database.ShedulesInUser{
+		L9Id: user.L9Id,
+	}
+	exists, err := bot.DB.Get(&shedules)
+	if err != nil {
+		return nilMsg, err
+	}
+	if exists {
+		return bot.SendMsg(
+			user,
+			"У тебя уже подключено одно расписание!\n"+
+				"Сначали отключи его в меню /options, затем можешь подключить другое",
+			nilKey,
+		)
+	}
+
 	if !sh.IsGroup {
 		return bot.SendMsg(
 			user,
@@ -286,13 +302,13 @@ func (bot *Bot) SetFirstTime(msg *tgbotapi.Message, user *database.TgUser) (tgbo
 	if t <= 10 {
 		return bot.SendMsg(
 			user,
-			"Ой, установлено слишком малое время. Попробуй ввести большее время",
+			"Ой, установлено слишком малое время. Попробуй ввести большее время (не менее 15 минут)",
 			CancelKey(),
 		)
 	} else if t > 240 {
 		return bot.SendMsg(
 			user,
-			"Ой, установлено слишком большое время. Попробуй ввести меньшее время",
+			"Ой, установлено слишком большое время. Попробуй ввести меньшее время (не более 240 минут)",
 			CancelKey(),
 		)
 	}
