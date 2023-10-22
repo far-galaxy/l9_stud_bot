@@ -104,12 +104,14 @@ func (bot *Bot) GetWeekSummary(
 	}
 	// Если всё есть, скидываем, что есть
 	markup := tgbotapi.InlineKeyboardMarkup{}
-	if caption == "" || (caption != "" && isCompleted) {
+	if (caption == "" || (caption != "" && isCompleted)) && user.TgId > 0 {
+		connectButton := !isPersonal && !bot.IsThereUserShedule(user)
 		markup = SummaryKeyboard(
 			Week,
 			shedule,
 			isPersonal,
 			week,
+			connectButton,
 		)
 	}
 	_, err = bot.EditOrSend(user.TgId, caption, image.FileId, markup, editMsg...)
@@ -314,12 +316,14 @@ func (bot *Bot) CreateWeekImg(
 	photo := tgbotapi.NewPhoto(user.TgId, photoFileBytes)
 	photo.Caption = caption
 	isCompleted := strings.Contains(caption, "На этой неделе больше занятий нет")
-	if caption == "" || isCompleted {
+	connectButton := !isPersonal && !bot.IsThereUserShedule(user)
+	if (caption == "" || isCompleted) && user.TgId > 0 {
 		photo.ReplyMarkup = SummaryKeyboard(
 			Week,
 			shedule,
 			isPersonal,
 			week,
+			connectButton,
 		)
 	}
 	resp, err := bot.TG.Send(photo)
@@ -557,7 +561,7 @@ func (bot *Bot) CreateICS(
 		_, err := bot.SendMsg(
 			user,
 			"Скачивание .ics для преподавателей пока недоступно (:",
-			GeneralKeyboard(false),
+			nil,
 		)
 
 		return err
@@ -596,7 +600,6 @@ func (bot *Bot) CreateICS(
 			doc.Caption = "📖 Инструкция: https://bit.ly/ics_upload\n\n" +
 				"‼️ Удалите старые  занятия данной недели из календаря, если они есть"
 		}
-		doc.ReplyMarkup = bot.AutoGenKeyboard(user)
 		if _, err := bot.TG.Send(doc); err != nil {
 			return err
 		}

@@ -215,7 +215,7 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 				continue
 			}
 			if note.NoteType != NextWeek {
-				m, err := bot.SendMsg(&users[i], txt, tg.GeneralKeyboard(true))
+				m, err := bot.SendMsg(&users[i], txt, nil)
 				if err != nil {
 					bot.CheckBlocked(err, user)
 				} else {
@@ -342,7 +342,6 @@ func FirstMailing(bot *tg.Bot, now time.Time) {
 		str += pair
 		user, _ := strconv.ParseInt(string(r["TgId"]), 0, 64)
 		mail := tgbotapi.NewMessage(user, str)
-		mail.ReplyMarkup = tg.GeneralKeyboard(true)
 		msg, err := bot.TG.Send(mail)
 		if err != nil {
 			log.Println(err)

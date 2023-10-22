@@ -36,7 +36,7 @@ func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 		IsGroup:   true,
 		SheduleID: group.GroupId,
 	}
-	add, del, err := bot.LoadShedule(sh, now, true)
+	add, del, err := bot.LoadShedule(sh, now, false)
 	if err != nil {
 		log.Println(err)
 	}
@@ -71,7 +71,7 @@ func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 			log.Println(err)
 		}
 		for i := range users {
-			if _, err := bot.SendMsg(&users[i], str, tg.GeneralKeyboard(true)); nil != err {
+			if _, err := bot.SendMsg(&users[i], str, nil); nil != err {
 				log.Println(err)
 			}
 		}

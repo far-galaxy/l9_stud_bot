@@ -15,6 +15,7 @@ import (
 )
 
 type Bot struct {
+	Name      string
 	TG        *tgbotapi.BotAPI
 	DB        *xorm.Engine
 	TestUser  int64
@@ -78,7 +79,8 @@ func InitBot(db database.DB, token string, build string) (*Bot, error) {
 	}
 	bot.GetUpdates()
 
-	log.Printf("Authorized on account %s", bot.TG.Self.UserName)
+	bot.Name = bot.TG.Self.UserName
+	log.Printf("Authorized on account %s", bot.Name)
 	bot.Debug = log.New(io.MultiWriter(os.Stderr, database.InitLog("messages")), "", log.LstdFlags)
 
 	return &bot, nil
@@ -166,11 +168,27 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 	if update.CallbackQuery != nil {
 		return bot.HandleCallback(update.CallbackQuery, now[0])
 	}
+	if update.InlineQuery != nil {
+		return bot.HandleInlineQuery(update)
+	}
+	if update.MyChatMember != nil {
+		return bot.ChatActions(update)
+	}
 
 	return nilMsg, nil
 }
 
 func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Message, error) {
+	// Игнорируем "сообщения" о входе в чат
+	if len(msg.NewChatMembers) != 0 || msg.LeftChatMember != nil {
+		return nilMsg, nil
+	}
+	if msg.Chat.Type == "group" &&
+		len(msg.Entities) != 0 &&
+		msg.Entities[0].Type == "bot_command" {
+
+		return bot.HandleGroup(msg, now)
+	}
 	user, err := InitUser(bot.DB, msg.From)
 	if err != nil {
 		return nilMsg, err
@@ -178,8 +196,15 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 
 	bot.Debug.Printf("Message [%d:%d] <%s> %s", user.L9Id, user.TgId, user.Name, msg.Text)
 	bot.Messages++
+	if msg.Text == "Моё расписание" || msg.Text == "Настройки" {
+		return bot.SendMsg(
+			user,
+			"Кнопки больше не работают, используй команды /schedule и /options",
+			tgbotapi.ReplyKeyboardRemove{RemoveKeyboard: true},
+		)
+	}
 	if strings.Contains(msg.Text, "/help") {
-		return bot.SendMsg(user, bot.HelpTxt, bot.AutoGenKeyboard(user))
+		return bot.SendMsg(user, bot.HelpTxt, nilKey)
 	}
 	if strings.Contains(msg.Text, "/start") && user.PosTag != database.NotStarted {
 		if err := bot.DeleteUser(*user); err != nil {
@@ -201,16 +226,18 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 	case database.NotStarted:
 		return bot.Start(user)
 	case database.Ready:
-		if msg.Text == "Моё расписание" {
+		if strings.Contains(msg.Text, "/schedule") {
 			return bot.GetPersonal(now, user)
-		} else if msg.Text == "Настройки" {
+		} else if strings.Contains(msg.Text, "/options") {
 			return bot.GetOptions(user)
 		} else if strings.Contains(msg.Text, "/keyboard") {
 			return bot.SendMsg(
 				user,
-				"Кнопки действий выданы",
-				bot.AutoGenKeyboard(user),
+				"Кнопки больше не работают, используй команды /schedule и /options",
+				nil,
 			)
+		} else if KeywordContains(msg.Text, []string{"/group", "/staff"}) {
+			return bot.GetSheduleFromCmd(now, user, msg.Text)
 		} else if KeywordContains(msg.Text, AdminKey) && user.TgId == bot.TestUser {
 			return bot.AdminHandle(msg)
 		}

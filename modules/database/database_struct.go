@@ -22,8 +22,8 @@ const (
 
 // Пользователь Telegram
 type TgUser struct {
-	L9Id   int64 `xorm:"pk"`
-	TgId   int64
+	L9Id   int64  `xorm:"pk"`
+	TgId   int64  // TODO: переименовать в ChatID в v1
 	Name   string // XXX: должно быть удалено в v1
 	PosTag Position
 }
@@ -122,4 +122,12 @@ type TempMsg struct {
 	TgId      int64
 	MessageId int
 	Destroy   time.Time
+}
+
+// Данные о чате, в который добавили бота
+type GroupChatInfo struct {
+	ID        int64 `xorm:"pk autoincr"`
+	ChatID    int64 `xorm:"unique"`
+	IsGroup   bool
+	SheduleID int64
 }
