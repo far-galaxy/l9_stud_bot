@@ -66,8 +66,8 @@ func main() {
 		log.Fatal(err)
 	}
 	c.Start()
-	sheduleCheck()
 	log.Println("Started")
+	sheduleCheck()
 	for update := range *mainbot.Updates {
 		now := time.Now()
 		_, err := mainbot.HandleUpdate(update, now)
