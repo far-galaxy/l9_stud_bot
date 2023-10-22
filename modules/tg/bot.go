@@ -197,7 +197,11 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 	bot.Debug.Printf("Message [%d:%d] <%s> %s", user.L9Id, user.TgId, user.Name, msg.Text)
 	bot.Messages++
 	if msg.Text == "Моё расписание" || msg.Text == "Настройки" {
-		return bot.SendMsg(user, "Кнопки больше не работают, используй команды /schedule и /options", nilKey)
+		return bot.SendMsg(
+			user,
+			"Кнопки больше не работают, используй команды /schedule и /options",
+			tgbotapi.ReplyKeyboardRemove{RemoveKeyboard: true},
+		)
 	}
 	if strings.Contains(msg.Text, "/help") {
 		return bot.SendMsg(user, bot.HelpTxt, nilKey)
