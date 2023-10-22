@@ -24,7 +24,7 @@ func CheckShedules(bot *tg.Bot, now time.Time) {
 
 func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 	du := now.Sub(group.LastCheck).Hours()
-	if du < 1 {
+	if du < 24 {
 		return
 	}
 	log.Printf("check group %s, lastCheck %v", group.GroupName, group.LastCheck)
@@ -36,7 +36,7 @@ func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 		IsGroup:   true,
 		SheduleID: group.GroupId,
 	}
-	add, del, err := bot.LoadShedule(sh, now, true)
+	add, del, err := bot.LoadShedule(sh, now, false)
 	if err != nil {
 		log.Println(err)
 	}

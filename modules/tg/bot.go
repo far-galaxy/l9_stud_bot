@@ -196,6 +196,9 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 
 	bot.Debug.Printf("Message [%d:%d] <%s> %s", user.L9Id, user.TgId, user.Name, msg.Text)
 	bot.Messages++
+	if msg.Text == "Моё расписание" || msg.Text == "Настройки" {
+		return bot.SendMsg(user, "Кнопки больше не работают, используй команды /schedule и /options", nilKey)
+	}
 	if strings.Contains(msg.Text, "/help") {
 		return bot.SendMsg(user, bot.HelpTxt, nilKey)
 	}
@@ -226,7 +229,7 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 		} else if strings.Contains(msg.Text, "/keyboard") {
 			return bot.SendMsg(
 				user,
-				"Кнопки действий выданы",
+				"Кнопки больше не работают, используй команды /schedule и /options",
 				nil,
 			)
 		} else if KeywordContains(msg.Text, []string{"/group", "/staff"}) {
