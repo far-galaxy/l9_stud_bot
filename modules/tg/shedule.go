@@ -385,6 +385,8 @@ var Icons = map[database.Kind]string{
 	database.Exam:       "💀",
 	database.Consult:    "🗨",
 	database.CourseWork: "🤯",
+	database.Test:       "📝",
+	database.Unknown:    "❓",
 }
 
 var Comm = map[database.Kind]string{
@@ -397,6 +399,8 @@ var Comm = map[database.Kind]string{
 	database.Exam:       "Экзамен",
 	database.Consult:    "Консультация",
 	database.CourseWork: "Курсовая",
+	database.Test:       "Зачёт",
+	database.Unknown:    "",
 }
 
 // Конвертация занятий с текст

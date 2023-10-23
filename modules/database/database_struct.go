@@ -78,6 +78,8 @@ const (
 	Exam       Kind = "exam"
 	Consult    Kind = "cons"
 	CourseWork Kind = "kurs"
+	Test       Kind = "test"
+	Unknown    Kind = "unknown"
 )
 
 // Занятие
