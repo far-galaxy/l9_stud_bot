@@ -29,12 +29,10 @@ func (bot *Bot) Scream(msg *tgbotapi.Message) (tgbotapi.Message, error) {
 		0,
 		strings.TrimPrefix(msg.Text, "/scream"),
 	)
-	for _, u := range users {
+	for i, u := range users {
 		scream.ChatID = u.TgId
 		if _, err := bot.TG.Send(scream); err != nil {
-			if !strings.Contains(err.Error(), "blocked by user") {
-				bot.Debug.Println(err)
-			}
+			bot.CheckBlocked(err, users[i])
 		}
 	}
 	scream.ChatID = bot.TestUser
