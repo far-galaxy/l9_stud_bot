@@ -194,7 +194,7 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 		return nilMsg, err
 	}
 
-	bot.Debug.Printf("Message [%d:%d] <%s> %s", user.L9Id, user.TgId, user.Name, msg.Text)
+	bot.Debug.Printf("Message  [%10d:%10d] %s", user.L9Id, user.TgId, msg.Text)
 	bot.Messages++
 	if msg.Text == "Моё расписание" || msg.Text == "Настройки" {
 		return bot.SendMsg(
@@ -260,7 +260,7 @@ func (bot *Bot) HandleCallback(query *tgbotapi.CallbackQuery, now time.Time) (tg
 	if err != nil {
 		return nilMsg, err
 	}
-	bot.Debug.Printf("Callback [%d:%d] <%s> %s", user.L9Id, user.TgId, user.Name, query.Data)
+	bot.Debug.Printf("Callback [%10d:%10d] %s", user.L9Id, user.TgId, query.Data)
 	bot.Callbacks++
 	if query.Data == "cancel" {
 		return nilMsg, bot.Cancel(user, query)
