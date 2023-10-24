@@ -2,6 +2,7 @@ package tg
 
 import (
 	"log"
+	"regexp"
 	"strings"
 	"time"
 
@@ -35,8 +36,25 @@ func (bot *Bot) SearchInDB(query string) ([]database.Group, []database.Teacher, 
 
 // Поиск расписания по запросу (старый способ)
 func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbotapi.Message, error) {
+
+	// Проверка запроса на вшивость
+	format := regexp.MustCompile(`^(\d{4}-\d{6}[D,V,Z]{1})|(\d{4})|(^[\pL-]+)$`)
+	regQuery := format.FindString(query)
+	if regQuery == "" {
+		return bot.SendMsg(
+			user,
+			"❗️Неверный формат запроса\n"+
+				"Нужен номер группы или фамилия преподавателя, например:\n"+
+				"<b>2305</b>\n"+
+				"<b>2305-240502D</b>\n"+
+				"<b>Иванов</b>\n\n"+
+				"Либо попробуй новый тип поиска:\n"+
+				"stud.l9labs.ru/bot/about",
+			nil,
+		)
+	}
 	// Поиск в БД
-	allGroups, allTeachers, siteErr := bot.SearchInDB(query)
+	allGroups, allTeachers, siteErr := bot.SearchInDB(regQuery)
 
 	// Если получен единственный результат, сразу выдать (подключить) расписание
 	if len(allGroups) == 1 || len(allTeachers) == 1 {
