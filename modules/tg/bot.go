@@ -228,6 +228,8 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 	case database.Ready:
 		if strings.Contains(msg.Text, "/schedule") {
 			return bot.GetPersonal(now, user)
+		} else if strings.Contains(msg.Text, "/session") {
+			return bot.GetSession(user)
 		} else if strings.Contains(msg.Text, "/options") {
 			return bot.GetOptions(user)
 		} else if strings.Contains(msg.Text, "/keyboard") {
