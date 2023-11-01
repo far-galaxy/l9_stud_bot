@@ -56,20 +56,17 @@ func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 	for _, d := range del {
 		_, delWeek := d.Begin.ISOWeek()
 		if d.GroupId == group.GroupId &&
-			(delWeek == nowWeek || delWeek == nowWeek+1) {
+			(delWeek == nowWeek || delWeek == nowWeek+1 ||
+				d.Type == database.Consult ||
+				d.Type == database.Exam) {
 			nDel = append(nDel, d)
 		}
 	}
 	if len(nAdd) > 0 || len(nDel) > 0 {
 		var str string
-		if len(nAdd) > 0 &&
-			(nAdd[0].Type == database.Consult || nAdd[0].Type == database.Exam) {
-			str = "‼ Стало доступно расписание сессии\nПосмотреть его можно по команде /session"
-		} else {
-			str = "‼ Обнаружены изменения в расписании\n"
-			str = strChanges(nAdd, str, true)
-			str = strChanges(nDel, str, false)
-		}
+		str = "‼ Обнаружены изменения в расписании\n"
+		str = strChanges(nAdd, str, true)
+		str = strChanges(nDel, str, false)
 		var users []database.TgUser
 		if err := bot.DB.
 			UseBool("isgroup").
