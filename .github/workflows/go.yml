@@ -27,7 +27,7 @@ jobs:
   deploy:
       runs-on: ubuntu-20.04
       steps:
-        - name: Run command on remote server
+        - name: Run remote server
           uses: D3rHase/ssh-command-action@v0.2.2
           with:
             host: ${{secrets.HOST}}
