@@ -46,7 +46,10 @@ func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 	for _, a := range add {
 		_, addWeek := a.Begin.ISOWeek()
 		if a.GroupId == group.GroupId &&
-			(addWeek == nowWeek || addWeek == nowWeek+1) {
+			(addWeek == nowWeek ||
+				addWeek == nowWeek+1 ||
+				a.Type == database.Consult ||
+				a.Type == database.Exam) {
 			nAdd = append(nAdd, a)
 		}
 	}
@@ -58,9 +61,15 @@ func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 		}
 	}
 	if len(nAdd) > 0 || len(nDel) > 0 {
-		str := "‼ Обнаружены изменения в расписании\n"
-		str = strChanges(nAdd, str, true)
-		str = strChanges(nDel, str, false)
+		var str string
+		if len(nAdd) > 0 &&
+			(nAdd[0].Type == database.Consult || nAdd[0].Type == database.Exam) {
+			str = "‼ Стало доступно расписание сессии\nПосмотреть его можно по команде /session"
+		} else {
+			str = "‼ Обнаружены изменения в расписании\n"
+			str = strChanges(nAdd, str, true)
+			str = strChanges(nDel, str, false)
+		}
 		var users []database.TgUser
 		if err := bot.DB.
 			UseBool("isgroup").

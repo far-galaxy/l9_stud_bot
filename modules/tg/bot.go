@@ -226,7 +226,9 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 	case database.NotStarted:
 		return bot.Start(user)
 	case database.Ready:
-		if strings.Contains(msg.Text, "/schedule") {
+		if KeywordContains(msg.Text, AdminKey) && user.TgId == bot.TestUser {
+			return bot.AdminHandle(msg)
+		} else if strings.Contains(msg.Text, "/schedule") {
 			return bot.GetPersonal(now, user)
 		} else if strings.Contains(msg.Text, "/session") {
 			return bot.GetSession(user)
@@ -240,8 +242,6 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 			)
 		} else if KeywordContains(msg.Text, []string{"/group", "/staff"}) {
 			return bot.GetSheduleFromCmd(now, user, msg.Text)
-		} else if KeywordContains(msg.Text, AdminKey) && user.TgId == bot.TestUser {
-			return bot.AdminHandle(msg)
 		}
 
 		return bot.Find(now, user, msg.Text)
