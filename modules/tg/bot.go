@@ -194,7 +194,7 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 		return nilMsg, err
 	}
 
-	bot.Debug.Printf("Message [%d:%d] <%s> %s", user.L9Id, user.TgId, user.Name, msg.Text)
+	bot.Debug.Printf("Message  [%10d:%10d] %s", user.L9Id, user.TgId, msg.Text)
 	bot.Messages++
 	if msg.Text == "Моё расписание" || msg.Text == "Настройки" {
 		return bot.SendMsg(
@@ -226,8 +226,12 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 	case database.NotStarted:
 		return bot.Start(user)
 	case database.Ready:
-		if strings.Contains(msg.Text, "/schedule") {
+		if KeywordContains(msg.Text, AdminKey) && user.TgId == bot.TestUser {
+			return bot.AdminHandle(msg)
+		} else if strings.Contains(msg.Text, "/schedule") {
 			return bot.GetPersonal(now, user)
+		} else if strings.Contains(msg.Text, "/session") {
+			return bot.GetSession(user)
 		} else if strings.Contains(msg.Text, "/options") {
 			return bot.GetOptions(user)
 		} else if strings.Contains(msg.Text, "/keyboard") {
@@ -238,8 +242,6 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 			)
 		} else if KeywordContains(msg.Text, []string{"/group", "/staff"}) {
 			return bot.GetSheduleFromCmd(now, user, msg.Text)
-		} else if KeywordContains(msg.Text, AdminKey) && user.TgId == bot.TestUser {
-			return bot.AdminHandle(msg)
 		}
 
 		return bot.Find(now, user, msg.Text)
@@ -260,7 +262,7 @@ func (bot *Bot) HandleCallback(query *tgbotapi.CallbackQuery, now time.Time) (tg
 	if err != nil {
 		return nilMsg, err
 	}
-	bot.Debug.Printf("Callback [%d:%d] <%s> %s", user.L9Id, user.TgId, user.Name, query.Data)
+	bot.Debug.Printf("Callback [%10d:%10d] %s", user.L9Id, user.TgId, query.Data)
 	bot.Callbacks++
 	if query.Data == "cancel" {
 		return nilMsg, bot.Cancel(user, query)
@@ -306,7 +308,7 @@ func (bot *Bot) HandleCallback(query *tgbotapi.CallbackQuery, now time.Time) (tg
 }
 
 func (bot *Bot) CheckBlocked(err error, user database.TgUser) {
-	if !strings.Contains(err.Error(), "blocked by user") {
+	if !strings.Contains(err.Error(), "blocked by the user") {
 		if err := bot.DeleteUser(user); err != nil {
 			log.Println(err)
 		}

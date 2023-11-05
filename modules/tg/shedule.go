@@ -42,6 +42,79 @@ func (bot *Bot) GetSheduleFromCmd(
 	return bot.ReturnSummary(notExists, user.PosTag == database.Add, user, shedule, now)
 }
 
+func (bot *Bot) GetSession(
+	user *database.TgUser,
+	editMsg ...tgbotapi.Message,
+) (
+	tgbotapi.Message,
+	error,
+) {
+	shedule := database.ShedulesInUser{L9Id: user.L9Id}
+	exists, err := bot.DB.Get(&shedule)
+	if err != nil {
+		return nilMsg, err
+	}
+
+	if !exists {
+		return bot.SendMsg(
+			user,
+			"У тебя пока никакого расписания не подключено\n\n"+
+				"Введи <b>номер группы</b> "+
+				"(в формате 2305 или 2305-240502D), "+
+				"и в появившемся расписании нажми <b>🔔 Подключить уведомления</b>\n\n"+
+				"https://youtube.com/shorts/FHE2YAGYBa8",
+			tgbotapi.ReplyKeyboardRemove{RemoveKeyboard: true},
+		)
+	}
+	var lessons []database.Lesson
+	if err := bot.DB.
+		In("Type", database.Consult, database.Exam).
+		Where("GroupId = ?", shedule.SheduleId).
+		Asc("Begin").
+		Find(&lessons); err != nil {
+		return nilMsg, err
+	}
+	str := "<b>Расписание сессии:</b>\n\n"
+	if len(lessons) == 0 {
+		str = "Расписания сессии у этой группы пока нет\n" +
+			"Как только оно появится, я обязательно сообщу!"
+
+		return bot.EditOrSend(user.TgId, str, "", nilKey, editMsg...)
+	}
+
+	for i, l := range lessons {
+		if i > 0 &&
+			lessons[i-1].Name == l.Name &&
+			lessons[i-1].Type == l.Type {
+			continue
+		}
+		obj := fmt.Sprintf(
+			l.Begin.Format("📆 <b>02 %s (%s) 15:04</b>\n"),
+			Month[l.Begin.Month()-1],
+			weekdaysNom[int(l.Begin.Weekday())],
+		)
+		obj += fmt.Sprintf("<i>%s</i>\n%s %s\n",
+			l.Name, Icons[l.Type], Comm[l.Type],
+		)
+		if l.Place != "" {
+			obj += fmt.Sprintf("🧭 %s\n", l.Place)
+		}
+		if l.TeacherId != 0 {
+			var t database.Teacher
+			_, err := bot.DB.ID(l.TeacherId).Get(&t)
+			if err != nil {
+				return nilMsg, err
+			}
+			obj += fmt.Sprintf("👤 %s %s\n", t.FirstName, t.ShortName)
+		}
+		obj += "------------------------------------------\n"
+
+		str += obj
+	}
+
+	return bot.EditOrSend(user.TgId, str, "", nilKey, editMsg...)
+}
+
 func (bot *Bot) GetPersonal(
 	now time.Time,
 	user *database.TgUser,
@@ -283,7 +356,7 @@ func (bot *Bot) LoadShedule(shedule ssauparser.WeekShedule, now time.Time, fast 
 		end = start + 1
 	} else {
 		start = 1
-		end = 21
+		end = 25
 	}
 	var add, del []database.Lesson
 	for week := start; week < end; week++ {
@@ -385,6 +458,8 @@ var Icons = map[database.Kind]string{
 	database.Exam:       "💀",
 	database.Consult:    "🗨",
 	database.CourseWork: "🤯",
+	database.Test:       "📝",
+	database.Unknown:    "❓",
 }
 
 var Comm = map[database.Kind]string{
@@ -397,6 +472,8 @@ var Comm = map[database.Kind]string{
 	database.Exam:       "Экзамен",
 	database.Consult:    "Консультация",
 	database.CourseWork: "Курсовая",
+	database.Test:       "Зачёт",
+	database.Unknown:    "",
 }
 
 // Конвертация занятий с текст

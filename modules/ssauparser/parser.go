@@ -177,8 +177,9 @@ func createPairArray(rawTimes []string, rawDates []string, lessons [][]Lesson) (
 }
 
 var types = []database.Kind{
-	database.Lection, database.Lab, database.Practice,
-	database.Other, database.Exam, database.Consult, database.CourseWork,
+	database.Lection, database.Lab, database.Practice, database.Other,
+	database.Exam, database.Consult, database.CourseWork,
+	database.Test,
 }
 
 // Парсинг занятия
@@ -274,14 +275,20 @@ func (lesson *Lesson) parseSubgroups(isGroup bool, groupID []int64, l *goquery.S
 func (lesson *Lesson) parseType(name *goquery.Selection) {
 	if strings.ToLower(lesson.Name) == "военная подготовка" {
 		lesson.Type = database.Military
-	} else {
-		lType := name.AttrOr("class", "lesson-color-type-4")
-		t := strings.Split(lType, " ")
-		lType = t[len(t)-1]
-		typeIdx, err := strconv.ParseInt(lType[len(lType)-1:], 0, 8)
-		if err != nil {
-			lesson.Type = database.Other
-		}
-		lesson.Type = types[typeIdx-1]
+
+		return
 	}
+	lType := name.AttrOr("class", "lesson-color-type-4")
+	t := strings.Split(lType, " ")
+	lType = t[len(t)-1]
+	typeIdx, err := strconv.ParseInt(lType[len(lType)-1:], 0, 8)
+	if err != nil {
+		lesson.Type = database.Other
+	}
+	if int(typeIdx) > len(types) {
+		lesson.Type = database.Unknown
+
+		return
+	}
+	lesson.Type = types[typeIdx-1]
 }
