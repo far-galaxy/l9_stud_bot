@@ -47,18 +47,14 @@ func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 		_, addWeek := a.Begin.ISOWeek()
 		if a.GroupId == group.GroupId &&
 			(addWeek == nowWeek ||
-				addWeek == nowWeek+1 ||
-				a.Type == database.Consult ||
-				a.Type == database.Exam) {
+				addWeek == nowWeek+1) {
 			nAdd = append(nAdd, a)
 		}
 	}
 	for _, d := range del {
 		_, delWeek := d.Begin.ISOWeek()
 		if d.GroupId == group.GroupId &&
-			(delWeek == nowWeek || delWeek == nowWeek+1 ||
-				d.Type == database.Consult ||
-				d.Type == database.Exam) {
+			(delWeek == nowWeek || delWeek == nowWeek+1) {
 			nDel = append(nDel, d)
 		}
 	}
