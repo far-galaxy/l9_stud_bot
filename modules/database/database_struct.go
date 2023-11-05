@@ -133,3 +133,12 @@ type GroupChatInfo struct {
 	IsGroup   bool
 	SheduleID int64
 }
+
+// .ics календарь
+type ICalendar struct {
+	ID         int64 `xorm:"pk"`
+	IsPersonal bool
+	L9ID       int64 // Используется, если персональное
+	IsGroup    bool
+	SheduleID  int64
+}

@@ -239,23 +239,13 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 
 // Рассылка уведомлений о следующей неделе
 func sendNextWeek(bot *tg.Bot, note Notify, user *database.TgUser, now time.Time) error {
-	if err := bot.GetWeekSummary(
+	return bot.GetWeekSummary(
 		note.Lesson.Begin,
 		user,
 		database.ShedulesInUser{},
 		-1,
 		true,
 		"На этой неделе больше ничего нет\n\nНа фото расписание на следующую неделю",
-	); err != nil {
-		return err
-	}
-
-	return bot.CreateICS(
-		now,
-		user,
-		database.ShedulesInUser{},
-		true,
-		-1,
 	)
 }
 

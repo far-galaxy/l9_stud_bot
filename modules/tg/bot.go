@@ -115,7 +115,7 @@ func InitUser(db *xorm.Engine, user *tgbotapi.User) (*database.TgUser, error) {
 
 	var tgUser database.TgUser
 	if len(users) == 0 {
-		l9id, err := database.GenerateID(db)
+		l9id, err := database.GenerateID(db, &database.User{})
 		if err != nil {
 			return nil, err
 		}

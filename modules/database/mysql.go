@@ -49,6 +49,7 @@ func Connect(db DB, logger *rotatelogs.RotateLogs) (*xorm.Engine, error) {
 		&File{},
 		&TempMsg{},
 		&GroupChatInfo{},
+		&ICalendar{},
 	)
 	if err != nil {
 		return nil, err
@@ -57,17 +58,17 @@ func Connect(db DB, logger *rotatelogs.RotateLogs) (*xorm.Engine, error) {
 	return engine, nil
 }
 
-// Генерация уникального номера для таблицы User
-func GenerateID(engine *xorm.Engine) (int64, error) {
+// Генерация уникального номера для таблицы table
+func GenerateID(engine *xorm.Engine, table any) (int64, error) {
 	id := rand.Int63n(899999999) + 100000000 // #nosec G404
 
-	exists, err := engine.ID(id).Exist(&User{})
+	exists, err := engine.ID(id).Get(table)
 	if err != nil {
 		return 0, err
 	}
 
 	if exists {
-		return GenerateID(engine)
+		return GenerateID(engine, table)
 	}
 
 	return id, nil

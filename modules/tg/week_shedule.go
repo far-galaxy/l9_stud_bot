@@ -146,6 +146,18 @@ func (bot *Bot) CheckWeek(now time.Time, week *int, shedule database.ShedulesInU
 	return false, nil
 }
 
+func (bot *Bot) GetSemester(shedule database.ShedulesInUser) ([]database.Lesson, error) {
+	condition := CreateCondition(shedule)
+
+	var lessons []database.Lesson
+	err := bot.DB.
+		Where(condition).
+		OrderBy("begin").
+		Find(&lessons)
+
+	return lessons, err
+}
+
 func (bot *Bot) GetWeekLessons(shedule database.ShedulesInUser, week int) ([]database.Lesson, error) {
 	condition := CreateCondition(shedule)
 
@@ -543,15 +555,11 @@ type LessonStr struct {
 	Comment     string
 }
 
-// Создание и отправка .ics файла с расписанием указанной недели для приложений календаря
-//
-// При week == -1 неделя определяется автоматически
+// Создание и отправка .ics файла с расписанием для приложений календаря
 func (bot *Bot) CreateICS(
-	now time.Time,
 	user *database.TgUser,
 	shedule database.ShedulesInUser,
 	isPersonal bool,
-	week int,
 	query ...tgbotapi.CallbackQuery,
 ) error {
 	if err := bot.ActShedule(isPersonal, user, &shedule); err != nil {
@@ -567,47 +575,91 @@ func (bot *Bot) CreateICS(
 		return err
 	}
 
-	isCompleted, err := bot.CheckWeek(now, &week, shedule)
+	ics := database.ICalendar{
+		IsPersonal: isPersonal,
+		IsGroup:    shedule.IsGroup,
+		SheduleID:  shedule.SheduleId,
+		L9ID:       user.L9Id,
+	}
+	exists, err := bot.DB.Get(&ics)
 	if err != nil {
 		return err
 	}
-	lessons, err := bot.GetWeekLessons(shedule, week)
+
+	// Если .ics уже есть
+	if exists {
+		return bot.SendICS(user, ics.ID, query)
+	}
+
+	lessons, err := bot.GetSemester(shedule)
 	if err != nil {
 		return err
 	}
-	if len(lessons) != 0 {
-		txt, err := bot.GenerateICS(lessons, shedule)
+	if len(lessons) == 0 {
+		return nil
+	}
+
+	id, err := database.GenerateID(bot.DB, &database.ICalendar{})
+	if err != nil {
+		return err
+	}
+	ics.ID = id
+	if _, err := bot.DB.InsertOne(ics); err != nil {
+		return err
+	}
+
+	if err := bot.CreateICSFile(lessons, shedule, id); err != nil {
+		return err
+	}
+
+	return bot.SendICS(user, id, query)
+}
+
+// Сохраниение .ics в файл
+func (bot *Bot) CreateICSFile(lessons []database.Lesson, shedule database.ShedulesInUser, id int64) error {
+	txt, err := bot.GenerateICS(lessons, shedule)
+	if err != nil {
+		return err
+	}
+
+	path := "./shedules/ics/"
+	fileName := fmt.Sprintf("%s%d.ics", path, id)
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		err = os.MkdirAll(path, os.ModePerm)
 		if err != nil {
-			bot.Debug.Println(err)
-		}
-
-		var fileName string
-		if isPersonal {
-			fileName = fmt.Sprintf("personal_%d.ics", week)
-		} else {
-			fileName = fmt.Sprintf("group_%d_%d.ics", shedule.SheduleId, week)
-		}
-
-		icsFileBytes := tgbotapi.FileBytes{
-			Name:  fileName,
-			Bytes: []byte(txt),
-		}
-
-		doc := tgbotapi.NewDocument(user.TgId, icsFileBytes)
-		if isCompleted {
-			doc.Caption = "А это файл для приложения календаря\n\nhttps://bit.ly/ics_upload"
-		} else {
-			doc.Caption = "📖 Инструкция: https://bit.ly/ics_upload\n\n" +
-				"‼️ Удалите старые  занятия данной недели из календаря, если они есть"
-		}
-		if _, err := bot.TG.Send(doc); err != nil {
 			return err
 		}
-		if len(query) != 0 {
-			ans := tgbotapi.NewCallback(query[0].ID, "")
-			if _, err := bot.TG.Request(ans); err != nil {
-				return err
-			}
+	}
+
+	f, _ := os.Create(fileName)
+	defer f.Close()
+	if _, err := f.WriteString(txt); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Отправка сообщения с .ics
+func (bot *Bot) SendICS(user *database.TgUser, id int64, query []tgbotapi.CallbackQuery) error {
+	if _, err := bot.SendMsg(
+		user,
+		fmt.Sprintf(
+			"📖 Инструкция по установке: https://stud.l9labs.ru/ics\n\n"+
+				"Ссылка для Календаря:\n"+
+				"https://ics.l9labs.ru/%d.ics\n\n"+
+				"‼️ Файл по данной ссылке <b>не для скачивания</b> ‼️\n"+
+				"Иначе не будет синхронизации\n\n ",
+			id,
+		),
+		nil,
+	); err != nil {
+		return err
+	}
+	if len(query) != 0 {
+		ans := tgbotapi.NewCallback(query[0].ID, "")
+		if _, err := bot.TG.Request(ans); err != nil {
+			return err
 		}
 	}
 
