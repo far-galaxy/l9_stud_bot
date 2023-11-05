@@ -575,13 +575,21 @@ func (bot *Bot) CreateICS(
 		return err
 	}
 
-	ics := database.ICalendar{
-		IsPersonal: isPersonal,
-		IsGroup:    shedule.IsGroup,
-		SheduleID:  shedule.SheduleId,
-		L9ID:       user.L9Id,
+	var ics database.ICalendar
+	if isPersonal {
+		ics = database.ICalendar{
+			IsPersonal: true,
+			L9ID:       user.L9Id,
+		}
+	} else {
+		ics = database.ICalendar{
+			IsPersonal: false,
+			IsGroup:    shedule.IsGroup,
+			SheduleID:  shedule.SheduleId,
+		}
 	}
-	exists, err := bot.DB.Get(&ics)
+
+	exists, err := bot.DB.UseBool("IsPersonal", "IsGroup").Get(&ics)
 	if err != nil {
 		return err
 	}
@@ -645,9 +653,9 @@ func (bot *Bot) SendICS(user *database.TgUser, id int64, query []tgbotapi.Callba
 	if _, err := bot.SendMsg(
 		user,
 		fmt.Sprintf(
-			"📖 Инструкция по установке: https://stud.l9labs.ru/ics\n\n"+
+			"📖 Инструкция по установке: (в разработке)\n\n"+
 				"Ссылка для Календаря:\n"+
-				"https://ics.l9labs.ru/%d.ics\n\n"+
+				"https://icst.l9labs.ru/%d.ics\n\n"+
 				"‼️ Файл по данной ссылке <b>не для скачивания</b> ‼️\n"+
 				"Иначе не будет синхронизации\n\n ",
 			id,
