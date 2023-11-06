@@ -168,6 +168,9 @@ func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQue
 		err = bot.CreateICS(user, shedule, isPersonal, *query)
 	case Connect:
 		_, err = bot.ConnectShedule(user, shedule, *query.Message)
+	// TODO: задел, если никому не понравится пересылка
+	//case Session:
+	//_, err = bot.GetSession(user, shedule, isPersonal, *query.Message)
 	default:
 		_, err = bot.GetShortSummary(now[0], user, shedule, isPersonal, *query.Message)
 	}
