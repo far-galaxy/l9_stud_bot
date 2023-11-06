@@ -168,7 +168,7 @@ func StrNextDay(bot *tg.Bot, note Notify) (string, error) {
 }
 
 // Рассылка всех уведомлений
-func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
+func Mailing(bot *tg.Bot, notes []Notify) {
 	var ids []int64
 	for _, note := range notes {
 
@@ -184,7 +184,7 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 		case NextLesson:
 			query.NextNote = true
 			txt, err = StrNext(bot.DB, note)
-			tempTime = note.Lesson.Begin.Add(15 * time.Minute)
+			tempTime = note.Lesson.Begin.Add(80 * time.Minute)
 		case NextDay:
 			query.NextDay = true
 			txt, err = StrNextDay(bot, note)

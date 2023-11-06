@@ -56,7 +56,7 @@ func main() {
 	mainbot.WkPath = os.Getenv("WK_PATH")
 	mainbot.HelpTxt = string(help)
 	c := cron.New()
-	_, err = c.AddFunc("0/5 6-22 * * *", notifications)
+	_, err = c.AddFunc("8/3 6-22 * * *", notifications)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -99,13 +99,14 @@ func handleBot() {
 
 func notifications() {
 	now := time.Now()
+	now = now.Add(2 * time.Minute)
 	//now := time.Date(2023, 9, 15, 17, 20, 0, 0, time.Local)
 	log.Println(now)
 	notes, err := notify.CheckNext(mainbot.DB, now)
 	if err != nil {
 		log.Println(err)
 	}
-	notify.Mailing(mainbot, notes, now)
+	notify.Mailing(mainbot, notes)
 	notify.FirstMailing(mainbot, now)
 	notify.ClearTemp(mainbot, now)
 }
