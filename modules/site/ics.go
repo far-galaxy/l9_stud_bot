@@ -25,7 +25,7 @@ func GetICS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/calendar")
+	w.Header().Set("Content-Type", "text/calendar; charset=utf-8")
 	w.Header().Set(
 		"Content-Disposition",
 		fmt.Sprintf("attachment; filename=\"%s\"", path),
