@@ -82,18 +82,24 @@ func (bot *Bot) GetSession(
 	if err := bot.ActShedule(isPersonal, user, &shedule); err != nil {
 		return nilMsg, err
 	}
+	query := "GroupId = ?"
+	if !shedule.IsGroup {
+		query = "TeacherId = ?"
+	}
 	var lessons []database.Lesson
 	if err := bot.DB.
 		In("Type", database.Consult, database.Exam).
-		Where("GroupId = ?", shedule.SheduleId).
+		Where(query, shedule.SheduleId).
 		Asc("Begin").
 		Find(&lessons); err != nil {
 		return nilMsg, err
 	}
 	str := "<b>Расписание сессии:</b>\n\n"
 	if len(lessons) == 0 {
-		str = "Расписания сессии у этой группы пока нет\n" +
-			"Как только оно появится, я обязательно сообщу!"
+		str = "Расписания сессии тут пока нет\n"
+		if isPersonal {
+			str += "Как только оно появится, я обязательно сообщу!"
+		}
 
 		return bot.EditOrSend(user.TgId, str, "", nilKey, editMsg...)
 	}
@@ -122,6 +128,14 @@ func (bot *Bot) GetSession(
 				return nilMsg, err
 			}
 			obj += fmt.Sprintf("👤 %s %s\n", t.FirstName, t.ShortName)
+		}
+		if !shedule.IsGroup {
+			var g database.Group
+			_, err := bot.DB.ID(l.GroupId).Get(&g)
+			if err != nil {
+				return nilMsg, err
+			}
+			obj += fmt.Sprintf("👥 %s\n", g.GroupName)
 		}
 		obj += "------------------------------------------\n"
 
