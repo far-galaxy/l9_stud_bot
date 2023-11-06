@@ -154,6 +154,9 @@ func (bot *Bot) DeleteUser(user database.TgUser) error {
 	if _, err := bot.DB.Delete(&database.File{TgId: user.TgId}); err != nil {
 		return err
 	}
+	if _, err := bot.DB.Delete(&database.ICalendar{L9ID: user.L9Id}); err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -231,7 +234,7 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 		} else if strings.Contains(msg.Text, "/schedule") {
 			return bot.GetPersonal(now, user)
 		} else if strings.Contains(msg.Text, "/session") {
-			return bot.GetSession(user)
+			return bot.AnswerSession(msg, user)
 		} else if strings.Contains(msg.Text, "/options") {
 			return bot.GetOptions(user)
 		} else if strings.Contains(msg.Text, "/keyboard") {

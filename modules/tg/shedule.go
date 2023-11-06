@@ -42,29 +42,45 @@ func (bot *Bot) GetSheduleFromCmd(
 	return bot.ReturnSummary(notExists, user.PosTag == database.Add, user, shedule, now)
 }
 
+// Выдача расписания сессии в ответ на пересланную карточку
+func (bot *Bot) AnswerSession(msg *tgbotapi.Message, user *database.TgUser) (tgbotapi.Message, error) {
+	if msg.ReplyToMessage == nil {
+		return bot.SendMsg(
+			user,
+			"Чтобы получить расписание сессии, нужно переслать боту "+
+				"сообщение с расписанием, вписав команду /session\n\n"+
+				"https://youtube.com/shorts/fkSh2nIhfP4",
+			nil,
+		)
+	}
+	reply := msg.ReplyToMessage
+	key := reply.ReplyMarkup
+	if key == nil || len(key.InlineKeyboard) == 0 {
+		return bot.SendMsg(user, "Что-то не похоже на карточку с расписанием...", nil)
+	}
+	button := *key.InlineKeyboard[0][0].CallbackData
+	data := strings.Split(button, "_")
+	isPersonal := data[2] == "personal"
+	_, shedule, _, err := ParseQuery(data)
+	if err != nil {
+		return bot.SendMsg(user, "Что-то не похоже на карточку с расписанием...", nil)
+	}
+
+	return bot.GetSession(user, shedule, isPersonal)
+}
+
+// Создания сообщения с расписанием сессии
 func (bot *Bot) GetSession(
 	user *database.TgUser,
+	shedule database.ShedulesInUser,
+	isPersonal bool,
 	editMsg ...tgbotapi.Message,
 ) (
 	tgbotapi.Message,
 	error,
 ) {
-	shedule := database.ShedulesInUser{L9Id: user.L9Id}
-	exists, err := bot.DB.Get(&shedule)
-	if err != nil {
+	if err := bot.ActShedule(isPersonal, user, &shedule); err != nil {
 		return nilMsg, err
-	}
-
-	if !exists {
-		return bot.SendMsg(
-			user,
-			"У тебя пока никакого расписания не подключено\n\n"+
-				"Введи <b>номер группы</b> "+
-				"(в формате 2305 или 2305-240502D), "+
-				"и в появившемся расписании нажми <b>🔔 Подключить уведомления</b>\n\n"+
-				"https://youtube.com/shorts/FHE2YAGYBa8",
-			tgbotapi.ReplyKeyboardRemove{RemoveKeyboard: true},
-		)
 	}
 	var lessons []database.Lesson
 	if err := bot.DB.
