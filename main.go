@@ -4,13 +4,16 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
 
+	"github.com/gorilla/mux"
 	"github.com/robfig/cron/v3"
 	"stud.l9labs.ru/bot/modules/database"
 	"stud.l9labs.ru/bot/modules/notify"
+	"stud.l9labs.ru/bot/modules/site"
 	"stud.l9labs.ru/bot/modules/ssauparser"
 	"stud.l9labs.ru/bot/modules/tg"
 )
@@ -68,6 +71,23 @@ func main() {
 	c.Start()
 	log.Println("Started")
 	go sheduleCheck()
+	go handleBot()
+
+	router := mux.NewRouter()
+
+	router.HandleFunc("/{fileNumber}.ics", site.GetICS).Methods("GET")
+	server := &http.Server{
+		Addr:         "localhost:8000",
+		Handler:      router,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 1 * time.Second,
+		IdleTimeout:  15 * time.Second,
+	}
+
+	log.Fatal(server.ListenAndServe())
+}
+
+func handleBot() {
 	for update := range *mainbot.Updates {
 		now := time.Now()
 		_, err := mainbot.HandleUpdate(update, now)

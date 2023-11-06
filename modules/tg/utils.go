@@ -143,7 +143,7 @@ func SummaryKeyboard(
 
 	ics := []tgbotapi.InlineKeyboardButton{
 		tgbotapi.NewInlineKeyboardButtonData(
-			"🗓 Скачать .ics",
+			"🗓 Установить .ics в свой Календарь ",
 			SummaryPrefix+string(ICS)+
 				GenerateButtonTail(sheduleID, dt, shedule.IsGroup),
 		),
@@ -253,41 +253,16 @@ func (bot *Bot) EditOrSend(
 			}
 
 			return nilMsg, nil
-		} else {
-			// Фото было, но теперь его не будет
-			del := tgbotapi.NewDeleteMessage(
-				editMsg[0].Chat.ID,
-				editMsg[0].MessageID,
-			)
-			if _, err := bot.TG.Request(del); err != nil {
-				return nilMsg, err
-			}
-
-			msg := tgbotapi.NewMessage(id, str)
-			if len(markup.InlineKeyboard) != 0 {
-				msg.ReplyMarkup = &markup
-			}
-			msg.ParseMode = tgbotapi.ModeHTML
-
-			return bot.TG.Send(msg)
 		}
-	} else {
-		// Обновлений нет, новое сообщение
-		if imageID != "" {
-			// С фото
-			newMsg := tgbotapi.NewPhoto(
-				id,
-				tgbotapi.FileID(imageID),
-			)
-			newMsg.Caption = str
-			newMsg.ParseMode = tgbotapi.ModeHTML
-			if len(markup.InlineKeyboard) != 0 {
-				newMsg.ReplyMarkup = &markup
-			}
-
-			return bot.TG.Send(newMsg)
+		// Фото было, но теперь его не будет
+		del := tgbotapi.NewDeleteMessage(
+			editMsg[0].Chat.ID,
+			editMsg[0].MessageID,
+		)
+		if _, err := bot.TG.Request(del); err != nil {
+			return nilMsg, err
 		}
-		// Только текст
+
 		msg := tgbotapi.NewMessage(id, str)
 		if len(markup.InlineKeyboard) != 0 {
 			msg.ReplyMarkup = &markup
@@ -295,8 +270,30 @@ func (bot *Bot) EditOrSend(
 		msg.ParseMode = tgbotapi.ModeHTML
 
 		return bot.TG.Send(msg)
-
 	}
+	// Обновлений нет, новое сообщение
+	if imageID != "" {
+		// С фото
+		newMsg := tgbotapi.NewPhoto(
+			id,
+			tgbotapi.FileID(imageID),
+		)
+		newMsg.Caption = str
+		newMsg.ParseMode = tgbotapi.ModeHTML
+		if len(markup.InlineKeyboard) != 0 {
+			newMsg.ReplyMarkup = &markup
+		}
+
+		return bot.TG.Send(newMsg)
+	}
+	// Только текст
+	msg := tgbotapi.NewMessage(id, str)
+	if len(markup.InlineKeyboard) != 0 {
+		msg.ReplyMarkup = &markup
+	}
+	msg.ParseMode = tgbotapi.ModeHTML
+
+	return bot.TG.Send(msg)
 }
 
 // Расшифровывать содержимое кнопки из карточки с расписанием

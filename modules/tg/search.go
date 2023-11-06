@@ -89,23 +89,24 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 			"Вот что я нашёл\nВыбери нужного преподавателя",
 			GenerateKeyboard(GenerateTeachersArray(allTeachers, user.PosTag == database.Add)),
 		)
-		// Если ничего не получено
-	} else {
-		var txt string
-		if siteErr != nil {
-			bot.Debug.Printf("sasau error: %s", siteErr)
-			txt = "К сожалению, у меня ничего не нашлось, а на сайте ssau.ru/rasp произошла какая-то ошибка :(\n" +
-				"Повтори попытку позже"
-		} else {
-			txt = "К сожалению, я ничего не нашёл ):\nПроверь свой запрос"
-		}
 
-		return bot.SendMsg(
-			user,
-			txt,
-			nilKey,
-		)
 	}
+	// Если ничего не получено
+	var txt string
+	if siteErr != nil {
+		bot.Debug.Printf("sasau error: %s", siteErr)
+		txt = "К сожалению, у меня ничего не нашлось, а на сайте ssau.ru/rasp произошла какая-то ошибка :(\n" +
+			"Повтори попытку позже"
+	} else {
+		txt = "К сожалению, я ничего не нашёл ):\nПроверь свой запрос"
+	}
+
+	return bot.SendMsg(
+		user,
+		txt,
+		nilKey,
+	)
+
 }
 
 // Добавление к результатам поиска в БД результатов поиска на сайте

@@ -225,7 +225,7 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 					AddTemp(m, tempTime, bot)
 				}
 			} else {
-				if err := sendNextWeek(bot, note, &users[i], now); err != nil {
+				if err := sendNextWeek(bot, note, &users[i]); err != nil {
 					log.Println(err)
 
 					continue
@@ -238,24 +238,14 @@ func Mailing(bot *tg.Bot, notes []Notify, now time.Time) {
 }
 
 // Рассылка уведомлений о следующей неделе
-func sendNextWeek(bot *tg.Bot, note Notify, user *database.TgUser, now time.Time) error {
-	if err := bot.GetWeekSummary(
+func sendNextWeek(bot *tg.Bot, note Notify, user *database.TgUser) error {
+	return bot.GetWeekSummary(
 		note.Lesson.Begin,
 		user,
 		database.ShedulesInUser{},
 		-1,
 		true,
 		"На этой неделе больше ничего нет\n\nНа фото расписание на следующую неделю",
-	); err != nil {
-		return err
-	}
-
-	return bot.CreateICS(
-		now,
-		user,
-		database.ShedulesInUser{},
-		true,
-		-1,
 	)
 }
 
