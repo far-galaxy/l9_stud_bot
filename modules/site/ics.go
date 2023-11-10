@@ -8,7 +8,7 @@ import (
 )
 
 func GetICS(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimLeft(r.URL.Path, "/") // Удаление первого слэша
+	path := strings.TrimPrefix(r.URL.Path, "/ics/") // Удаление первого слэша
 
 	filePath := fmt.Sprintf("./shedules/ics/%s", path)
 

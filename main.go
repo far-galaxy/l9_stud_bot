@@ -56,7 +56,7 @@ func main() {
 	mainbot.WkPath = os.Getenv("WK_PATH")
 	mainbot.HelpTxt = string(help)
 	c := cron.New()
-	_, err = c.AddFunc("8/3 6-22 * * *", notifications)
+	_, err = c.AddFunc("3/5 6-22 * * *", notifications)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/{fileNumber}.ics", site.GetICS).Methods("GET")
+	router.HandleFunc("/ics/{fileNumber}.ics", site.GetICS).Methods("GET")
 	server := &http.Server{
 		Addr:         "localhost:8000",
 		Handler:      router,
