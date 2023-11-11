@@ -612,6 +612,8 @@ func (bot *Bot) CreateICS(
 		return err
 	}
 	ics.ID = id
+	ics.IsGroup = shedule.IsGroup
+	ics.SheduleID = shedule.SheduleId
 	if _, err := bot.DB.InsertOne(ics); err != nil {
 		return err
 	}

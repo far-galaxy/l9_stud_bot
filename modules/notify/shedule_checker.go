@@ -60,25 +60,9 @@ func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 	}
 	if len(nAdd) > 0 || len(nDel) > 0 {
 		tsh := tg.Swap(sh)
-		var ics []database.ICalendar
-		q := database.ICalendar{
-			IsGroup:   true,
-			SheduleID: sh.SheduleID,
-		}
-		if err := bot.DB.
-			Find(&ics, q); err != nil {
+		err := tg.UpdateICS(bot, tsh)
+		if err != nil {
 			log.Println(err)
-
-			return
-		}
-		for _, i := range ics {
-			lessons, err := bot.GetSemester(tsh)
-			if err != nil {
-				log.Println(err)
-			}
-			if err := bot.CreateICSFile(lessons, tsh, i.ID); err != nil {
-				log.Println(err)
-			}
 		}
 		var str string
 		str = "‼ Обнаружены изменения в расписании\n"
