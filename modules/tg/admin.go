@@ -25,10 +25,13 @@ func (bot *Bot) AdminHandle(msg *tgbotapi.Message) (tgbotapi.Message, error) {
 
 // Принудительное обновление всех .ics файлов
 func (bot *Bot) Update() (tgbotapi.Message, error) {
-	UpdateICS(bot)
 	admin := database.TgUser{
 		TgId: bot.TestUser,
 	}
+	if err := UpdateICS(bot); err != nil {
+		return bot.SendMsg(&admin, err.Error(), nil)
+	}
+
 	return bot.SendMsg(&admin, "Календари обновлены", nil)
 }
 

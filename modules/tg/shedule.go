@@ -101,7 +101,15 @@ func (bot *Bot) GetSession(
 			str += "Как только оно появится, я обязательно сообщу!"
 		}
 
-		return bot.EditOrSend(user.TgId, str, "", nilKey, editMsg...)
+		markup := SummaryKeyboard(
+			Near,
+			shedule,
+			isPersonal,
+			0,
+			false,
+		)
+
+		return bot.EditOrSend(user.TgId, str, "", markup, editMsg...)
 	}
 
 	for i, l := range lessons {
@@ -142,7 +150,7 @@ func (bot *Bot) GetSession(
 		str += obj
 	}
 
-	return bot.EditOrSend(user.TgId, str, "", nilKey, editMsg...)
+	return bot.SendMsg(user, str, nilKey)
 }
 
 func (bot *Bot) GetPersonal(
