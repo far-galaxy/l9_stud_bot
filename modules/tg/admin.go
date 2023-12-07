@@ -2,24 +2,73 @@ package tg
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"stud.l9labs.ru/bot/modules/database"
 )
 
-var AdminKey = []string{"scream", "stat"}
+var AdminKey = []string{"scream", "stat", "update"}
 
 func (bot *Bot) AdminHandle(msg *tgbotapi.Message) (tgbotapi.Message, error) {
 	if strings.Contains(msg.Text, "/scream") {
 		return bot.Scream(msg)
 	} else if strings.Contains(msg.Text, "/stat") {
 		return bot.Stat()
+	} else if strings.Contains(msg.Text, "/update") {
+		return bot.Update()
 	}
 
 	return nilMsg, nil
 }
 
+// Принудительное обновление всех .ics файлов
+func (bot *Bot) Update() (tgbotapi.Message, error) {
+	admin := database.TgUser{
+		TgId: bot.TestUser,
+	}
+	if err := UpdateICS(bot); err != nil {
+		return bot.SendMsg(&admin, err.Error(), nil)
+	}
+
+	return bot.SendMsg(&admin, "Календари обновлены", nil)
+}
+
+func UpdateICS(bot *Bot, tsh ...database.ShedulesInUser) error {
+	var ics []database.ICalendar
+	if len(tsh) > 0 {
+		q := database.ICalendar{
+			IsGroup:   true,
+			SheduleID: tsh[0].SheduleId,
+		}
+		if err := bot.DB.UseBool("IsGroup").
+			Find(&ics, q); err != nil {
+			return err
+		}
+	} else {
+		if err := bot.DB.Find(&ics); err != nil {
+			return err
+		}
+	}
+	for _, i := range ics {
+		sh := database.ShedulesInUser{
+			IsGroup:   i.IsGroup,
+			SheduleId: i.SheduleID,
+		}
+		lessons, err := bot.GetSemester(sh)
+		if err != nil {
+			log.Println(err)
+		}
+		if err := bot.CreateICSFile(lessons, sh, i.ID); err != nil {
+			log.Println(err)
+		}
+	}
+
+	return nil
+}
+
+// Рассылка
 func (bot *Bot) Scream(msg *tgbotapi.Message) (tgbotapi.Message, error) {
 	var users []database.TgUser
 	if err := bot.DB.Where("tgid > 0").Find(&users); err != nil {
@@ -41,6 +90,7 @@ func (bot *Bot) Scream(msg *tgbotapi.Message) (tgbotapi.Message, error) {
 	return bot.TG.Send(scream)
 }
 
+// Статистика
 func (bot *Bot) Stat() (tgbotapi.Message, error) {
 	total, err := bot.DB.Count(database.TgUser{})
 	if err != nil {

@@ -233,14 +233,18 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 			return bot.AdminHandle(msg)
 		} else if strings.Contains(msg.Text, "/schedule") {
 			return bot.GetPersonal(now, user)
-		} else if strings.Contains(msg.Text, "/session") {
-			return bot.AnswerSession(msg, user)
 		} else if strings.Contains(msg.Text, "/options") {
 			return bot.GetOptions(user)
 		} else if strings.Contains(msg.Text, "/keyboard") {
 			return bot.SendMsg(
 				user,
 				"Кнопки больше не работают, используй команды /schedule и /options",
+				nil,
+			)
+		} else if strings.Contains(msg.Text, "/session") {
+			return bot.SendMsg(
+				user,
+				"Расписание сессии теперь можно посмотреть прямо в карточке с расписанием!",
 				nil,
 			)
 		} else if KeywordContains(msg.Text, []string{"/group", "/staff"}) {

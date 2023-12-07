@@ -612,6 +612,8 @@ func (bot *Bot) CreateICS(
 		return err
 	}
 	ics.ID = id
+	ics.IsGroup = shedule.IsGroup
+	ics.SheduleID = shedule.SheduleId
 	if _, err := bot.DB.InsertOne(ics); err != nil {
 		return err
 	}
@@ -653,9 +655,9 @@ func (bot *Bot) SendICS(user *database.TgUser, id int64, query []tgbotapi.Callba
 	if _, err := bot.SendMsg(
 		user,
 		fmt.Sprintf(
-			"📖 Инструкция по установке: (в разработке)\n\n"+
+			"📖 Инструкция по установке: https://stud.l9labs.ru/bot/ics\n\n"+
 				"Ссылка для Календаря:\n"+
-				"https://icst.l9labs.ru/%d.ics\n\n"+
+				"https://stud.l9labs.ru/ics/%d.ics\n\n"+
 				"‼️ Файл по данной ссылке <b>не для скачивания</b> ‼️\n"+
 				"Иначе не будет синхронизации\n\n ",
 			id,
