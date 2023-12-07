@@ -171,6 +171,9 @@ func StrNextDay(bot *tg.Bot, note Notify) (string, error) {
 func Mailing(bot *tg.Bot, notes []Notify) {
 	var ids []int64
 	for _, note := range notes {
+		if note.SheduleID == 0 {
+			continue
+		}
 
 		var users []database.TgUser
 		query := database.ShedulesInUser{
@@ -190,6 +193,8 @@ func Mailing(bot *tg.Bot, notes []Notify) {
 			txt, err = StrNextDay(bot, note)
 		case NextWeek:
 			query.NextWeek = true
+		default:
+			continue
 		}
 		if err != nil {
 			log.Println(err)
@@ -202,7 +207,7 @@ func Mailing(bot *tg.Bot, notes []Notify) {
 			condition = "subgroup in (0, ?)"
 		}*/
 		if err := bot.DB.
-			UseBool(string(note.NoteType)).
+			UseBool(string(note.NoteType), "IsGroup").
 			Table("ShedulesInUser").
 			Cols("TgId", "TgUser.L9Id").
 			Join("INNER", "TgUser", "TgUser.L9Id = ShedulesInUser.L9Id").
@@ -239,6 +244,9 @@ func Mailing(bot *tg.Bot, notes []Notify) {
 
 // Рассылка уведомлений о следующей неделе
 func sendNextWeek(bot *tg.Bot, note Notify, user *database.TgUser) error {
+	if note.Lesson.Begin.IsZero() {
+		return fmt.Errorf("null lesson")
+	}
 	return bot.GetWeekSummary(
 		note.Lesson.Begin,
 		user,
