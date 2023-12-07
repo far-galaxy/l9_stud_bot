@@ -517,12 +517,13 @@ var Comm = map[database.Kind]string{
 // Конвертация занятий с текст
 func PairToStr(pair []database.Lesson, db *xorm.Engine, isGroup bool) (string, error) {
 	var str string
+	if len(pair) == 0 {
+		return "", fmt.Errorf("empty pair")
+	}
 	beginStr := pair[0].Begin.Format("15:04")
-	var endStr string
+	endStr := pair[0].End.Format("15:04")
 	if pair[0].Type == database.Military {
 		endStr = "∞"
-	} else {
-		endStr = pair[0].End.Format("15:04")
 	}
 	str = fmt.Sprintf("📆 %s - %s\n", beginStr, endStr)
 
