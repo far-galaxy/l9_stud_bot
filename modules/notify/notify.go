@@ -3,7 +3,6 @@ package notify
 import (
 	"fmt"
 	"log"
-	"strconv"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -21,25 +20,8 @@ type Next struct {
 	Week   []database.Lesson
 }
 
-type NoteType string
-
-const (
-	NextLesson NoteType = "nextnote"
-	NextDay    NoteType = "nextday"
-	NextWeek   NoteType = "nextweek"
-	Changes    NoteType = "changes"
-	Military   NoteType = "mil"
-)
-
-type Notify struct {
-	NoteType
-	IsGroup   bool
-	SheduleID int64
-	Lesson    database.Lesson
-}
-
 // Поиск следующей пары, дня, недели
-func CheckNext(db *xorm.Engine, now time.Time) ([]Notify, error) {
+func CheckNext(db *xorm.Engine, now time.Time) ([]api.Notify, error) {
 	now = now.Truncate(time.Minute)
 	var completed []database.Lesson
 	if err := db.
@@ -58,17 +40,17 @@ func CheckNext(db *xorm.Engine, now time.Time) ([]Notify, error) {
 		Find(&next); err != nil {
 		return nil, err
 	}
-	var notify []Notify
+	var notify []api.Notify
 	for _, n := range next {
-		notify = append(notify, Notify{
-			NoteType:  NextLesson,
+		notify = append(notify, api.Notify{
+			NoteType:  api.NextLesson,
 			IsGroup:   true,
 			SheduleID: n.GroupId,
 			Lesson:    n,
 		})
 		if n.TeacherId != 0 {
-			notify = append(notify, Notify{
-				NoteType:  NextLesson,
+			notify = append(notify, api.Notify{
+				NoteType:  api.NextLesson,
 				IsGroup:   false,
 				SheduleID: n.TeacherId,
 				Lesson:    n,
@@ -95,15 +77,15 @@ func CheckNext(db *xorm.Engine, now time.Time) ([]Notify, error) {
 
 		_, nlWeek := nextLesson.Begin.ISOWeek()
 		_, nowWeek := now.ISOWeek()
-		note := Notify{
+		note := api.Notify{
 			IsGroup:   true,
 			SheduleID: nextLesson.GroupId,
 			Lesson:    nextLesson,
 		}
 		if nlWeek == nowWeek {
-			note.NoteType = NextDay
+			note.NoteType = api.NextDay
 		} else {
-			note.NoteType = NextWeek
+			note.NoteType = api.NextWeek
 		}
 		if !slices.Contains(notify, note) {
 			notify = append(notify, note)
@@ -115,7 +97,7 @@ func CheckNext(db *xorm.Engine, now time.Time) ([]Notify, error) {
 }
 
 // Текст уведомления о следующей паре
-func StrNext(db *xorm.Engine, note Notify) (string, error) {
+func StrNext(db *xorm.Engine, note api.Notify) (string, error) {
 	// TODO: перескакивать окна
 	// Подкачиваем группы и подгруппы
 	var pair []database.Lesson
@@ -142,7 +124,7 @@ func StrNext(db *xorm.Engine, note Notify) (string, error) {
 }
 
 // Текст уведомления о следующем дне
-func StrNextDay(bot *tg.Bot, note Notify) (string, error) {
+func StrNextDay(bot *tg.Bot, note api.Notify) (string, error) {
 	begin := note.Lesson.Begin
 	day := time.Date(begin.Year(), begin.Month(), begin.Day(), 0, 0, 0, 0, begin.Location())
 	shedule := database.Schedule{
@@ -169,63 +151,41 @@ func StrNextDay(bot *tg.Bot, note Notify) (string, error) {
 }
 
 // Рассылка всех уведомлений
-func Mailing(bot *tg.Bot, notes []Notify) {
+func Mailing(bot *tg.Bot, notes []api.Notify) {
 	var ids []int64
 	for _, note := range notes {
 		if note.SheduleID == 0 {
 			continue
 		}
 
-		var users []database.TgUser
-		query := database.ShedulesInUser{
-			IsGroup:   note.IsGroup,
-			SheduleId: note.SheduleID,
-		}
 		var txt string
 		var err error
 		var tempTime time.Time
 		switch note.NoteType {
-		case NextLesson:
-			query.NextNote = true
+		case api.NextLesson:
 			txt, err = StrNext(bot.DB, note)
 			tempTime = note.Lesson.Begin.Add(80 * time.Minute)
-		case NextDay:
-			query.NextDay = true
+		case api.NextDay:
 			txt, err = StrNextDay(bot, note)
-		case NextWeek:
-			query.NextWeek = true
-		default:
-			continue
 		}
 		if err != nil {
 			log.Println(err)
 		}
 		// TODO: проработать разные подгруппы
-		/*var condition string
-		if note.Lesson.SubGroup == 0 {
-			condition = "subgroup in (?, 1, 2)"
-		} else {
-			condition = "subgroup in (0, ?)"
-		}*/
-		if err := bot.DB.
-			UseBool(string(note.NoteType), "IsGroup").
-			Table("ShedulesInUser").
-			Cols("TgId", "TgUser.L9Id").
-			Join("INNER", "TgUser", "TgUser.L9Id = ShedulesInUser.L9Id").
-			// Where(condition, note.Lesson.SubGroup).
-			Find(&users, &query); err != nil {
+		users, err := api.GetUserForNote(bot.DB, note)
+		if err != nil {
 			log.Println(err)
 		}
 		for i, user := range users {
 			if slices.Contains(ids, user.TgId) {
 				continue
 			}
-			if note.NoteType != NextWeek {
+			if note.NoteType != api.NextWeek {
 				m, err := bot.SendMsg(&users[i], txt, nil)
 				if err != nil {
 					bot.CheckBlocked(err, user)
 				} else {
-					if note.NoteType == NextDay {
+					if note.NoteType == api.NextDay {
 						getNextDayTemp(user, bot, &tempTime, note)
 					}
 					AddTemp(m, tempTime, bot)
@@ -244,7 +204,7 @@ func Mailing(bot *tg.Bot, notes []Notify) {
 }
 
 // Рассылка уведомлений о следующей неделе
-func sendNextWeek(bot *tg.Bot, note Notify, user *database.TgUser) error {
+func sendNextWeek(bot *tg.Bot, note api.Notify, user *database.TgUser) error {
 	if note.Lesson.Begin.IsZero() {
 		return fmt.Errorf("null lesson")
 	}
@@ -261,7 +221,7 @@ func sendNextWeek(bot *tg.Bot, note Notify, user *database.TgUser) error {
 }
 
 // Получить время удаления уведомления о следующем дне
-func getNextDayTemp(user database.TgUser, bot *tg.Bot, tempTime *time.Time, note Notify) {
+func getNextDayTemp(user database.TgUser, bot *tg.Bot, tempTime *time.Time, note api.Notify) {
 	shInfo := database.ShedulesInUser{
 		L9Id: user.L9Id,
 	}
@@ -289,43 +249,32 @@ func AddTemp(m tgbotapi.Message, tempTime time.Time, bot *tg.Bot) {
 
 // Удаление временных сообщений
 func ClearTemp(bot *tg.Bot, now time.Time) {
-	var temp []database.TempMsg
-	if err := bot.DB.Where("destroy <= ?", now.Format("2006-01-02 15:04:05")).Find(&temp); err != nil {
-		log.Println(err)
-	}
+	temp, err := api.GetExpiredNotifies(bot.DB, now)
+	HandleErr(err)
 	for i, msg := range temp {
 		del := tgbotapi.NewDeleteMessage(msg.TgId, msg.MessageId)
-		if _, err := bot.TG.Request(del); err != nil {
-			log.Println(err)
-		}
-		if _, err := bot.DB.Delete(&temp[i]); err != nil {
-			log.Println(err)
-		}
+		_, err := bot.TG.Request(del)
+		HandleErr(err)
+
+		_, err = bot.DB.Delete(&temp[i])
+		HandleErr(err)
 	}
 }
 
-var firstMailQuery = `SELECT t.TgId, a.LessonId, u.FirstTime
-FROM ShedulesInUser u
-JOIN (SELECT GroupId, MIN(Begin) as Begin FROM Lesson WHERE DATE(Begin) = DATE('%s') GROUP BY GroupId) l 
-ON '%s' = DATE_SUB(l.Begin, INTERVAL u.FirstTime MINUTE) AND u.SheduleId = l.GroupId
-JOIN (SELECT LessonId, Type, GroupId, Begin FROM Lesson WHERE DATE(Begin) = date('%s')) a
-ON a.GroupId = l.GroupId AND a.Begin=l.Begin
-JOIN TgUser t ON u.L9ID = t.L9ID
-WHERE u.First = true AND (a.Type != "mil" OR (a.Type = "mil" AND u.Military = true));`
-
 // Рассылка сообщений о начале занятий
 func FirstMailing(bot *tg.Bot, now time.Time) {
-	now = now.Truncate(time.Minute)
-	nowStr := now.Format("2006-01-02 15:04:05")
-	res, err := bot.DB.Query(fmt.Sprintf(firstMailQuery, nowStr, nowStr, nowStr))
+	res, err := api.GetFirstLessonNote(bot.DB, now)
 	if err != nil {
 		log.Println(err)
+
+		return
 	}
 	for _, r := range res {
-		lid, _ := strconv.ParseInt(string(r["LessonId"]), 0, 64)
-		lesson := database.Lesson{LessonId: lid}
-		if _, err := bot.DB.Get(&lesson); err != nil {
+		lesson, err := api.GetLesson(bot.DB, r.LessonID)
+		if err != nil {
 			log.Println(err)
+
+			return
 		}
 		var str string
 		if now.Hour() >= 16 {
@@ -335,14 +284,13 @@ func FirstMailing(bot *tg.Bot, now time.Time) {
 		} else {
 			str = "Доброе утро 🌅\n"
 		}
-		str += fmt.Sprintf("Через %s минут начнутся занятия\n\nПервая пара:\n", r["FirstTime"])
+		str += fmt.Sprintf("Через %s минут начнутся занятия\n\nПервая пара:\n", r.Time)
 		pair, err := tg.PairToStr([]database.Lesson{lesson}, bot.DB, true)
 		if err != nil {
 			log.Println(err)
 		}
 		str += pair
-		user, _ := strconv.ParseInt(string(r["TgId"]), 0, 64)
-		mail := tgbotapi.NewMessage(user, str)
+		mail := tgbotapi.NewMessage(r.TgID, str)
 		msg, err := bot.TG.Send(mail)
 		if err != nil {
 			log.Println(err)
@@ -350,5 +298,12 @@ func FirstMailing(bot *tg.Bot, now time.Time) {
 			continue
 		}
 		AddTemp(msg, lesson.Begin.Add(15*time.Minute), bot)
+	}
+}
+
+// Логирование некритических ошибок
+func HandleErr(err error) {
+	if err != nil {
+		log.Println(err)
 	}
 }

@@ -36,6 +36,13 @@ func CreateCondition(schedule database.Schedule) string {
 	return condition
 }
 
+// Получить данные о занятии по его ID
+func GetLesson(db *xorm.Engine, lessonID int64) (database.Lesson, error) {
+	lesson := database.Lesson{LessonId: lessonID}
+	_, err := db.Get(&lesson)
+	return lesson, err
+}
+
 // Получить список занятий для расписания на день
 func GetDayLessons(db *xorm.Engine, schedule database.Schedule, now time.Time) ([]database.Lesson, error) {
 
