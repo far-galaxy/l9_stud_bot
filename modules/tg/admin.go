@@ -62,7 +62,7 @@ func UpdateICS(bot *Bot, tsh ...database.ShedulesInUser) error {
 			log.Println(err)
 		}
 		var userSchedule database.ShedulesInUser
-		if _, err := bot.DB.Where("l9id = ?", sh.TgUser.L9Id).Get(&userSchedule); err != nil {
+		if _, err := bot.DB.Where("l9id = ?", i.L9ID).Get(&userSchedule); err != nil {
 			return err
 		}
 		if err := bot.CreateICSFile(lessons, userSchedule, i.ID); err != nil {
