@@ -8,6 +8,7 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"golang.org/x/exp/slices"
+	"stud.l9labs.ru/bot/modules/api"
 	"stud.l9labs.ru/bot/modules/database"
 	"stud.l9labs.ru/bot/modules/ssauparser"
 	"stud.l9labs.ru/bot/modules/tg"
@@ -144,11 +145,11 @@ func StrNext(db *xorm.Engine, note Notify) (string, error) {
 func StrNextDay(bot *tg.Bot, note Notify) (string, error) {
 	begin := note.Lesson.Begin
 	day := time.Date(begin.Year(), begin.Month(), begin.Day(), 0, 0, 0, 0, begin.Location())
-	shedule := database.ShedulesInUser{
-		IsGroup:   true,
-		SheduleId: note.Lesson.GroupId,
+	shedule := database.Schedule{
+		IsGroup:    true,
+		ScheduleID: note.Lesson.GroupId,
 	}
-	lessons, err := bot.GetLessons(shedule, day, 32)
+	lessons, err := api.GetDayLessons(bot.DB, shedule, day)
 	if err != nil {
 		return "", err
 	}
@@ -247,12 +248,14 @@ func sendNextWeek(bot *tg.Bot, note Notify, user *database.TgUser) error {
 	if note.Lesson.Begin.IsZero() {
 		return fmt.Errorf("null lesson")
 	}
+	sh := database.Schedule{
+		TgUser:     user,
+		IsPersonal: true,
+	}
 	return bot.GetWeekSummary(
 		note.Lesson.Begin,
-		user,
-		database.ShedulesInUser{},
+		sh,
 		-1,
-		true,
 		"На этой неделе больше ничего нет\n\nНа фото расписание на следующую неделю",
 	)
 }

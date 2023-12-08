@@ -90,13 +90,14 @@ func (bot *Bot) ReturnSummary(
 				nilKey,
 			)
 		}
-		sh := Swap(shedule)
-		sh.L9Id = user.L9Id
-		sh.FirstTime = 45
-		sh.First = true
-		sh.NextNote = true
-		sh.NextDay = true
-		sh.NextWeek = true
+		sh := database.ShedulesInUser{
+			L9Id:      user.L9Id,
+			FirstTime: 45,
+			First:     true,
+			NextNote:  true,
+			NextDay:   true,
+			NextWeek:  true,
+		}
 		if _, err := bot.DB.InsertOne(&sh); err != nil {
 			return nilMsg, err
 		}
@@ -114,8 +115,14 @@ func (bot *Bot) ReturnSummary(
 			nil,
 		)
 	}
-
-	return nilMsg, bot.GetWeekSummary(now, user, Swap(shedule), -1, false, "")
+	userSchedule := database.Schedule{
+		TgUser:     user,
+		IsPersonal: true,
+	}
+	if _, err := bot.ActShedule(&userSchedule); err != nil {
+		return nilMsg, err
+	}
+	return nilMsg, bot.GetWeekSummary(now, userSchedule, -1, "")
 
 }
 
@@ -152,27 +159,24 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQuery, now ...time.Time) error {
 	data := strings.Split(query.Data, "_")
 	sumType, shedule, dt, err := ParseQuery(data)
+	shedule.TgUser = user
 	if err != nil {
 		return err
 	}
 	if len(now) == 0 {
 		now = append(now, time.Now())
 	}
-	isPersonal := data[2] == "personal"
 	switch sumType {
 	case Day:
-		_, err = bot.GetDaySummary(now[0], user, shedule, dt, isPersonal, *query.Message)
+		_, err = bot.GetDaySummary(now[0], shedule, dt, *query.Message)
 	case Week:
-		err = bot.GetWeekSummary(now[0], user, shedule, dt, isPersonal, "", *query.Message)
+		err = bot.GetWeekSummary(now[0], shedule, dt, "", *query.Message)
 	case ICS:
-		err = bot.CreateICS(user, shedule, isPersonal, *query)
+		err = bot.CreateICS(shedule, *query)
 	case Connect:
-		_, err = bot.ConnectShedule(user, shedule, *query.Message)
-	// TODO: задел, если никому не понравится пересылка
+		_, err = bot.ConnectShedule(shedule, *query.Message)
 	case Session:
-		_, err = bot.GetSession(user, shedule, isPersonal, *query.Message)
-	default:
-		_, err = bot.GetShortSummary(now[0], user, shedule, isPersonal, *query.Message)
+		_, err = bot.GetSession(shedule, *query.Message)
 	}
 
 	return err
@@ -180,15 +184,14 @@ func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQue
 
 // Подключение уведомлений
 func (bot *Bot) ConnectShedule(
-	user *database.TgUser,
-	sh database.ShedulesInUser,
+	sh database.Schedule,
 	editMsg ...tgbotapi.Message,
 ) (
 	tgbotapi.Message,
 	error,
 ) {
 	shedules := database.ShedulesInUser{
-		L9Id: user.L9Id,
+		L9Id: sh.TgUser.L9Id,
 	}
 	exists, err := bot.DB.Get(&shedules)
 	if err != nil {
@@ -196,7 +199,7 @@ func (bot *Bot) ConnectShedule(
 	}
 	if exists {
 		return bot.SendMsg(
-			user,
+			sh.TgUser,
 			"У тебя уже подключено одно расписание!\n"+
 				"Сначали отключи его в меню /options, затем можешь подключить другое",
 			nilKey,
@@ -205,28 +208,30 @@ func (bot *Bot) ConnectShedule(
 
 	if !sh.IsGroup {
 		return bot.SendMsg(
-			user,
+			sh.TgUser,
 			"Личное расписание пока не работает с преподавателями :(\n"+
 				"Приносим извинения за временные неудобства",
 			nilKey,
 		)
 	}
-	sh.L9Id = user.L9Id
-	sh.FirstTime = 45
-	sh.First = true
-	sh.NextNote = true
-	sh.NextDay = true
-	sh.NextWeek = true
+	shedules = database.ShedulesInUser{
+		L9Id:      sh.TgUser.L9Id,
+		FirstTime: 45,
+		First:     true,
+		NextNote:  true,
+		NextDay:   true,
+		NextWeek:  true,
+	}
 	if _, err := bot.DB.InsertOne(&sh); err != nil {
 		return nilMsg, err
 	}
-	user.PosTag = database.Ready
-	if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
+	sh.TgUser.PosTag = database.Ready
+	if _, err := bot.DB.ID(sh.TgUser.L9Id).Update(sh.TgUser); err != nil {
 		return nilMsg, err
 	}
 
 	return bot.EditOrSend(
-		user.TgId,
+		sh.TgUser.TgId,
 		"Расписание успешно подключено!\n"+
 			"Теперь можно смотреть свои занятия по команде <b>/schedule</b>\n\n"+
 			"Также ты будешь получать уведомления о занятиях, "+

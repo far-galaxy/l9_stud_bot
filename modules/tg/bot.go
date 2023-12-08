@@ -232,7 +232,11 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 		if KeywordContains(msg.Text, AdminKey) && user.TgId == bot.TestUser {
 			return bot.AdminHandle(msg)
 		} else if strings.Contains(msg.Text, "/schedule") {
-			return bot.GetPersonal(now, user)
+			sch := database.Schedule{
+				IsPersonal: true,
+				TgUser:     user,
+			}
+			return bot.GetPersonal(now, sch)
 		} else if strings.Contains(msg.Text, "/options") {
 			return bot.GetOptions(user)
 		} else if strings.Contains(msg.Text, "/keyboard") {

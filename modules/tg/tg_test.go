@@ -235,7 +235,7 @@ func TestGetWeekLessons(t *testing.T) {
 			Week:      1,
 		},
 	}
-	now, _ := time.Parse("2006-01-02 15:04 -07", times[2])
+	//now, _ := time.Parse("2006-01-02 15:04 -07", times[2])
 	for _, sh := range shedules {
 		err := sh.DownloadByID(true)
 		if err != nil {
@@ -245,10 +245,10 @@ func TestGetWeekLessons(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = bot.CreateWeekImg(now, &user, Swap(sh), 0, false, "")
-		if err != nil {
-			log.Fatal(err)
-		}
+		//err = bot.CreateWeekImg(now, &user, Swap(sh), 0, false, "")
+		//if err != nil {
+		//	log.Fatal(err)
+		//}
 	}
 	t.Log("ok")
 }

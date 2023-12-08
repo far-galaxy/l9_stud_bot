@@ -92,7 +92,6 @@ type SummaryType string
 
 const (
 	SummaryPrefix string      = "sh_"
-	Near          SummaryType = "near"
 	Day           SummaryType = "day"
 	Week          SummaryType = "week"
 	ICS           SummaryType = "ics"
@@ -103,25 +102,18 @@ const (
 // Inline-клавиатура карточки с расписанием
 func SummaryKeyboard(
 	clickedButton SummaryType,
-	shedule database.ShedulesInUser,
-	isPersonal bool,
+	schedule database.Schedule,
 	dt int,
 	connectButton bool,
 ) tgbotapi.InlineKeyboardMarkup {
 	var sheduleID int64
-	if isPersonal {
+	if schedule.IsPersonal {
 		sheduleID = 0
 	} else {
-		sheduleID = shedule.SheduleId
+		sheduleID = schedule.ScheduleID
 	}
-	tail := GenerateButtonTail(sheduleID, 0, shedule.IsGroup)
+	tail := GenerateButtonTail(sheduleID, 0, schedule.IsGroup)
 
-	/*near := []tgbotapi.InlineKeyboardButton{
-		tgbotapi.NewInlineKeyboardButtonData(
-			"Краткая сводка",
-			SummaryPrefix+string(Near)+tail,
-		),
-	}*/
 	day := []tgbotapi.InlineKeyboardButton{
 		tgbotapi.NewInlineKeyboardButtonData(
 			"День",
@@ -137,16 +129,16 @@ func SummaryKeyboard(
 
 	var update string
 	if clickedButton == Week {
-		update = GenerateButtonTail(sheduleID, 0, shedule.IsGroup)
+		update = GenerateButtonTail(sheduleID, 0, schedule.IsGroup)
 	} else {
-		update = GenerateButtonTail(sheduleID, dt, shedule.IsGroup)
+		update = GenerateButtonTail(sheduleID, dt, schedule.IsGroup)
 	}
 
 	ics := []tgbotapi.InlineKeyboardButton{
 		tgbotapi.NewInlineKeyboardButtonData(
 			"🗓 Установить .ics в свой Календарь",
 			SummaryPrefix+string(ICS)+
-				GenerateButtonTail(sheduleID, dt, shedule.IsGroup),
+				GenerateButtonTail(sheduleID, dt, schedule.IsGroup),
 		),
 	}
 
@@ -154,14 +146,14 @@ func SummaryKeyboard(
 		tgbotapi.NewInlineKeyboardButtonData(
 			"Расписание сессии",
 			SummaryPrefix+string(Session)+
-				GenerateButtonTail(sheduleID, dt, shedule.IsGroup),
+				GenerateButtonTail(sheduleID, dt, schedule.IsGroup),
 		),
 	}
 
 	var arrows []tgbotapi.InlineKeyboardButton
 	if clickedButton == Day || clickedButton == Week {
-		prevArrow := GenerateButtonTail(sheduleID, dt-1, shedule.IsGroup)
-		nextArrow := GenerateButtonTail(sheduleID, dt+1, shedule.IsGroup)
+		prevArrow := GenerateButtonTail(sheduleID, dt-1, schedule.IsGroup)
+		nextArrow := GenerateButtonTail(sheduleID, dt+1, schedule.IsGroup)
 		arrows = []tgbotapi.InlineKeyboardButton{
 			tgbotapi.NewInlineKeyboardButtonData("⏮", SummaryPrefix+string(clickedButton)+prevArrow),
 			tgbotapi.NewInlineKeyboardButtonData("🔄", SummaryPrefix+string(clickedButton)+update),
@@ -188,7 +180,7 @@ func SummaryKeyboard(
 			arrows, day, week,
 		}
 	}
-	if connectButton && shedule.IsGroup {
+	if connectButton && schedule.IsGroup {
 		markup = append(markup, []tgbotapi.InlineKeyboardButton{
 			tgbotapi.NewInlineKeyboardButtonData("🔔 Подключить уведомления", SummaryPrefix+string(Connect)+update),
 		})
@@ -306,18 +298,18 @@ func (bot *Bot) EditOrSend(
 }
 
 // Расшифровывать содержимое кнопки из карточки с расписанием
-func ParseQuery(data []string) (SummaryType, database.ShedulesInUser, int, error) {
-	var shedule database.ShedulesInUser
-	isGroup := data[2] == "group"
+func ParseQuery(data []string) (SummaryType, database.Schedule, int, error) {
+	var shedule database.Schedule
 	sheduleID, err := strconv.ParseInt(data[4], 0, 64)
 	if err != nil {
-		return Near, shedule, 0, err
+		return Day, shedule, 0, err
 	}
-	shedule.IsGroup = isGroup
-	shedule.SheduleId = sheduleID
+	shedule.IsGroup = data[2] == "group"
+	shedule.IsPersonal = data[2] == "personal"
+	shedule.ScheduleID = sheduleID
 	dt, err := strconv.ParseInt(data[3], 0, 0)
 	if err != nil {
-		return Near, shedule, 0, err
+		return Day, shedule, 0, err
 	}
 	var sumType SummaryType
 	switch data[1] {
@@ -332,13 +324,11 @@ func ParseQuery(data []string) (SummaryType, database.ShedulesInUser, int, error
 	case "session":
 		sumType = Session
 	default:
-		sumType = Near
+		sumType = Day
 	}
 
 	return sumType, shedule, int(dt), nil
 }
-
-var SumKey = []string{"near", "day", "week"}
 
 // Проверить строку на наличие одного из ключевых слов
 func KeywordContains(str string, keywords []string) bool {

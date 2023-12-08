@@ -142,3 +142,11 @@ type ICalendar struct {
 	IsGroup    bool
 	SheduleID  int64
 }
+
+// Параметр запрашиваемого расписания (для внутреннего пользования)
+type Schedule struct {
+	*TgUser
+	ScheduleID int64
+	IsGroup    bool
+	IsPersonal bool
+}
