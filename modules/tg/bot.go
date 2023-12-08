@@ -20,6 +20,7 @@ type Bot struct {
 	DB        *xorm.Engine
 	TestUser  int64
 	HelpTxt   string
+	StartTxt  string
 	Week      int
 	WkPath    string
 	Debug     *log.Logger
@@ -256,8 +257,6 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 		}
 
 		return bot.Find(now, user, msg.Text)
-	case database.Add:
-		return bot.Find(now, user, msg.Text)
 	case database.Set:
 		return bot.SetFirstTime(msg, user)
 	case database.Delete:
@@ -280,7 +279,7 @@ func (bot *Bot) HandleCallback(query *tgbotapi.CallbackQuery, now time.Time) (tg
 	}
 	if user.PosTag == database.NotStarted {
 		return bot.Start(user)
-	} else if user.PosTag == database.Ready || user.PosTag == database.Add {
+	} else if user.PosTag == database.Ready {
 		if strings.Contains(query.Data, SummaryPrefix) {
 			err = bot.HandleSummary(user, query, now)
 		} else if strings.Contains(query.Data, "opt") {

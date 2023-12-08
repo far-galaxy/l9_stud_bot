@@ -39,7 +39,7 @@ func (bot *Bot) GetSheduleFromCmd(
 	}
 	notExists, _ := ssauparser.CheckGroupOrTeacher(bot.DB, shedule)
 
-	return bot.ReturnSummary(notExists, user.PosTag == database.Add, user, shedule, now)
+	return bot.ReturnSummary(notExists, user, shedule, now)
 }
 
 // Создания сообщения с расписанием сессии
@@ -177,22 +177,23 @@ func (bot *Bot) GetDaySummary(
 	tgbotapi.Message,
 	error,
 ) {
-	day := time.Date(now.Year(), now.Month(), now.Day()+dt, 0, 0, 0, 0, now.Location())
+	day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	day = day.AddDate(0, 0, dt)
 	if _, err := bot.ActShedule(&schedule); err != nil {
 		return nilMsg, err
 	}
-	lessons, err := api.GetDayLessons(bot.DB, schedule, now)
+	lessons, err := api.GetDayLessons(bot.DB, schedule, day)
 	if err != nil {
 		return nilMsg, err
 	}
+	dayStr := DayStr(day)
+	connectButton := !schedule.IsPersonal && !bot.IsThereUserShedule(schedule.TgUser)
+	markup := SummaryKeyboard(Day, schedule, dt, connectButton)
+
 	if len(lessons) != 0 {
 		pairs := GroupPairs(lessons)
 		var str string
 		firstPair := pairs[0][0].Begin
-		dayStr := DayStr(day)
-
-		connectButton := !schedule.IsPersonal && !bot.IsThereUserShedule(schedule.TgUser)
-		markup := SummaryKeyboard(Day, schedule, dt, connectButton)
 
 		if firstPair.Day() != day.Day() {
 			str = fmt.Sprintf("В %s, занятий нет", dayStr)
@@ -202,7 +203,6 @@ func (bot *Bot) GetDaySummary(
 		str = fmt.Sprintf("Расписание на %s\n\n", dayStr)
 
 		// TODO: придумать скачки для пустых дней
-		//dt += int(firstPair.Sub(day).Hours()) / 24
 		day, err := bot.StrDayShedule(pairs, schedule.IsGroup)
 		if err != nil {
 			return nilMsg, err
@@ -211,8 +211,10 @@ func (bot *Bot) GetDaySummary(
 
 		return bot.EditOrSend(schedule.TgUser.TgId, str, "", markup, editMsg...)
 	}
+	str := fmt.Sprintf("В %s, занятий нет", dayStr)
 
-	return bot.SendMsg(schedule.TgUser, "Ой! Пар не обнаружено ):", nil)
+	return bot.EditOrSend(schedule.TgUser.TgId, str, "", markup, editMsg...)
+	//return bot.SendMsg(schedule.TgUser, "Ой! Пар не обнаружено ):", nil)
 }
 
 // Строка даты формата "среду, 1 января"

@@ -73,21 +73,21 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 		}
 		notExists, _ := ssauparser.CheckGroupOrTeacher(bot.DB, shedule)
 
-		return bot.ReturnSummary(notExists, user.PosTag == database.Add, user, shedule, now)
+		return bot.ReturnSummary(notExists, user, shedule, now)
 
 		// Если получено несколько групп
 	} else if len(allGroups) != 0 {
 		return bot.SendMsg(
 			user,
 			"Вот что я нашёл\nВыбери нужную группу",
-			GenerateKeyboard(GenerateGroupsArray(allGroups, user.PosTag == database.Add)),
+			GenerateKeyboard(GenerateGroupsArray(allGroups)),
 		)
 		// Если получено несколько преподавателей
 	} else if len(allTeachers) != 0 {
 		return bot.SendMsg(
 			user,
 			"Вот что я нашёл\nВыбери нужного преподавателя",
-			GenerateKeyboard(GenerateTeachersArray(allTeachers, user.PosTag == database.Add)),
+			GenerateKeyboard(GenerateTeachersArray(allTeachers)),
 		)
 
 	}

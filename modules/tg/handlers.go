@@ -24,17 +24,7 @@ func (bot *Bot) Start(user *database.TgUser) (tgbotapi.Message, error) {
 
 	return bot.SendMsg(
 		user,
-		"Привет! У меня можно посмотреть в удобном формате <b>ближайшие пары</b>"+
-			", расписание <b>по дням</b> и даже <b>по неделям</b>!\n"+
-			"Просто напиши мне <b>номер группы</b> или <b>фамилию преподавателя</b>\n"+
-			fmt.Sprintf("(чтобы более удобно искать своё расписание, напиши сначала @%s , ", bot.Name)+
-			"затем уже нужный запрос)\n\n"+
-			"Также можно получать уведомления о своих занятиях, нажав на кнопку "+
-			"<b>🔔 Подключить уведомления</b> в появившемся расписании\n\n"+
-			"https://youtube.com/shorts/FHE2YAGYBa8\n\n"+
-			"‼ Внимание! Бот ещё находится на стадии испытаний, поэтому могут возникать ошибки в его работе.\n"+
-			"Рекомендуется сверять настоящее расписание и обо всех ошибках сообщать в чат "+
-			"@chat_l9_stud_bot или по контактам в /help",
+		bot.StartTxt,
 		nilKey,
 	)
 }
@@ -42,7 +32,6 @@ func (bot *Bot) Start(user *database.TgUser) (tgbotapi.Message, error) {
 // Выдача расписания
 func (bot *Bot) ReturnSummary(
 	notExists bool,
-	isAdd bool,
 	user *database.TgUser,
 	shedule ssauparser.WeekShedule,
 	now time.Time,
@@ -63,61 +52,11 @@ func (bot *Bot) ReturnSummary(
 		}
 	}
 
-	if isAdd {
-		if !shedule.IsGroup {
-			return bot.SendMsg(
-				user,
-				"Личное расписание пока не работает с преподавателями :(\n"+
-					"Приносим извинения за временные неудобства",
-				nilKey,
-			)
-		}
-		// Групповые чаты
-		if user.TgId < 0 {
-			group := database.GroupChatInfo{
-				ChatID:    user.TgId,
-				IsGroup:   shedule.IsGroup,
-				SheduleID: shedule.SheduleID,
-			}
-			if _, err := bot.DB.UseBool().Update(&group); err != nil {
-				return nilMsg, err
-			}
-
-			return bot.SendMsg(
-				user,
-				"Расписание успешно подключено!\n"+
-					"Теперь по команде /shedule@l9_stud_bot ты сможешь открыть расписание на текущую неделю",
-				nilKey,
-			)
-		}
-		sh := database.ShedulesInUser{
-			L9Id:      user.L9Id,
-			FirstTime: 45,
-			First:     true,
-			NextNote:  true,
-			NextDay:   true,
-			NextWeek:  true,
-		}
-		if _, err := bot.DB.InsertOne(&sh); err != nil {
-			return nilMsg, err
-		}
-		user.PosTag = database.Ready
-		if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
-			return nilMsg, err
-		}
-
-		return bot.SendMsg(
-			user,
-			"Расписание успешно подключено!\n"+
-				"Теперь можно смотреть свои занятия по кнопке <b>Моё расписание</b>👇\n\n"+
-				"Также ты будешь получать уведомления о занятиях, "+
-				"которыми можно управлять в панели <b>Настройки</b>\n",
-			nil,
-		)
-	}
 	userSchedule := database.Schedule{
 		TgUser:     user,
-		IsPersonal: true,
+		IsPersonal: false,
+		IsGroup:    shedule.IsGroup,
+		ScheduleID: shedule.SheduleID,
 	}
 	if _, err := bot.ActShedule(&userSchedule); err != nil {
 		return nilMsg, err
@@ -136,7 +75,6 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 		return fmt.Errorf("wrong button format: %s", query.Data)
 	}
 	isGroup := data[1] == "group"
-	isAdd := data[0] == "true"
 	groupID, err := strconv.ParseInt(data[2], 0, 64)
 	if err != nil {
 		return err
@@ -150,7 +88,7 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 	if _, err := bot.TG.Request(del); err != nil {
 		return err
 	}
-	_, err = bot.ReturnSummary(notExists, isAdd, user, shedule, now[0])
+	_, err = bot.ReturnSummary(notExists, user, shedule, now[0])
 
 	return err
 }
@@ -216,13 +154,15 @@ func (bot *Bot) ConnectShedule(
 	}
 	shedules = database.ShedulesInUser{
 		L9Id:      sh.TgUser.L9Id,
+		IsGroup:   sh.IsGroup,
+		SheduleId: sh.ScheduleID,
 		FirstTime: 45,
 		First:     true,
 		NextNote:  true,
 		NextDay:   true,
 		NextWeek:  true,
 	}
-	if _, err := bot.DB.InsertOne(&sh); err != nil {
+	if _, err := bot.DB.InsertOne(&shedules); err != nil {
 		return nilMsg, err
 	}
 	sh.TgUser.PosTag = database.Ready

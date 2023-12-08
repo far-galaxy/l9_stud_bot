@@ -13,7 +13,6 @@ type Position string
 const (
 	NotStarted Position = "not_started" // Только начал диалог с ботом
 	Ready      Position = "ready"       // Готов к дальнейшим действиям
-	Add        Position = "add"         // Подключает личное расписание
 	Set        Position = "set"         // Устанавливает время
 	Delete     Position = "del"         // Отключается от группы
 )

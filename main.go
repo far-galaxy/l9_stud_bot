@@ -27,9 +27,13 @@ func main() {
 	}
 	ssauparser.HeadURL = os.Getenv("RASP_URL")
 	log.SetOutput(io.MultiWriter(os.Stderr, database.InitLog("error")))
-	help, err := os.ReadFile("help.txt")
+	help, err := os.ReadFile("templates/help.txt")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("help.txt not found! please create one in \"templates\" folder")
+	}
+	start, err := os.ReadFile("templates/start.txt")
+	if err != nil {
+		log.Fatal("start.txt not found! please create one in \"templates\" folder")
 	}
 
 	// bot.Debug = log.New(io.MultiWriter(os.Stderr, database.CreateLog("messages")), "", log.LstdFlags)
@@ -55,6 +59,7 @@ func main() {
 	}
 	mainbot.WkPath = os.Getenv("WK_PATH")
 	mainbot.HelpTxt = string(help)
+	mainbot.StartTxt = string(start)
 	c := cron.New()
 	_, err = c.AddFunc("3/5 6-22 * * *", notifications)
 	if err != nil {
@@ -72,6 +77,24 @@ func main() {
 	log.Println("Started")
 	go sheduleCheck()
 	go handleBot()
+	// Для тестирования уведомлений
+	/*
+		go func() {
+			now := time.Now().Truncate(time.Hour)
+			for {
+				time.Sleep(time.Millisecond * 100)
+				log.Println(now)
+				notes, err := notify.CheckNext(mainbot.DB, now)
+				if err != nil {
+					log.Println(err)
+				}
+				notify.Mailing(mainbot, notes)
+				notify.FirstMailing(mainbot, now)
+				notify.ClearTemp(mainbot, now)
+				now = now.Add(5 * time.Minute)
+			}
+		}()
+	*/
 
 	router := mux.NewRouter()
 

@@ -32,12 +32,12 @@ func CancelKey() tgbotapi.InlineKeyboardMarkup {
 }
 
 // Создание ряда кнопок из списка групп
-func GenerateGroupsArray(groups []database.Group, isAdd bool) []tgbotapi.InlineKeyboardButton {
+func GenerateGroupsArray(groups []database.Group) []tgbotapi.InlineKeyboardButton {
 	var grKeys []tgbotapi.InlineKeyboardButton
 	for _, gr := range groups {
 		grKeys = append(grKeys, tgbotapi.NewInlineKeyboardButtonData(
 			gr.GroupName,
-			fmt.Sprintf("%t_group_%d", isAdd, gr.GroupId),
+			fmt.Sprintf("false_group_%d", gr.GroupId),
 		))
 	}
 
@@ -56,13 +56,13 @@ func GenerateName(t database.Teacher) string {
 }
 
 // Создание ряда кнопок из списка преподавателей
-func GenerateTeachersArray(teachers []database.Teacher, isAdd bool) []tgbotapi.InlineKeyboardButton {
+func GenerateTeachersArray(teachers []database.Teacher) []tgbotapi.InlineKeyboardButton {
 	var teacherKeys []tgbotapi.InlineKeyboardButton
 	for _, t := range teachers {
 		name := fmt.Sprintf("%s %s", t.FirstName, t.ShortName)
 		teacherKeys = append(teacherKeys, tgbotapi.NewInlineKeyboardButtonData(
 			name,
-			fmt.Sprintf("%t_staff_%d", isAdd, t.TeacherId),
+			fmt.Sprintf("false_staff_%d", t.TeacherId),
 		))
 	}
 
