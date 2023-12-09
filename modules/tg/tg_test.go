@@ -102,6 +102,8 @@ var dialog = []string{
 	"aaa",
 }
 
+const TestServer = "http://127.0.0.1:5000/prod"
+
 func TestHandleUpdate(t *testing.T) {
 	bot := InitTestBot()
 
@@ -115,7 +117,7 @@ func TestHandleUpdate(t *testing.T) {
 		},
 	}
 	var messages []tgbotapi.Message
-	ssauparser.HeadURL = "http://127.0.0.1:5000/prod"
+	ssauparser.HeadURL = TestServer
 	// Бот общается с ботом
 	for i, query := range dialog {
 		if i == len(dialog)-1 {
@@ -177,7 +179,7 @@ func TestSummary(t *testing.T) {
 			From: &user,
 		},
 	}
-	ssauparser.HeadURL = "http://127.0.0.1:5000/prod"
+	ssauparser.HeadURL = TestServer
 	// Ещё немного общения в разное время
 	var messages []tgbotapi.Message
 	for _, te := range times {
@@ -217,7 +219,7 @@ func TestSummary(t *testing.T) {
 }
 
 func TestGetWeekLessons(t *testing.T) {
-	ssauparser.HeadURL = "http://127.0.0.1:5000/prod"
+	ssauparser.HeadURL = TestServer
 	bot := InitTestBot()
 	bot.Week = 5
 	bot.WkPath = "C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltoimage.exe"

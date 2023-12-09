@@ -30,6 +30,10 @@ type Bot struct {
 	Build     string
 }
 
+const (
+	Group = "group"
+)
+
 var envKeys = []string{
 	"TELEGRAM_APITOKEN",
 	"TELEGRAM_TEST_USER",
@@ -187,7 +191,7 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 	if len(msg.NewChatMembers) != 0 || msg.LeftChatMember != nil {
 		return nilMsg, nil
 	}
-	if msg.Chat.Type == "group" &&
+	if msg.Chat.Type == Group &&
 		len(msg.Entities) != 0 &&
 		msg.Entities[0].Type == "bot_command" {
 
@@ -237,6 +241,7 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 				IsPersonal: true,
 				TgUser:     user,
 			}
+
 			return bot.GetPersonal(now, sch)
 		} else if strings.Contains(msg.Text, "/options") {
 			return bot.GetOptions(user)

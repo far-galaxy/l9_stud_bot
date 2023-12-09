@@ -61,6 +61,7 @@ func (bot *Bot) ReturnSummary(
 	if _, err := bot.ActShedule(&userSchedule); err != nil {
 		return nilMsg, err
 	}
+
 	return nilMsg, bot.GetWeekSummary(now, userSchedule, -1, "")
 
 }
@@ -74,7 +75,7 @@ func (bot *Bot) GetShedule(user *database.TgUser, query *tgbotapi.CallbackQuery,
 	if len(data) != 3 {
 		return fmt.Errorf("wrong button format: %s", query.Data)
 	}
-	isGroup := data[1] == "group"
+	isGroup := data[1] == Group
 	groupID, err := strconv.ParseInt(data[2], 0, 64)
 	if err != nil {
 		return err
