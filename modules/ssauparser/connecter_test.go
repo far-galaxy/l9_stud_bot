@@ -5,6 +5,8 @@ import (
 	"testing"
 )
 
+const testURL = "http://127.0.0.1:5000"
+
 var queries = []string{
 	"2305",
 	"2305-240502D",
@@ -17,8 +19,8 @@ var urls = []string{
 	"aaa",
 	"https://sasau.ru",
 	"https://l9labs.ru",
-	"http://127.0.0.1:5000",
-	"http://127.0.0.1:5000",
+	testURL,
+	testURL,
 }
 
 // Вывод некритических ошибок тестирования в консоль
@@ -64,7 +66,7 @@ var weeks = []int{
 
 func TestDownloadShedule(t *testing.T) {
 	// headURL = "https://ssau.ru"
-	HeadURL = "http://127.0.0.1:5000"
+	HeadURL = testURL
 	for _, uri := range groupURI {
 		for _, week := range weeks {
 			if _, err := DownloadShedule(uri, week); err != nil {

@@ -6,7 +6,7 @@ import (
 )
 
 func TestParse(t *testing.T) {
-	HeadURL = "http://127.0.0.1:5000"
+	HeadURL = testURL
 	sh := WeekShedule{
 		SheduleID: 111111111,
 		IsGroup:   true,

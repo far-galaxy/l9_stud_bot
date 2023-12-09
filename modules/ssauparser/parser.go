@@ -284,6 +284,8 @@ func (lesson *Lesson) parseType(name *goquery.Selection) {
 	typeIdx, err := strconv.ParseInt(lType[len(lType)-1:], 0, 8)
 	if err != nil {
 		lesson.Type = database.Other
+
+		return
 	}
 	if int(typeIdx) > len(types) {
 		lesson.Type = database.Unknown

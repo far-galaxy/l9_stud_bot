@@ -45,6 +45,7 @@ func SearchInRasp(query string) (SearchResults, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	doc, err := goquery.NewDocumentFromReader(resp.Body)
 	if err != nil {
@@ -76,6 +77,7 @@ func SearchInRasp(query string) (SearchResults, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	var list SearchResults
 	if resp.StatusCode == 200 {
@@ -121,6 +123,7 @@ func DownloadShedule(uri string, week int) (Page, error) {
 	if err != nil {
 		return page, err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
 		return page, fmt.Errorf("responce %s: %s", resp.Status, req.URL)
