@@ -13,7 +13,6 @@ type Position string
 const (
 	NotStarted Position = "not_started" // Только начал диалог с ботом
 	Ready      Position = "ready"       // Готов к дальнейшим действиям
-	Add        Position = "add"         // Подключает личное расписание
 	Set        Position = "set"         // Устанавливает время
 	Delete     Position = "del"         // Отключается от группы
 )
@@ -141,4 +140,12 @@ type ICalendar struct {
 	L9ID       int64 // Используется, если персональное
 	IsGroup    bool
 	SheduleID  int64
+}
+
+// Параметр запрашиваемого расписания (для внутреннего пользования)
+type Schedule struct {
+	*TgUser
+	ScheduleID int64
+	IsGroup    bool
+	IsPersonal bool
 }

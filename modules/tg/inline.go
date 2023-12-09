@@ -15,7 +15,7 @@ type InlineResult struct {
 
 // Обработка Inline-запроса по поиску расписания
 func (bot *Bot) HandleInlineQuery(update tgbotapi.Update) (tgbotapi.Message, error) {
-	isGroupChat := update.InlineQuery.ChatType == "group"
+	isGroupChat := update.InlineQuery.ChatType == Group
 	query := update.InlineQuery
 	var inlineResults []interface{}
 	if len(query.Query) < 3 {

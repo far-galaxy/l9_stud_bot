@@ -13,6 +13,7 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/icza/gox/timex"
+	"stud.l9labs.ru/bot/modules/api"
 	"stud.l9labs.ru/bot/modules/database"
 	"stud.l9labs.ru/bot/modules/ssauparser"
 )
@@ -27,15 +28,13 @@ var days = [6]string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}
 // При isPersonal == true, объект shedule игнорируется
 func (bot *Bot) GetWeekSummary(
 	now time.Time,
-	user *database.TgUser,
-	shedule database.ShedulesInUser,
+	shedule database.Schedule,
 	week int,
-	isPersonal bool,
 	caption string,
 	editMsg ...tgbotapi.Message,
 ) error {
 
-	if err := bot.ActShedule(isPersonal, user, &shedule); err != nil {
+	if _, err := bot.ActShedule(&shedule); err != nil {
 		return err
 	}
 
@@ -50,19 +49,19 @@ func (bot *Bot) GetWeekSummary(
 
 	var image database.File
 	var cols []string
-	if !isPersonal {
+	if !shedule.IsPersonal {
 		image = database.File{
-			TgId:       user.TgId,
+			TgId:       shedule.TgUser.TgId,
 			FileType:   database.Photo,
 			IsPersonal: false,
 			IsGroup:    shedule.IsGroup,
-			SheduleId:  shedule.SheduleId,
+			SheduleId:  shedule.ScheduleID,
 			Week:       week,
 		}
 		cols = []string{"IsPersonal", "IsGroup"}
 	} else {
 		image = database.File{
-			TgId:       user.TgId,
+			TgId:       shedule.TgUser.TgId,
 			FileType:   database.Photo,
 			IsPersonal: true,
 			Week:       week,
@@ -77,19 +76,17 @@ func (bot *Bot) GetWeekSummary(
 	// Получаем дату обновления расписания
 	var lastUpd time.Time
 	if image.IsGroup {
-		var group database.Group
-		group.GroupId = image.SheduleId
-		if _, err := bot.DB.Get(&group); err != nil {
+		group, err := api.GetGroup(bot.DB, image.SheduleId)
+		if err != nil {
 			return err
 		}
 		lastUpd = group.LastUpd
 	} else {
-		var teacher database.Teacher
-		teacher.TeacherId = image.SheduleId
-		if _, err := bot.DB.Get(&teacher); err != nil {
+		staff, err := api.GetStaff(bot.DB, image.SheduleId)
+		if err != nil {
 			return err
 		}
-		lastUpd = teacher.LastUpd
+		lastUpd = staff.LastUpd
 	}
 
 	if !has || image.LastUpd.Before(lastUpd) {
@@ -100,21 +97,20 @@ func (bot *Bot) GetWeekSummary(
 			}
 		}
 
-		return bot.CreateWeekImg(now, user, shedule, week, isPersonal, caption, editMsg...)
+		return bot.CreateWeekImg(now, shedule.TgUser, shedule, week, caption, editMsg...)
 	}
 	// Если всё есть, скидываем, что есть
 	markup := tgbotapi.InlineKeyboardMarkup{}
-	if (caption == "" || (caption != "" && isCompleted)) && user.TgId > 0 {
-		connectButton := !isPersonal && !bot.IsThereUserShedule(user)
+	if (caption == "" || (caption != "" && isCompleted)) && shedule.TgUser.TgId > 0 {
+		connectButton := !shedule.IsPersonal && !bot.IsThereUserShedule(shedule.TgUser)
 		markup = SummaryKeyboard(
 			Week,
 			shedule,
-			isPersonal,
 			week,
 			connectButton,
 		)
 	}
-	_, err = bot.EditOrSend(user.TgId, caption, image.FileId, markup, editMsg...)
+	_, err = bot.EditOrSend(shedule.TgUser.TgId, caption, image.FileId, markup, editMsg...)
 
 	return err
 }
@@ -122,17 +118,17 @@ func (bot *Bot) GetWeekSummary(
 // Проверка, не закончились ли пары на этой неделе
 //
 // При week == -1 неделя определяется автоматически
-func (bot *Bot) CheckWeek(now time.Time, week *int, shedule database.ShedulesInUser) (bool, error) {
+func (bot *Bot) CheckWeek(now time.Time, week *int, schedule database.Schedule) (bool, error) {
 	if *week == -1 || *week == 0 {
 		_, nowWeek := now.ISOWeek()
 		nowWeek -= bot.Week
 		*week = nowWeek
-		lessons, err := bot.GetLessons(shedule, now, 1)
+		lesson, err := api.GetNearLesson(bot.DB, schedule, now)
 		if err != nil {
 			return false, err
 		}
-		if len(lessons) > 0 {
-			_, lessonWeek := lessons[0].Begin.ISOWeek()
+		if lesson.LessonId != 0 {
+			_, lessonWeek := lesson.Begin.ISOWeek()
 			if lessonWeek-bot.Week > nowWeek {
 				*week++
 
@@ -146,46 +142,20 @@ func (bot *Bot) CheckWeek(now time.Time, week *int, shedule database.ShedulesInU
 	return false, nil
 }
 
-func (bot *Bot) GetSemester(shedule database.ShedulesInUser) ([]database.Lesson, error) {
-	condition := CreateCondition(shedule)
-
-	var lessons []database.Lesson
-	err := bot.DB.
-		Where(condition).
-		OrderBy("begin").
-		Find(&lessons)
-
-	return lessons, err
-}
-
-func (bot *Bot) GetWeekLessons(shedule database.ShedulesInUser, week int) ([]database.Lesson, error) {
-	condition := CreateCondition(shedule)
-
-	var lessons []database.Lesson
-	err := bot.DB.
-		Where("WEEK(`begin`, 1) = ?", week+bot.Week).
-		And(condition).
-		OrderBy("begin").
-		Find(&lessons)
-
-	return lessons, err
-}
-
 func (bot *Bot) CreateWeekImg(
 	now time.Time,
 	user *database.TgUser,
-	shedule database.ShedulesInUser,
+	shedule database.Schedule,
 	week int,
-	isPersonal bool,
 	caption string,
 	editMsg ...tgbotapi.Message,
 ) error {
-	lessons, err := bot.GetWeekLessons(shedule, week)
+	lessons, err := api.GetWeekLessons(bot.DB, shedule, week+bot.Week)
 	if err != nil {
 		return err
 	}
 	if len(lessons) == 0 {
-		next, err := bot.GetWeekLessons(shedule, week+1)
+		next, err := api.GetWeekLessons(bot.DB, shedule, week+bot.Week+1)
 		if err != nil {
 			return err
 		}
@@ -193,7 +163,7 @@ func (bot *Bot) CreateWeekImg(
 			lessons = next
 			week++
 		} else {
-			return fmt.Errorf("no lessons: %d, week %d", shedule.SheduleId, week)
+			return fmt.Errorf("no lessons: %d, week %d", shedule.ScheduleID, week)
 		}
 	}
 
@@ -271,25 +241,25 @@ func (bot *Bot) CreateWeekImg(
 	}
 
 	var header string
-	if isPersonal {
+	if shedule.IsPersonal {
 		header = fmt.Sprintf("Моё расписание, %d неделя", week)
 	} else if shedule.IsGroup {
-		var group database.Group
-		if _, err := bot.DB.ID(shedule.SheduleId).Get(&group); err != nil {
+		group, err := api.GetGroup(bot.DB, shedule.ScheduleID)
+		if err != nil {
 			return err
 		}
 		header = fmt.Sprintf("%s, %d неделя", group.GroupName, week)
 	} else {
-		var teacher database.Teacher
-		if _, err := bot.DB.ID(shedule.SheduleId).Get(&teacher); err != nil {
+		staff, err := api.GetStaff(bot.DB, shedule.ScheduleID)
+		if err != nil {
 			return err
 		}
-		header = fmt.Sprintf("%s %s, %d неделя", teacher.FirstName, teacher.LastName, week)
+		header = fmt.Sprintf("%s %s, %d неделя", staff.FirstName, staff.LastName, week)
 	}
 
 	html := bot.CreateHTMLShedule(shedule.IsGroup, header, table, dates, times)
 
-	path := GeneratePath(shedule, isPersonal, user.L9Id)
+	path := GeneratePath(shedule, user.L9Id)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		err = os.MkdirAll(path, os.ModePerm)
 		if err != nil {
@@ -328,12 +298,11 @@ func (bot *Bot) CreateWeekImg(
 	photo := tgbotapi.NewPhoto(user.TgId, photoFileBytes)
 	photo.Caption = caption
 	isCompleted := strings.Contains(caption, "На этой неделе больше занятий нет")
-	connectButton := !isPersonal && !bot.IsThereUserShedule(user)
+	connectButton := !shedule.IsPersonal && !bot.IsThereUserShedule(user)
 	if (caption == "" || isCompleted) && user.TgId > 0 {
 		photo.ReplyMarkup = SummaryKeyboard(
 			Week,
 			shedule,
-			isPersonal,
 			week,
 			connectButton,
 		)
@@ -346,9 +315,9 @@ func (bot *Bot) CreateWeekImg(
 		FileId:     resp.Photo[0].FileID,
 		FileType:   database.Photo,
 		TgId:       user.TgId,
-		IsPersonal: isPersonal,
+		IsPersonal: shedule.IsPersonal,
 		IsGroup:    shedule.IsGroup,
-		SheduleId:  shedule.SheduleId,
+		SheduleId:  shedule.ScheduleID,
 		Week:       week,
 		LastUpd:    now,
 	}
@@ -375,14 +344,14 @@ func (bot *Bot) CreateWeekImg(
 	return err
 }
 
-func GeneratePath(sh database.ShedulesInUser, isPersonal bool, userID int64) string {
+func GeneratePath(sh database.Schedule, userID int64) string {
 	var path string
-	if isPersonal {
+	if sh.IsPersonal {
 		path = fmt.Sprintf("personal/%d", userID)
 	} else if sh.IsGroup {
-		path = fmt.Sprintf("group/%d", sh.SheduleId)
+		path = fmt.Sprintf("group/%d", sh.ScheduleID)
 	} else {
-		path = fmt.Sprintf("staff/%d", sh.SheduleId)
+		path = fmt.Sprintf("staff/%d", sh.ScheduleID)
 	}
 
 	return "shedules/" + path
@@ -474,21 +443,24 @@ func LessonHTML(bot *Bot, l []database.Lesson, isGroup bool) string {
 	var lessonStr string
 	lessonStr += fmt.Sprintf(lessonHead, l[0].Type, l[0].Name)
 	if isGroup && l[0].TeacherId != 0 {
-		var t database.Teacher
-		if _, err := bot.DB.ID(l[0].TeacherId).Get(&t); err != nil {
+		staff, err := api.GetStaff(bot.DB, l[0].TeacherId)
+		if err != nil {
 			bot.Debug.Println(err)
 		}
-		lessonStr += fmt.Sprintf("<h5 id=\"prep\">%s %s</h5>\n", t.FirstName, t.ShortName)
+		lessonStr += fmt.Sprintf(
+			"<h5 id=\"prep\">%s %s</h5>\n",
+			staff.FirstName, staff.ShortName,
+		)
 	}
 	if l[0].Place != "" {
 		lessonStr += fmt.Sprintf("<h3>%s</h3>\n", l[0].Place)
 	}
 	if !isGroup {
-		var t database.Group
-		if _, err := bot.DB.ID(l[0].GroupId).Get(&t); err != nil {
+		group, err := api.GetGroup(bot.DB, l[0].GroupId)
+		if err != nil {
 			bot.Debug.Println(err)
 		}
-		lessonStr += fmt.Sprintf("<h3>%s</h3>\n", t.GroupName)
+		lessonStr += fmt.Sprintf("<h3>%s</h3>\n", group.GroupName)
 	}
 	if l[0].SubGroup != 0 {
 		lessonStr += fmt.Sprintf("<h3>Подгруппа: %d</h3>\n", l[0].SubGroup)
@@ -502,11 +474,11 @@ func LessonHTML(bot *Bot, l []database.Lesson, isGroup bool) string {
 	}
 	if len(l) > 1 && !isGroup {
 		for _, gr := range l[1:] {
-			var t database.Group
-			if _, err := bot.DB.ID(gr.GroupId).Get(&t); err != nil {
+			group, err := api.GetGroup(bot.DB, gr.GroupId)
+			if err != nil {
 				bot.Debug.Println(err)
 			}
-			lessonStr += fmt.Sprintf("<h3>%s</h3>\n", t.GroupName)
+			lessonStr += fmt.Sprintf("<h3>%s</h3>\n", group.GroupName)
 			if gr.SubGroup != 0 {
 				lessonStr += fmt.Sprintf("<h3>Подгруппа: %d</h3>\n<hr>\n", l[1].SubGroup)
 			}
@@ -524,11 +496,15 @@ func addSecondSubgroup(lessonStr string, l []database.Lesson, bot *Bot) string {
 		lessonStr += fmt.Sprintf("<div><p></p></div>\n<h2>%s</h2><hr>", l[1].Name)
 	}
 	if l[1].TeacherId != 0 {
-		var t database.Teacher
-		if _, err := bot.DB.ID(l[1].TeacherId).Get(&t); err != nil {
+		staff, err := api.GetStaff(bot.DB, l[1].TeacherId)
+		if err != nil {
 			bot.Debug.Println(err)
 		}
-		lessonStr += fmt.Sprintf("<h5 id=\"prep\">%s %s</h5>\n", t.FirstName, t.ShortName)
+		lessonStr += fmt.Sprintf(
+			"<h5 id=\"prep\">%s %s</h5>\n",
+			staff.FirstName,
+			staff.ShortName,
+		)
 	}
 	if l[1].Place != "" {
 		lessonStr += fmt.Sprintf("<h3>%s</h3>\n", l[1].Place)
@@ -541,191 +517,4 @@ func addSecondSubgroup(lessonStr string, l []database.Lesson, bot *Bot) string {
 	}
 
 	return lessonStr
-}
-
-type LessonStr struct {
-	TypeIcon    string
-	TypeStr     string
-	Name        string
-	Begin       time.Time
-	End         time.Time
-	SubGroup    int64
-	TeacherName string
-	Place       string
-	Comment     string
-}
-
-// Создание и отправка .ics файла с расписанием для приложений календаря
-func (bot *Bot) CreateICS(
-	user *database.TgUser,
-	shedule database.ShedulesInUser,
-	isPersonal bool,
-	query ...tgbotapi.CallbackQuery,
-) error {
-	if err := bot.ActShedule(isPersonal, user, &shedule); err != nil {
-		return err
-	}
-	if !shedule.IsGroup {
-		_, err := bot.SendMsg(
-			user,
-			"Скачивание .ics для преподавателей пока недоступно (:",
-			nil,
-		)
-
-		return err
-	}
-
-	var ics database.ICalendar
-	if isPersonal {
-		ics = database.ICalendar{
-			IsPersonal: true,
-			L9ID:       user.L9Id,
-		}
-	} else {
-		ics = database.ICalendar{
-			IsPersonal: false,
-			IsGroup:    shedule.IsGroup,
-			SheduleID:  shedule.SheduleId,
-		}
-	}
-
-	exists, err := bot.DB.UseBool("IsPersonal", "IsGroup").Get(&ics)
-	if err != nil {
-		return err
-	}
-
-	// Если .ics уже есть
-	if exists {
-		return bot.SendICS(user, ics.ID, query)
-	}
-
-	lessons, err := bot.GetSemester(shedule)
-	if err != nil {
-		return err
-	}
-	if len(lessons) == 0 {
-		return nil
-	}
-
-	id, err := database.GenerateID(bot.DB, &database.ICalendar{})
-	if err != nil {
-		return err
-	}
-	ics.ID = id
-	ics.IsGroup = shedule.IsGroup
-	ics.SheduleID = shedule.SheduleId
-	if _, err := bot.DB.InsertOne(ics); err != nil {
-		return err
-	}
-
-	if err := bot.CreateICSFile(lessons, shedule, id); err != nil {
-		return err
-	}
-
-	return bot.SendICS(user, id, query)
-}
-
-// Сохраниение .ics в файл
-func (bot *Bot) CreateICSFile(lessons []database.Lesson, shedule database.ShedulesInUser, id int64) error {
-	txt, err := bot.GenerateICS(lessons, shedule)
-	if err != nil {
-		return err
-	}
-
-	path := "./shedules/ics/"
-	fileName := fmt.Sprintf("%s%d.ics", path, id)
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		err = os.MkdirAll(path, os.ModePerm)
-		if err != nil {
-			return err
-		}
-	}
-
-	f, _ := os.Create(fileName)
-	defer f.Close()
-	if _, err := f.WriteString(txt); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Отправка сообщения с .ics
-func (bot *Bot) SendICS(user *database.TgUser, id int64, query []tgbotapi.CallbackQuery) error {
-	if _, err := bot.SendMsg(
-		user,
-		fmt.Sprintf(
-			"📖 Инструкция по установке: https://stud.l9labs.ru/bot/ics\n\n"+
-				"Ссылка для Календаря:\n"+
-				"https://stud.l9labs.ru/ics/%d.ics\n\n"+
-				"‼️ Файл по данной ссылке <b>не для скачивания</b> ‼️\n"+
-				"Иначе не будет синхронизации\n\n ",
-			id,
-		),
-		nil,
-	); err != nil {
-		return err
-	}
-	if len(query) != 0 {
-		ans := tgbotapi.NewCallback(query[0].ID, "")
-		if _, err := bot.TG.Request(ans); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
-// Создание непосредственно ICS файла
-func (bot *Bot) GenerateICS(
-	lessons []database.Lesson,
-	shedule database.ShedulesInUser,
-) (
-	string,
-	error,
-) {
-	var strLessons []LessonStr
-	for _, lesson := range lessons {
-		if lesson.Type == database.Window {
-			continue
-		}
-		if lesson.Type == database.Military && !shedule.Military {
-			continue
-		}
-		var teacherName string
-		if lesson.TeacherId != 0 {
-			var t database.Teacher
-			_, err := bot.DB.ID(lesson.TeacherId).Get(&t)
-			if err != nil {
-				return "", err
-			}
-			teacherName = fmt.Sprintf("%s %s", t.FirstName, t.LastName)
-		}
-
-		l := LessonStr{
-			TypeIcon:    Icons[lesson.Type],
-			TypeStr:     Comm[lesson.Type],
-			Name:        lesson.Name,
-			Begin:       lesson.Begin.UTC(),
-			End:         lesson.End.UTC(),
-			SubGroup:    lesson.SubGroup,
-			TeacherName: teacherName,
-			Place:       lesson.Place,
-			Comment:     lesson.Comment,
-		}
-		strLessons = append(strLessons, l)
-	}
-
-	tmpl, err := template.ParseFiles("templates/shedule.ics")
-	if err != nil {
-		return "", err
-	}
-	var rendered bytes.Buffer
-	err = tmpl.Execute(&rendered, strLessons)
-	if err != nil {
-		return "", err
-	}
-	txt := rendered.String()
-
-	return txt, nil
 }

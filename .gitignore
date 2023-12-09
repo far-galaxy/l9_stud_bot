@@ -12,6 +12,6 @@ shedules
 *.html
 !week_shedule.html
 *.pdf
-help.txt
+*.txt
 main
 wkhtmltoimage

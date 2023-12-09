@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"stud.l9labs.ru/bot/modules/api"
 	"stud.l9labs.ru/bot/modules/database"
 )
 
@@ -52,15 +53,19 @@ func UpdateICS(bot *Bot, tsh ...database.ShedulesInUser) error {
 		}
 	}
 	for _, i := range ics {
-		sh := database.ShedulesInUser{
-			IsGroup:   i.IsGroup,
-			SheduleId: i.SheduleID,
+		sh := database.Schedule{
+			IsGroup:    i.IsGroup,
+			ScheduleID: i.SheduleID,
 		}
-		lessons, err := bot.GetSemester(sh)
+		lessons, err := api.GetSemesterLessons(bot.DB, sh)
 		if err != nil {
 			log.Println(err)
 		}
-		if err := bot.CreateICSFile(lessons, sh, i.ID); err != nil {
+		var userSchedule database.ShedulesInUser
+		if _, err := bot.DB.Where("l9id = ?", i.L9ID).Get(&userSchedule); err != nil {
+			return err
+		}
+		if err := bot.CreateICSFile(lessons, userSchedule, i.ID); err != nil {
 			log.Println(err)
 		}
 	}

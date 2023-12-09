@@ -20,6 +20,7 @@ type Bot struct {
 	DB        *xorm.Engine
 	TestUser  int64
 	HelpTxt   string
+	StartTxt  string
 	Week      int
 	WkPath    string
 	Debug     *log.Logger
@@ -28,6 +29,10 @@ type Bot struct {
 	Callbacks int64
 	Build     string
 }
+
+const (
+	Group = "group"
+)
 
 var envKeys = []string{
 	"TELEGRAM_APITOKEN",
@@ -186,7 +191,7 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 	if len(msg.NewChatMembers) != 0 || msg.LeftChatMember != nil {
 		return nilMsg, nil
 	}
-	if msg.Chat.Type == "group" &&
+	if msg.Chat.Type == Group &&
 		len(msg.Entities) != 0 &&
 		msg.Entities[0].Type == "bot_command" {
 
@@ -232,7 +237,12 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 		if KeywordContains(msg.Text, AdminKey) && user.TgId == bot.TestUser {
 			return bot.AdminHandle(msg)
 		} else if strings.Contains(msg.Text, "/schedule") {
-			return bot.GetPersonal(now, user)
+			sch := database.Schedule{
+				IsPersonal: true,
+				TgUser:     user,
+			}
+
+			return bot.GetPersonal(now, sch)
 		} else if strings.Contains(msg.Text, "/options") {
 			return bot.GetOptions(user)
 		} else if strings.Contains(msg.Text, "/keyboard") {
@@ -251,8 +261,6 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 			return bot.GetSheduleFromCmd(now, user, msg.Text)
 		}
 
-		return bot.Find(now, user, msg.Text)
-	case database.Add:
 		return bot.Find(now, user, msg.Text)
 	case database.Set:
 		return bot.SetFirstTime(msg, user)
@@ -276,7 +284,7 @@ func (bot *Bot) HandleCallback(query *tgbotapi.CallbackQuery, now time.Time) (tg
 	}
 	if user.PosTag == database.NotStarted {
 		return bot.Start(user)
-	} else if user.PosTag == database.Ready || user.PosTag == database.Add {
+	} else if user.PosTag == database.Ready {
 		if strings.Contains(query.Data, SummaryPrefix) {
 			err = bot.HandleSummary(user, query, now)
 		} else if strings.Contains(query.Data, "opt") {
