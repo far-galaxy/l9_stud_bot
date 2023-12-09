@@ -5,8 +5,9 @@ import (
 	"testing"
 	"time"
 
+	"stud.l9labs.ru/bot/modules/api"
 	"stud.l9labs.ru/bot/modules/database"
-	"stud.l9labs.ru/bot/modules/ssauparser"
+	"stud.l9labs.ru/bot/modules/htmlschedule"
 )
 
 func TestCreateHTMLShedule(t *testing.T) {
@@ -73,23 +74,28 @@ func TestCreateHTMLShedule(t *testing.T) {
 	shedule = append(shedule, line)
 
 	var dates []time.Time
-	var times []ssauparser.Pair
+	var times [][]time.Time
 	times = append(times,
-		ssauparser.Pair{
-			Begin: time.Date(2023, 1, 1, 8, 0, 0, 0, time.Local),
-			End:   time.Date(2023, 1, 1, 9, 35, 0, 0, time.Local),
+		[]time.Time{
+			time.Date(2023, 1, 1, 8, 0, 0, 0, time.Local),
+			time.Date(2023, 1, 1, 9, 35, 0, 0, time.Local),
 		},
 	)
 	for i := 1; i < 7; i++ {
 		dates = append(dates, time.Date(2023, 9, i, 0, 0, 0, 0, time.Local))
 	}
 
-	html, _ := bot.CreateHTMLShedule(
+	table := api.WeekTable{
+		Pairs: shedule,
+		Times: times,
+		Dates: dates,
+	}
+
+	html, _ := htmlschedule.CreateHTMLShedule(
+		bot.DB,
 		true,
 		"Тест",
-		shedule,
-		dates,
-		times,
+		table,
 	)
 	f, _ := os.Create("test_group.html")
 	defer f.Close()
@@ -97,12 +103,11 @@ func TestCreateHTMLShedule(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	html, _ = bot.CreateHTMLShedule(
+	html, _ = htmlschedule.CreateHTMLShedule(
+		bot.DB,
 		false,
 		"Тест",
-		shedule,
-		dates,
-		times,
+		table,
 	)
 	f, _ = os.Create("test_staff.html")
 	defer f.Close()

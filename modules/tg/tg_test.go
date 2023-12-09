@@ -9,6 +9,7 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"stud.l9labs.ru/bot/modules/database"
+	"stud.l9labs.ru/bot/modules/htmlschedule"
 	"stud.l9labs.ru/bot/modules/ssauparser"
 )
 
@@ -267,7 +268,7 @@ func TestGetWeekLessons(t *testing.T) {
 			ScheduleID: sh.SheduleID,
 			IsGroup:    sh.IsGroup,
 		}
-		err = bot.CreateWeekImg(now, &user, img, sh.Week, "")
+		_, err = htmlschedule.CreateWeekImg(bot.DB, bot.WkPath, now, &user, img, sh.Week, bot.Week, "")
 		if err != nil {
 			log.Fatal(err)
 		}

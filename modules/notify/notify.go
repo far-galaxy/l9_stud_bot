@@ -136,7 +136,7 @@ func StrNextDay(bot *tg.Bot, note api.Notify) (string, error) {
 		return "", err
 	}
 	if len(lessons) != 0 {
-		pairs := tg.GroupPairs(lessons)
+		pairs := api.GroupPairs(lessons)
 		dayStr, err := bot.StrDayShedule(pairs, shedule.IsGroup)
 		if err != nil {
 			return "", err
