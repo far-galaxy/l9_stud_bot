@@ -107,6 +107,12 @@ var dialog = []string{
 	"1001",
 	"Иванов",
 	"aaa",
+	"100",
+	"/start",
+	"/help",
+	"/keyboard",
+	"/session",
+	"Настройки",
 	"aaa",
 }
 
@@ -228,12 +234,11 @@ func TestSummary(t *testing.T) {
 	}*/
 }
 
-/*
 func TestGetWeekLessons(t *testing.T) {
 	ssauparser.HeadURL = TestServer
 	bot := InitTestBot()
 	bot.Week = 5
-	bot.WkPath = "C:\\Program Files\\wkhtmltopdf\\bin\\wkhtmltoimage.exe"
+	bot.WkPath = os.Getenv("WK_PATH")
 	user := database.TgUser{}
 	user.TgId, _ = strconv.ParseInt(os.Getenv("TELEGRAM_TEST_USER"), 0, 64)
 	shedules := []ssauparser.WeekShedule{
@@ -248,7 +253,7 @@ func TestGetWeekLessons(t *testing.T) {
 			Week:      1,
 		},
 	}
-	//now, _ := time.Parse("2006-01-02 15:04 -07", times[2])
+	now, _ := time.Parse("2006-01-02 15:04 -07", times[2])
 	for _, sh := range shedules {
 		err := sh.DownloadByID(true)
 		if err != nil {
@@ -258,11 +263,14 @@ func TestGetWeekLessons(t *testing.T) {
 		if err != nil {
 			log.Fatal(err)
 		}
-		//err = bot.CreateWeekImg(now, &user, Swap(sh), 0, false, "")
-		//if err != nil {
-		//	log.Fatal(err)
-		//}
+		img := database.Schedule{
+			ScheduleID: sh.SheduleID,
+			IsGroup:    sh.IsGroup,
+		}
+		err = bot.CreateWeekImg(now, &user, img, sh.Week, "")
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 	t.Log("ok")
 }
-*/

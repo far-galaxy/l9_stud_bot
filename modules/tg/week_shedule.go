@@ -21,11 +21,8 @@ import (
 var days = [6]string{"Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}
 
 // Получить расписание на неделю
+//
 // При week == -1 неделя определяется автоматически
-//
-// Если isPersonal == false, то обязательно заполнение объекта shedule
-//
-// При isPersonal == true, объект shedule игнорируется
 func (bot *Bot) GetWeekSummary(
 	now time.Time,
 	shedule database.Schedule,
@@ -108,6 +105,7 @@ func (bot *Bot) GetWeekSummary(
 				week,
 				false,
 			)
+
 			return bot.SendMsg(shedule.TgUser, "Возникла ошибка при создании изображения", markup)
 		}
 
@@ -292,6 +290,7 @@ func (bot *Bot) CreateWeekImg(
 	}
 
 	cmd := exec.Command(bot.WkPath, []string{
+		"-q",
 		"--width",
 		"1600",
 		input,

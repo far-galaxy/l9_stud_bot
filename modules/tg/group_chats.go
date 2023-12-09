@@ -74,7 +74,7 @@ func (bot *Bot) ChatActions(update tgbotapi.Update) (tgbotapi.Message, error) {
 		*/
 
 		return bot.TG.Send(msg)
-	} else if action.NewChatMember.Status == "administrator" {
+	} else if action.NewChatMember.IsAdministrator() {
 		msg := tgbotapi.NewMessage(
 			action.Chat.ID,
 			"Не думаю, что есть необходимость делать меня администратором\n"+
