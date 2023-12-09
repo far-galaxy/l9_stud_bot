@@ -146,7 +146,7 @@ func (bot *Bot) GetPersonal(
 		)
 	}
 
-	return nilMsg, bot.GetWeekSummary(now, shedule, -1, "", editMsg...)
+	return bot.GetWeekSummary(now, shedule, -1, "", editMsg...)
 
 }
 

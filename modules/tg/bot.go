@@ -191,7 +191,7 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 	if len(msg.NewChatMembers) != 0 || msg.LeftChatMember != nil {
 		return nilMsg, nil
 	}
-	if msg.Chat.Type == Group &&
+	if msg.Chat.IsGroup() &&
 		len(msg.Entities) != 0 &&
 		msg.Entities[0].Type == "bot_command" {
 

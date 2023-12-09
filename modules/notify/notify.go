@@ -212,12 +212,14 @@ func sendNextWeek(bot *tg.Bot, note api.Notify, user *database.TgUser) error {
 		TgUser:     user,
 		IsPersonal: true,
 	}
-	return bot.GetWeekSummary(
+	_, err := bot.GetWeekSummary(
 		note.Lesson.Begin,
 		sh,
 		-1,
 		"На этой неделе больше ничего нет\n\nНа фото расписание на следующую неделю",
 	)
+
+	return err
 }
 
 // Получить время удаления уведомления о следующем дне

@@ -32,15 +32,18 @@ func (bot *Bot) GetWeekSummary(
 	week int,
 	caption string,
 	editMsg ...tgbotapi.Message,
-) error {
+) (
+	tgbotapi.Message,
+	error,
+) {
 
 	if _, err := bot.ActShedule(&shedule); err != nil {
-		return err
+		return nilMsg, err
 	}
 
 	isCompleted, err := bot.CheckWeek(now, &week, shedule)
 	if err != nil {
-		return err
+		return nilMsg, err
 	}
 	if isCompleted {
 		caption = "На этой неделе больше занятий нет\n" +
@@ -70,7 +73,7 @@ func (bot *Bot) GetWeekSummary(
 	}
 	has, err := bot.DB.UseBool(cols...).Get(&image)
 	if err != nil {
-		return err
+		return nilMsg, err
 	}
 
 	// Получаем дату обновления расписания
@@ -78,13 +81,13 @@ func (bot *Bot) GetWeekSummary(
 	if image.IsGroup {
 		group, err := api.GetGroup(bot.DB, image.SheduleId)
 		if err != nil {
-			return err
+			return nilMsg, err
 		}
 		lastUpd = group.LastUpd
 	} else {
 		staff, err := api.GetStaff(bot.DB, image.SheduleId)
 		if err != nil {
-			return err
+			return nilMsg, err
 		}
 		lastUpd = staff.LastUpd
 	}
@@ -93,11 +96,22 @@ func (bot *Bot) GetWeekSummary(
 		// Если картинки нет, или она устарела
 		if has {
 			if _, err := bot.DB.Delete(&image); err != nil {
-				return err
+				return nilMsg, err
 			}
 		}
 
-		return bot.CreateWeekImg(now, shedule.TgUser, shedule, week, caption, editMsg...)
+		err := bot.CreateWeekImg(now, shedule.TgUser, shedule, week, caption, editMsg...)
+		if err != nil {
+			markup := SummaryKeyboard(
+				Week,
+				shedule,
+				week,
+				false,
+			)
+			return bot.SendMsg(shedule.TgUser, "Возникла ошибка при создании изображения", markup)
+		}
+
+		return nilMsg, err
 	}
 	// Если всё есть, скидываем, что есть
 	markup := tgbotapi.InlineKeyboardMarkup{}
@@ -110,9 +124,8 @@ func (bot *Bot) GetWeekSummary(
 			connectButton,
 		)
 	}
-	_, err = bot.EditOrSend(shedule.TgUser.TgId, caption, image.FileId, markup, editMsg...)
 
-	return err
+	return bot.EditOrSend(shedule.TgUser.TgId, caption, image.FileId, markup, editMsg...)
 }
 
 // Проверка, не закончились ли пары на этой неделе
@@ -257,7 +270,10 @@ func (bot *Bot) CreateWeekImg(
 		header = fmt.Sprintf("%s %s, %d неделя", staff.FirstName, staff.LastName, week)
 	}
 
-	html := bot.CreateHTMLShedule(shedule.IsGroup, header, table, dates, times)
+	html, err := bot.CreateHTMLShedule(shedule.IsGroup, header, table, dates, times)
+	if err != nil {
+		return err
+	}
 
 	path := GeneratePath(shedule, user.L9Id)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
@@ -395,7 +411,7 @@ func (bot *Bot) CreateHTMLShedule(
 	shedule [][6][]database.Lesson,
 	dates []time.Time,
 	times []ssauparser.Pair,
-) string {
+) (string, error) {
 	data := SheduleData{
 		IsGroup: isGroup,
 		Header:  header,
@@ -405,6 +421,9 @@ func (bot *Bot) CreateHTMLShedule(
 	}
 	tmpl, err := template.ParseFiles("templates/week_shedule.html")
 	if err != nil {
+		if strings.Contains(err.Error(), "no such file or directory") {
+			return "", err
+		}
 		bot.Debug.Println(err)
 	}
 
@@ -435,7 +454,7 @@ func (bot *Bot) CreateHTMLShedule(
 	}
 	html := rendered.String()
 
-	return html
+	return html, nil
 }
 
 // Вёрстка пары в HTML

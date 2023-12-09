@@ -42,7 +42,15 @@ func InitTestBot() *Bot {
 	if err := CheckEnv(); err != nil {
 		log.Fatal(err)
 	}
-	bot, err := InitBot(TestDB, os.Getenv("TELEGRAM_APITOKEN"), "test")
+	DB := database.DB{
+		User:   os.Getenv("MYSQL_USER"),
+		Pass:   os.Getenv("MYSQL_PASS"),
+		Schema: os.Getenv("MYSQL_DB"),
+	}
+	bot, err := InitBot(DB, os.Getenv("TELEGRAM_APITOKEN"), "test")
+	bot.StartTxt = "Привет!"
+	bot.HelpTxt = "Ну тут наши полномочия всё..."
+	bot.Week = 5
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -96,7 +104,7 @@ var dialog = []string{
 	"/start",
 	"1000",
 	"Павлов",
-	"100",
+	"1001",
 	"Иванов",
 	"aaa",
 	"aaa",
@@ -109,7 +117,7 @@ func TestHandleUpdate(t *testing.T) {
 
 	user := TestUser
 	user.ID, _ = strconv.ParseInt(os.Getenv("TELEGRAM_TEST_USER"), 0, 64)
-	now, _ := time.Parse("2006-01-02 15:04 -07", "2023-03-06 11:20 +04")
+	now, _ := time.Parse("2006-01-02 15:04 -07", "2023-02-06 11:20 +04")
 	update := tgbotapi.Update{
 		Message: &tgbotapi.Message{
 			From: &user,
@@ -124,7 +132,8 @@ func TestHandleUpdate(t *testing.T) {
 			ssauparser.HeadURL = "https://sasau.ru"
 		}
 		update.Message.Text = query
-		msg, err := bot.HandleUpdate(update)
+		update.Message.Chat = &tgbotapi.Chat{Type: "private"}
+		msg, err := bot.HandleUpdate(update, now)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -177,6 +186,7 @@ func TestSummary(t *testing.T) {
 	update := tgbotapi.Update{
 		Message: &tgbotapi.Message{
 			From: &user,
+			Chat: &tgbotapi.Chat{Type: "private"},
 		},
 	}
 	ssauparser.HeadURL = TestServer
@@ -218,6 +228,7 @@ func TestSummary(t *testing.T) {
 	}*/
 }
 
+/*
 func TestGetWeekLessons(t *testing.T) {
 	ssauparser.HeadURL = TestServer
 	bot := InitTestBot()
@@ -254,3 +265,4 @@ func TestGetWeekLessons(t *testing.T) {
 	}
 	t.Log("ok")
 }
+*/

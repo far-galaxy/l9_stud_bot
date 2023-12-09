@@ -84,7 +84,7 @@ func TestCreateHTMLShedule(t *testing.T) {
 		dates = append(dates, time.Date(2023, 9, i, 0, 0, 0, 0, time.Local))
 	}
 
-	html := bot.CreateHTMLShedule(
+	html, _ := bot.CreateHTMLShedule(
 		true,
 		"Тест",
 		shedule,
@@ -97,7 +97,7 @@ func TestCreateHTMLShedule(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	html = bot.CreateHTMLShedule(
+	html, _ = bot.CreateHTMLShedule(
 		false,
 		"Тест",
 		shedule,
