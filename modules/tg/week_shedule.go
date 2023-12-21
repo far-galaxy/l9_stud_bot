@@ -99,6 +99,9 @@ func (bot *Bot) GetWeekSummary(
 				week,
 				false,
 			)
+			if strings.Contains(err.Error(), "no lessons") {
+				return nilMsg, err
+			}
 
 			return bot.SendMsg(shedule.TgUser, "Возникла ошибка при создании изображения", markup)
 		}
