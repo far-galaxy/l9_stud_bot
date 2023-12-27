@@ -62,7 +62,8 @@ func (bot *Bot) ReturnSummary(
 		return nilMsg, err
 	}
 
-	return bot.GetWeekSummary(now, userSchedule, -1, "")
+	//return bot.GetWeekSummary(now, userSchedule, -1, "")
+	return bot.GetSession(userSchedule)
 
 }
 

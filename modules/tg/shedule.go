@@ -33,13 +33,21 @@ func (bot *Bot) GetSheduleFromCmd(
 		return bot.SendMsg(user, "Некорректный ID расписания",
 			nilKey)
 	}
-	shedule := ssauparser.WeekShedule{
-		IsGroup:   isGroup,
-		SheduleID: sheduleID,
+	/*
+		shedule := ssauparser.WeekShedule{
+			IsGroup:   isGroup,
+			SheduleID: sheduleID,
+		}
+	*/
+	shedule := database.Schedule{
+		TgUser:     user,
+		IsGroup:    isGroup,
+		ScheduleID: sheduleID,
 	}
-	notExists, _ := ssauparser.CheckGroupOrTeacher(bot.DB, shedule)
+	//notExists, _ := ssauparser.CheckGroupOrTeacher(bot.DB, shedule)
 
-	return bot.ReturnSummary(notExists, user, shedule, now)
+	//return bot.ReturnSummary(notExists, user, shedule, now)
+	return bot.GetSession(shedule)
 }
 
 // Создания сообщения с расписанием сессии
@@ -118,7 +126,15 @@ func (bot *Bot) GetSession(
 		str += obj
 	}
 
-	return bot.SendMsg(shedule.TgUser, str, nilKey)
+	connectButton := !shedule.IsPersonal && !bot.IsThereUserShedule(shedule.TgUser)
+	markup := SummaryKeyboard(
+		Session,
+		shedule,
+		0,
+		connectButton,
+	)
+
+	return bot.SendMsg(shedule.TgUser, str, markup)
 }
 
 func (bot *Bot) GetPersonal(
@@ -146,7 +162,8 @@ func (bot *Bot) GetPersonal(
 		)
 	}
 
-	return bot.GetWeekSummary(now, shedule, -1, "", editMsg...)
+	//return bot.GetWeekSummary(now, shedule, -1, "", editMsg...)
+	return bot.GetSession(shedule, editMsg...)
 
 }
 

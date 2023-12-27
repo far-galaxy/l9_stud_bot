@@ -177,7 +177,7 @@ func SummaryKeyboard(
 		}
 	default:
 		markup = [][]tgbotapi.InlineKeyboardButton{
-			arrows, day, week,
+			ics, //arrows, day, week,
 		}
 	}
 	if connectButton && schedule.IsGroup {
