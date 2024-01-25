@@ -146,7 +146,7 @@ func (bot *Bot) GetPersonal(
 		)
 	}
 
-	return nilMsg, bot.GetWeekSummary(now, shedule, -1, "", editMsg...)
+	return bot.GetWeekSummary(now, shedule, -1, "", editMsg...)
 
 }
 
@@ -191,7 +191,7 @@ func (bot *Bot) GetDaySummary(
 	markup := SummaryKeyboard(Day, schedule, dt, connectButton)
 
 	if len(lessons) != 0 {
-		pairs := GroupPairs(lessons)
+		pairs := api.GroupPairs(lessons)
 		var str string
 		firstPair := pairs[0][0].Begin
 
@@ -289,26 +289,6 @@ func (bot *Bot) LoadShedule(shedule ssauparser.WeekShedule, now time.Time, fast 
 	}
 
 	return add, del, nil
-}
-
-// Группировка занятий по парам
-func GroupPairs(lessons []database.Lesson) [][]database.Lesson {
-	var shedule [][]database.Lesson
-	var pair []database.Lesson
-
-	lIdx := 0
-
-	for lIdx < len(lessons) {
-		day := lessons[lIdx].Begin
-		for lIdx < len(lessons) && lessons[lIdx].Begin == day {
-			pair = append(pair, lessons[lIdx])
-			lIdx++
-		}
-		shedule = append(shedule, pair)
-		pair = []database.Lesson{}
-	}
-
-	return shedule
 }
 
 var Icons = map[database.Kind]string{

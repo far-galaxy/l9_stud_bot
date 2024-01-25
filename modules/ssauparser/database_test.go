@@ -2,20 +2,24 @@ package ssauparser
 
 import (
 	"log"
+	"os"
 	"testing"
 
+	"github.com/joho/godotenv"
 	"stud.l9labs.ru/bot/modules/database"
 	"xorm.io/xorm"
 )
 
-var TestDB = database.DB{
-	User:   "test",
-	Pass:   "TESTpass1!",
-	Schema: "testdb",
-}
-
 func prepareDB() *xorm.Engine {
-	db, err := database.Connect(TestDB, database.InitLog("sql"))
+	if err := godotenv.Load(); err != nil {
+		log.Print("No .env file found")
+	}
+	DB := database.DB{
+		User:   os.Getenv("MYSQL_USER"),
+		Pass:   os.Getenv("MYSQL_PASS"),
+		Schema: os.Getenv("MYSQL_DB"),
+	}
+	db, err := database.Connect(DB, database.InitLog("sql"))
 	if err != nil {
 		log.Println(err)
 
@@ -35,7 +39,7 @@ func prepareDB() *xorm.Engine {
 func TestCheckGroupOrTeacher(t *testing.T) {
 	db := prepareDB()
 
-	HeadURL = "http://127.0.0.1:5000"
+	HeadURL = testURL
 	sh := WeekShedule{
 		SheduleID: 123456789,
 		IsGroup:   true,
@@ -64,7 +68,7 @@ func TestCheckGroupOrTeacher(t *testing.T) {
 
 func TestUpdateSchedule(t *testing.T) {
 	db := prepareDB()
-	HeadURL = "http://127.0.0.1:5000"
+	HeadURL = testURL
 	sh := WeekShedule{
 		SheduleID: 123456789,
 		IsGroup:   true,

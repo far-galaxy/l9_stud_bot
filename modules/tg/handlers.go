@@ -62,7 +62,7 @@ func (bot *Bot) ReturnSummary(
 		return nilMsg, err
 	}
 
-	return nilMsg, bot.GetWeekSummary(now, userSchedule, -1, "")
+	return bot.GetWeekSummary(now, userSchedule, -1, "")
 
 }
 
@@ -109,7 +109,7 @@ func (bot *Bot) HandleSummary(user *database.TgUser, query *tgbotapi.CallbackQue
 	case Day:
 		_, err = bot.GetDaySummary(now[0], shedule, dt, *query.Message)
 	case Week:
-		err = bot.GetWeekSummary(now[0], shedule, dt, "", *query.Message)
+		_, err = bot.GetWeekSummary(now[0], shedule, dt, "", *query.Message)
 	case ICS:
 		err = bot.CreateICS(shedule, *query)
 	case Connect:

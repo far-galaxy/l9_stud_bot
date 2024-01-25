@@ -10,8 +10,10 @@ shedules
 *.env
 .vscode
 *.html
-!week_shedule.html
+!./week_shedule.html
 *.pdf
 *.txt
 main
 wkhtmltoimage
+code-cover
+*.svg

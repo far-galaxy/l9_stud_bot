@@ -15,8 +15,6 @@ const (
 	NextLesson NoteType = "nextnote"
 	NextDay    NoteType = "nextday"
 	NextWeek   NoteType = "nextweek"
-	Changes    NoteType = "changes"
-	Military   NoteType = "mil"
 )
 
 type Notify struct {
@@ -92,5 +90,6 @@ func GetFirstLessonNote(db *xorm.Engine, now time.Time) ([]FirstMail, error) {
 
 		mailing = append(mailing, mail)
 	}
+
 	return mailing, nil
 }
