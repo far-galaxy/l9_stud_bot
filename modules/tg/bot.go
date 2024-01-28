@@ -308,7 +308,7 @@ func (bot *Bot) HandleCallback(query *tgbotapi.CallbackQuery, now time.Time) (tg
 
 			return nilMsg, nil
 		} else if strings.Contains(err.Error(), "no lessons") {
-			callback := tgbotapi.NewCallback(query.ID, "Тут занятий уже нет")
+			callback := tgbotapi.NewCallback(query.ID, "Тут занятий уже нет. Возможно, их нет и на сайте")
 			_, err = bot.TG.Request(callback)
 			if err != nil {
 				return nilMsg, err

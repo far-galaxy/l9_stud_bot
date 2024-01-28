@@ -1,6 +1,7 @@
 package tg
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -102,6 +103,7 @@ func (bot *Bot) GetWeekSummary(
 			if strings.Contains(err.Error(), "no lessons") {
 				return nilMsg, err
 			}
+			fmt.Println(err)
 
 			return bot.SendMsg(shedule.TgUser, "Возникла ошибка при создании изображения", markup)
 		}
@@ -149,6 +151,7 @@ func (bot *Bot) SendWeekImg(
 	}
 	resp, err := bot.TG.Send(photo)
 	if err != nil {
+		fmt.Println(err)
 		return bot.SendMsg(shedule.TgUser, "Возникла ошибка при отправке изображения", nil)
 	}
 	file := database.File{
