@@ -5,6 +5,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
+	"time"
+
+	"stud.l9labs.ru/bot/modules/api"
+	"stud.l9labs.ru/bot/modules/database"
 )
 
 type LessonJSON struct {
@@ -36,8 +41,8 @@ type LessonJSON struct {
 	Time struct {
 		NumInSchedule int    `json:"id"`
 		Name          string `json:"name"`
-		BeginTime     string `json:"beginTime"`
-		EndTime       string `json:"endTime"`
+		Begin         string `json:"beginTime"`
+		End           string `json:"endTime"`
 	} `json:"time"`
 	Discipline struct {
 		Name string `json:"name"`
@@ -58,13 +63,17 @@ type Data struct {
 	Lessons    []LessonJSON  `json:"lessons"`
 	IetLessons []interface{} `json:"ietLessons"`
 	Sfc        []interface{} `json:"sfc"`
+	Year       struct {
+		StartDate string `json:"startDate"`
+	} `json:"currentYear"`
 }
 
 // Запрос на расписание из ЛК
 type Query struct {
-	YearID  int64
-	Week    int64
-	GroupID int64
+	YearID       int64
+	Week         int64
+	GroupID      int64
+	SessionToken string
 }
 
 // Загрузка расписания из ЛК
@@ -94,7 +103,7 @@ func LoadJSON(query Query) (Data, error) {
 	req.Header.Add("Accept", "application/json")
 	c := http.Cookie{
 		Name:  "laravel_session",
-		Value: "",
+		Value: query.SessionToken,
 	}
 	req.AddCookie(&c)
 
@@ -119,4 +128,63 @@ func LoadJSON(query Query) (Data, error) {
 	}
 
 	return data, nil
+}
+
+// Парсинг JSON расписания
+func ParseData(q Query, d Data) ([]database.Lesson, error) {
+	var lessons []database.Lesson
+	for _, i := range d.Lessons {
+		l := database.Lesson{
+			NumInShedule: i.Time.NumInSchedule - 1,
+			Type:         types[i.Type.ID-1],
+			Name:         i.Discipline.Name,
+			Comment:      i.Comment,
+		}
+		start, err := time.Parse("2006-01-02", d.Year.StartDate)
+		if err != nil {
+			return lessons, err
+		}
+		begin, err := time.ParseDuration(
+			strings.ReplaceAll(i.Time.Begin, ":", "h") + "m",
+		)
+		if err != nil {
+			return lessons, err
+		}
+		end, err := time.ParseDuration(
+			strings.ReplaceAll(i.Time.End, ":", "h") + "m",
+		)
+		if err != nil {
+			return lessons, err
+		}
+		year, firstWeek := start.ISOWeek()
+		dates, _ := api.GetWeekDates(year, firstWeek+int(q.Week))
+
+		for _, t := range i.Teachers {
+			l.TeacherId = int64(t.ID)
+
+			// Удаляем коллективных преподавателей
+			if l.TeacherId < 10000 {
+				l.TeacherId = 0
+			}
+			for _, g := range i.Groups {
+				if g.ID != q.GroupID {
+					continue
+				}
+
+				l.GroupId = g.ID
+				l.SubGroup = g.Subgroup
+				for _, w := range i.Weeks {
+					if w.Week != int(q.Week) {
+						continue
+					}
+					l.Begin = dates[i.Weekday.Num-1].Add(begin)
+					l.End = dates[i.Weekday.Num-1].Add(end)
+					l.Place = fmt.Sprintf("%s-%s", w.Room.Name, w.Building.Name)
+					lessons = append(lessons, l)
+				}
+			}
+		}
+	}
+
+	return lessons, nil
 }

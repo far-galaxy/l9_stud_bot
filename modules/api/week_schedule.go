@@ -83,11 +83,7 @@ func GetWeekOrdered(db *xorm.Engine, shedule database.Schedule, week int) (WeekT
 	}
 
 	// Создаём даты на указанную неделю
-	var dates []time.Time
-	weekBegin := timex.WeekStart(lessons[0].Begin.Year(), week)
-	for i := range days {
-		dates = append(dates, weekBegin.Add(time.Hour*time.Duration(24*i)))
-	}
+	dates, weekBegin := GetWeekDates(lessons[0].Begin.Year(), week)
 
 	// Группируем занятия по парам и распределяем в таблицу
 	table := make([][6][]database.Lesson, height-minDay+1)
@@ -118,6 +114,15 @@ func GetWeekOrdered(db *xorm.Engine, shedule database.Schedule, week int) (WeekT
 	weekTable.Dates = dates
 
 	return weekTable, nil
+}
+
+func GetWeekDates(year int, week int) ([]time.Time, time.Time) {
+	var dates []time.Time
+	weekBegin := timex.WeekStart(year, week)
+	for i := range days {
+		dates = append(dates, weekBegin.Add(time.Hour*time.Duration(24*i)))
+	}
+	return dates, weekBegin
 }
 
 // Проверка, не закончились ли пары на этой неделе
