@@ -42,7 +42,7 @@ func (bot *Bot) HandleInlineQuery(update tgbotapi.Update) (tgbotapi.Message, err
 	for _, res := range allGroups {
 		results = append(results, InlineResult{
 			IsGroup:     true,
-			SheduleID:   res.GroupId,
+			SheduleID:   res.GroupID,
 			Name:        res.GroupName,
 			Description: res.SpecName,
 		})
@@ -50,7 +50,7 @@ func (bot *Bot) HandleInlineQuery(update tgbotapi.Update) (tgbotapi.Message, err
 	for _, res := range allTeachers {
 		results = append(results, InlineResult{
 			IsGroup:     false,
-			SheduleID:   res.TeacherId,
+			SheduleID:   res.StaffID,
 			Name:        fmt.Sprintf("%s %s", res.FirstName, res.LastName),
 			Description: res.SpecName,
 		})

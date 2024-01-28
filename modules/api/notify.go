@@ -28,7 +28,7 @@ func GetUserForNote(db *xorm.Engine, note Notify) ([]database.TgUser, error) {
 	var users []database.TgUser
 	query := database.ShedulesInUser{
 		IsGroup:   note.IsGroup,
-		SheduleId: note.SheduleID,
+		SheduleID: note.SheduleID,
 	}
 	switch note.NoteType {
 	case NextLesson:
@@ -43,8 +43,8 @@ func GetUserForNote(db *xorm.Engine, note Notify) ([]database.TgUser, error) {
 
 	err := db.UseBool(string(note.NoteType), "IsGroup").
 		Table("ShedulesInUser").
-		Cols("TgId", "TgUser.L9Id").
-		Join("INNER", "TgUser", "TgUser.L9Id = ShedulesInUser.L9Id").
+		Cols("TgID", "TgUser.L9ID").
+		Join("INNER", "TgUser", "TgUser.L9ID = ShedulesInUser.L9ID").
 		Find(&users, &query)
 
 	return users, err
@@ -64,12 +64,12 @@ type FirstMail struct {
 	Time     string // Время до начала занятий (чисто для сообщения, поэтому формат string сойдёт)
 }
 
-var firstMailQuery = `SELECT t.TgId, a.LessonId, u.FirstTime
+var firstMailQuery = `SELECT t.TgID, a.LessonID, u.FirstTime
 FROM ShedulesInUser u
-JOIN (SELECT GroupId, MIN(Begin) as Begin FROM Lesson WHERE DATE(Begin) = DATE('%s') GROUP BY GroupId) l 
-ON '%s' = DATE_SUB(l.Begin, INTERVAL u.FirstTime MINUTE) AND u.SheduleId = l.GroupId
-JOIN (SELECT LessonId, Type, GroupId, Begin FROM Lesson WHERE DATE(Begin) = date('%s')) a
-ON a.GroupId = l.GroupId AND a.Begin=l.Begin
+JOIN (SELECT GroupID, MIN(Begin) as Begin FROM Lesson WHERE DATE(Begin) = DATE('%s') GROUP BY GroupID) l 
+ON '%s' = DATE_SUB(l.Begin, INTERVAL u.FirstTime MINUTE) AND u.SheduleID = l.GroupID
+JOIN (SELECT LessonID, Type, GroupID, Begin FROM Lesson WHERE DATE(Begin) = date('%s')) a
+ON a.GroupID = l.GroupID AND a.Begin=l.Begin
 JOIN TgUser t ON u.L9ID = t.L9ID
 WHERE u.First = true AND (a.Type != "mil" OR (a.Type = "mil" AND u.Military = true));`
 
@@ -82,10 +82,10 @@ func GetFirstLessonNote(db *xorm.Engine, now time.Time) ([]FirstMail, error) {
 	}
 	for _, r := range res {
 		var mail FirstMail
-		tgID, _ := strconv.ParseInt(string(r["TgId"]), 0, 64)
+		tgID, _ := strconv.ParseInt(string(r["TgID"]), 0, 64)
 		mail.TgID = tgID
 		mail.Time = string(r["FirstTime"])
-		lid, _ := strconv.ParseInt(string(r["LessonId"]), 0, 64)
+		lid, _ := strconv.ParseInt(string(r["LessonID"]), 0, 64)
 		mail.LessonID = lid
 
 		mailing = append(mailing, mail)

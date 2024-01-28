@@ -19,13 +19,10 @@ import (
 func CreateWeekImg(
 	db *xorm.Engine,
 	execute string,
-	now time.Time,
 	user *database.TgUser,
 	shedule database.Schedule,
 	week int,
 	botWeek int,
-	caption string,
-	editMsg ...tgbotapi.Message,
 ) (
 	tgbotapi.FileBytes,
 	error,
@@ -58,7 +55,7 @@ func CreateWeekImg(
 		return photoFileBytes, err
 	}
 
-	path := GeneratePath(shedule, user.L9Id)
+	path := GeneratePath(shedule, user.L9ID)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		err = os.MkdirAll(path, os.ModePerm)
 		if err != nil {
@@ -206,8 +203,8 @@ func CreateHTMLShedule(
 func LessonHTML(db *xorm.Engine, l []database.Lesson, isGroup bool) (string, error) {
 	var lessonStr string
 	lessonStr += fmt.Sprintf(lessonHead, l[0].Type, l[0].Name)
-	if isGroup && l[0].TeacherId != 0 {
-		staff, err := api.GetStaff(db, l[0].TeacherId)
+	if isGroup && l[0].StaffID != 0 {
+		staff, err := api.GetStaff(db, l[0].StaffID)
 		if err != nil {
 			return "", err
 		}
@@ -220,7 +217,7 @@ func LessonHTML(db *xorm.Engine, l []database.Lesson, isGroup bool) (string, err
 		lessonStr += fmt.Sprintf("<h3>%s</h3>\n", l[0].Place)
 	}
 	if !isGroup {
-		group, err := api.GetGroup(db, l[0].GroupId)
+		group, err := api.GetGroup(db, l[0].GroupID)
 		if err != nil {
 			return "", err
 		}
@@ -242,7 +239,7 @@ func LessonHTML(db *xorm.Engine, l []database.Lesson, isGroup bool) (string, err
 	}
 	if len(l) > 1 && !isGroup {
 		for _, gr := range l[1:] {
-			group, err := api.GetGroup(db, gr.GroupId)
+			group, err := api.GetGroup(db, gr.GroupID)
 			if err != nil {
 				return "", err
 			}
@@ -263,8 +260,8 @@ func addSecondSubgroup(db *xorm.Engine, lessonStr string, l []database.Lesson) (
 	if l[0].Name != l[1].Name {
 		lessonStr += fmt.Sprintf("<div><p></p></div>\n<h2>%s</h2><hr>", l[1].Name)
 	}
-	if l[1].TeacherId != 0 {
-		staff, err := api.GetStaff(db, l[1].TeacherId)
+	if l[1].StaffID != 0 {
+		staff, err := api.GetStaff(db, l[1].StaffID)
 		if err != nil {
 			return "", err
 		}

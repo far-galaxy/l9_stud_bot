@@ -14,8 +14,8 @@ func TestCreateHTMLShedule(t *testing.T) {
 	bot := InitTestBot()
 
 	if _, err := bot.DB.InsertOne(
-		database.Teacher{
-			TeacherId: 1,
+		database.Staff{
+			StaffID:   1,
 			FirstName: "Иванов",
 			LastName:  "Иван Иванович",
 			ShortName: "И.И.",
@@ -27,10 +27,10 @@ func TestCreateHTMLShedule(t *testing.T) {
 	var line [6][]database.Lesson
 	line[0] = []database.Lesson{
 		{
-			Type:      "lect",
-			Name:      "Занимательная астрология",
-			TeacherId: 1,
-			Place:     "Дурка",
+			Type:    "lect",
+			Name:    "Занимательная астрология",
+			StaffID: 1,
+			Place:   "Дурка",
 		},
 	}
 	line[1] = []database.Lesson{{
@@ -40,35 +40,35 @@ func TestCreateHTMLShedule(t *testing.T) {
 	}
 	line[2] = []database.Lesson{
 		{
-			Type:      "lect",
-			Name:      "АААА",
-			TeacherId: 1,
-			SubGroup:  1,
-			Comment:   "aaa",
+			Type:     "lect",
+			Name:     "АААА",
+			StaffID:  1,
+			SubGroup: 1,
+			Comment:  "aaa",
 		},
 		{
-			Type:      "pract",
-			Name:      "АААА",
-			TeacherId: 1,
-			SubGroup:  2,
-			Comment:   "aaa",
-			Place:     "Снова дурка",
+			Type:     "pract",
+			Name:     "АААА",
+			StaffID:  1,
+			SubGroup: 2,
+			Comment:  "aaa",
+			Place:    "Снова дурка",
 		},
 	}
 	line[3] = []database.Lesson{
 		{
-			Type:      "lect",
-			Name:      "АААА",
-			TeacherId: 1,
-			SubGroup:  1,
-			Comment:   "aaa",
+			Type:     "lect",
+			Name:     "АААА",
+			StaffID:  1,
+			SubGroup: 1,
+			Comment:  "aaa",
 		},
 		{
-			Type:      "lect",
-			Name:      "БББ",
-			TeacherId: 1,
-			SubGroup:  2,
-			Comment:   "aaa",
+			Type:     "lect",
+			Name:     "БББ",
+			StaffID:  1,
+			SubGroup: 2,
+			Comment:  "aaa",
 		},
 	}
 	shedule = append(shedule, line)

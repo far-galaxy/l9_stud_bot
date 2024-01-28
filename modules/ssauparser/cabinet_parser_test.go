@@ -15,5 +15,8 @@ func TestLoadJSON(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ParseData(q, d)
+	_, err = ParseData(q, d)
+	if err != nil {
+		t.Fatal(err)
+	}
 }

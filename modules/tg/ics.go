@@ -43,7 +43,7 @@ func (bot *Bot) CreateICS(shedule database.Schedule, query ...tgbotapi.CallbackQ
 	if shedule.IsPersonal {
 		ics = database.ICalendar{
 			IsPersonal: true,
-			L9ID:       shedule.TgUser.L9Id,
+			L9ID:       shedule.TgUser.L9ID,
 		}
 	} else {
 		ics = database.ICalendar{
@@ -83,7 +83,7 @@ func (bot *Bot) CreateICS(shedule database.Schedule, query ...tgbotapi.CallbackQ
 	}
 
 	var userSchedule database.ShedulesInUser
-	if _, err := bot.DB.Where("l9id = ?", shedule.TgUser.L9Id).Get(&userSchedule); err != nil {
+	if _, err := bot.DB.Where("l9id = ?", shedule.TgUser.L9ID).Get(&userSchedule); err != nil {
 		return err
 	}
 
@@ -162,8 +162,8 @@ func (bot *Bot) GenerateICS(
 			continue
 		}
 		var teacherName string
-		if lesson.TeacherId != 0 {
-			staff, err := api.GetStaff(bot.DB, lesson.TeacherId)
+		if lesson.StaffID != 0 {
+			staff, err := api.GetStaff(bot.DB, lesson.StaffID)
 			if err != nil {
 				return "", err
 			}

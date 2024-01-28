@@ -23,14 +23,14 @@ func CreateCondition(schedule database.Schedule) string {
 	var condition, teachersStr, groupsStr string
 	if len(groups) > 0 {
 		groupsStr = strings.Join(groups, ",")
-		condition = "groupId in (" + groupsStr + ") "
+		condition = "groupID in (" + groupsStr + ") "
 	}
 	if len(teachers) > 0 {
 		if len(condition) > 0 {
 			condition += " or "
 		}
 		teachersStr += strings.Join(teachers, ",")
-		condition += "teacherId in (" + teachersStr + ") "
+		condition += "teacherID in (" + teachersStr + ") "
 	}
 
 	return condition
@@ -38,7 +38,7 @@ func CreateCondition(schedule database.Schedule) string {
 
 // Получить данные о занятии по его ID
 func GetLesson(db *xorm.Engine, lessonID int64) (database.Lesson, error) {
-	lesson := database.Lesson{LessonId: lessonID}
+	lesson := database.Lesson{LessonID: lessonID}
 	_, err := db.Get(&lesson)
 
 	return lesson, err
@@ -113,9 +113,9 @@ func GetSemesterLessons(db *xorm.Engine, schedule database.Schedule) ([]database
 }
 
 // Получить данные о преподавателе по ID
-func GetStaff(db *xorm.Engine, staffID int64) (database.Teacher, error) {
-	var staff database.Teacher
-	staff.TeacherId = staffID
+func GetStaff(db *xorm.Engine, staffID int64) (database.Staff, error) {
+	var staff database.Staff
+	staff.StaffID = staffID
 	_, err := db.Get(&staff)
 
 	return staff, err
@@ -124,7 +124,7 @@ func GetStaff(db *xorm.Engine, staffID int64) (database.Teacher, error) {
 // Получить данные о группе по ID
 func GetGroup(db *xorm.Engine, groupID int64) (database.Group, error) {
 	var group database.Group
-	group.GroupId = groupID
+	group.GroupID = groupID
 	_, err := db.Get(&group)
 
 	return group, err
@@ -132,14 +132,14 @@ func GetGroup(db *xorm.Engine, groupID int64) (database.Group, error) {
 
 // Обновить информацию о группе
 func UpdateGroup(db *xorm.Engine, group database.Group) error {
-	_, err := db.ID(group.GroupId).Update(group)
+	_, err := db.ID(group.GroupID).Update(group)
 
 	return err
 }
 
 // Обновить информацию о преподавателе
-func UpdateStaff(db *xorm.Engine, staff database.Teacher) error {
-	_, err := db.ID(staff.TeacherId).Update(staff)
+func UpdateStaff(db *xorm.Engine, staff database.Staff) error {
+	_, err := db.ID(staff.StaffID).Update(staff)
 
 	return err
 }
@@ -149,13 +149,13 @@ func GroupPairs(lessons []database.Lesson) [][]database.Lesson {
 	var shedule [][]database.Lesson
 	var pair []database.Lesson
 
-	lIdx := 0
+	lIDx := 0
 
-	for lIdx < len(lessons) {
-		day := lessons[lIdx].Begin
-		for lIdx < len(lessons) && lessons[lIdx].Begin == day {
-			pair = append(pair, lessons[lIdx])
-			lIdx++
+	for lIDx < len(lessons) {
+		day := lessons[lIDx].Begin
+		for lIDx < len(lessons) && lessons[lIDx].Begin == day {
+			pair = append(pair, lessons[lIDx])
+			lIDx++
 		}
 		shedule = append(shedule, pair)
 		pair = []database.Lesson{}
@@ -179,5 +179,6 @@ func GetLastUpdate(db *xorm.Engine, sh database.Schedule) (time.Time, error) {
 		}
 		lastUpd = staff.LastUpd
 	}
+
 	return lastUpd, nil
 }

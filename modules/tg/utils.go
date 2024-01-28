@@ -13,7 +13,7 @@ import (
 // Проверить, ести ли у пользователя уже подключенное расписание
 func (bot *Bot) IsThereUserShedule(user *database.TgUser) bool {
 	options := database.ShedulesInUser{
-		L9Id: user.L9Id,
+		L9ID: user.L9ID,
 	}
 	if _, err := bot.DB.Get(&options); err != nil {
 		bot.Debug.Println(err)
@@ -37,7 +37,7 @@ func GenerateGroupsArray(groups []database.Group) []tgbotapi.InlineKeyboardButto
 	for _, gr := range groups {
 		grKeys = append(grKeys, tgbotapi.NewInlineKeyboardButtonData(
 			gr.GroupName,
-			fmt.Sprintf("false_group_%d", gr.GroupId),
+			fmt.Sprintf("false_group_%d", gr.GroupID),
 		))
 	}
 
@@ -45,7 +45,7 @@ func GenerateGroupsArray(groups []database.Group) []tgbotapi.InlineKeyboardButto
 }
 
 // Создать имя преподавателя формата Фамилия И.О.
-func GenerateName(t database.Teacher) string {
+func GenerateName(t database.Staff) string {
 	var initials string
 	for _, n := range strings.Split(t.FirstName, " ") {
 		initials += fmt.Sprintf("%s.", n[:2])
@@ -56,13 +56,13 @@ func GenerateName(t database.Teacher) string {
 }
 
 // Создание ряда кнопок из списка преподавателей
-func GenerateTeachersArray(teachers []database.Teacher) []tgbotapi.InlineKeyboardButton {
+func GenerateTeachersArray(teachers []database.Staff) []tgbotapi.InlineKeyboardButton {
 	var teacherKeys []tgbotapi.InlineKeyboardButton
 	for _, t := range teachers {
 		name := fmt.Sprintf("%s %s", t.FirstName, t.ShortName)
 		teacherKeys = append(teacherKeys, tgbotapi.NewInlineKeyboardButtonData(
 			name,
-			fmt.Sprintf("false_staff_%d", t.TeacherId),
+			fmt.Sprintf("false_staff_%d", t.StaffID),
 		))
 	}
 
@@ -345,7 +345,7 @@ func KeywordContains(str string, keywords []string) bool {
 func Swap(sh ssauparser.WeekShedule) database.ShedulesInUser {
 	return database.ShedulesInUser{
 		IsGroup:   sh.IsGroup,
-		SheduleId: sh.SheduleID,
+		SheduleID: sh.SheduleID,
 	}
 }
 

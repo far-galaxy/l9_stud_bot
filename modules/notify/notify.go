@@ -45,14 +45,14 @@ func CheckNext(db *xorm.Engine, now time.Time) ([]api.Notify, error) {
 		notify = append(notify, api.Notify{
 			NoteType:  api.NextLesson,
 			IsGroup:   true,
-			SheduleID: n.GroupId,
+			SheduleID: n.GroupID,
 			Lesson:    n,
 		})
-		if n.TeacherId != 0 {
+		if n.StaffID != 0 {
 			notify = append(notify, api.Notify{
 				NoteType:  api.NextLesson,
 				IsGroup:   false,
-				SheduleID: n.TeacherId,
+				SheduleID: n.StaffID,
 				Lesson:    n,
 			})
 		}
@@ -67,7 +67,7 @@ func CheckNext(db *xorm.Engine, now time.Time) ([]api.Notify, error) {
 		if _, err := db.
 			Where(
 				"groupid = ? and begin > ?",
-				l.GroupId, l.Begin.Format("2006-01-02 15:04:05"),
+				l.GroupID, l.Begin.Format("2006-01-02 15:04:05"),
 			).
 			Asc("begin").
 			Get(&nextLesson); err != nil {
@@ -79,7 +79,7 @@ func CheckNext(db *xorm.Engine, now time.Time) ([]api.Notify, error) {
 		_, nowWeek := now.ISOWeek()
 		note := api.Notify{
 			IsGroup:   true,
-			SheduleID: nextLesson.GroupId,
+			SheduleID: nextLesson.GroupID,
 			Lesson:    nextLesson,
 		}
 		if nlWeek == nowWeek {
@@ -103,8 +103,8 @@ func StrNext(db *xorm.Engine, note api.Notify) (string, error) {
 	var pair []database.Lesson
 	if !note.IsGroup {
 		query := database.Lesson{
-			Begin:     note.Lesson.Begin,
-			TeacherId: note.SheduleID,
+			Begin:   note.Lesson.Begin,
+			StaffID: note.SheduleID,
 		}
 		if err := db.Find(&pair, query); err != nil {
 			return "", err
@@ -129,7 +129,7 @@ func StrNextDay(bot *tg.Bot, note api.Notify) (string, error) {
 	day := time.Date(begin.Year(), begin.Month(), begin.Day(), 0, 0, 0, 0, begin.Location())
 	shedule := database.Schedule{
 		IsGroup:    true,
-		ScheduleID: note.Lesson.GroupId,
+		ScheduleID: note.Lesson.GroupID,
 	}
 	lessons, err := api.GetDayLessons(bot.DB, shedule, day)
 	if err != nil {
@@ -177,7 +177,7 @@ func Mailing(bot *tg.Bot, notes []api.Notify) {
 			log.Println(err)
 		}
 		for i, user := range users {
-			if slices.Contains(ids, user.TgId) {
+			if slices.Contains(ids, user.ChatID) {
 				continue
 			}
 			if note.NoteType != api.NextWeek {
@@ -197,7 +197,7 @@ func Mailing(bot *tg.Bot, notes []api.Notify) {
 					continue
 				}
 			}
-			ids = append(ids, user.TgId)
+			ids = append(ids, user.ChatID)
 
 		}
 	}
@@ -225,7 +225,7 @@ func sendNextWeek(bot *tg.Bot, note api.Notify, user *database.TgUser) error {
 // Получить время удаления уведомления о следующем дне
 func getNextDayTemp(user database.TgUser, bot *tg.Bot, tempTime *time.Time, note api.Notify) {
 	shInfo := database.ShedulesInUser{
-		L9Id: user.L9Id,
+		L9ID: user.L9ID,
 	}
 	_, err := bot.DB.Get(&shInfo)
 	if err != nil {
@@ -240,8 +240,8 @@ func getNextDayTemp(user database.TgUser, bot *tg.Bot, tempTime *time.Time, note
 // Добавить сообщение в список временных
 func AddTemp(m tgbotapi.Message, tempTime time.Time, bot *tg.Bot) {
 	temp := database.TempMsg{
-		TgId:      m.Chat.ID,
-		MessageId: m.MessageID,
+		ChatID:    m.Chat.ID,
+		MessageID: m.MessageID,
 		Destroy:   tempTime,
 	}
 	if _, err := bot.DB.InsertOne(temp); err != nil {
@@ -254,7 +254,7 @@ func ClearTemp(bot *tg.Bot, now time.Time) {
 	temp, err := api.GetExpiredNotifies(bot.DB, now)
 	HandleErr(err)
 	for i, msg := range temp {
-		del := tgbotapi.NewDeleteMessage(msg.TgId, msg.MessageId)
+		del := tgbotapi.NewDeleteMessage(msg.ChatID, msg.MessageID)
 		_, err := bot.TG.Request(del)
 		HandleErr(err)
 

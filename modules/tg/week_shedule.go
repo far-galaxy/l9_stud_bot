@@ -45,17 +45,17 @@ func (bot *Bot) GetWeekSummary(
 	var cols []string
 	if !shedule.IsPersonal {
 		image = database.File{
-			TgId:       shedule.TgUser.TgId,
+			TgID:       shedule.TgUser.ChatID,
 			FileType:   database.Photo,
 			IsPersonal: false,
 			IsGroup:    shedule.IsGroup,
-			SheduleId:  shedule.ScheduleID,
+			SheduleID:  shedule.ScheduleID,
 			Week:       week - bot.Week,
 		}
 		cols = []string{"IsPersonal", "IsGroup"}
 	} else {
 		image = database.File{
-			TgId:       shedule.TgUser.TgId,
+			TgID:       shedule.TgUser.ChatID,
 			FileType:   database.Photo,
 			IsPersonal: true,
 			Week:       week - bot.Week,
@@ -81,17 +81,11 @@ func (bot *Bot) GetWeekSummary(
 			}
 		}
 
-		img, err := htmlschedule.CreateWeekImg(
-			bot.DB,
-			bot.WkPath,
-			now,
-			shedule.TgUser,
-			shedule,
-			week,
-			bot.Week,
-			caption,
-			editMsg...,
-		)
+		img, err := func() (tgbotapi.FileBytes, error) {
+			var user *database.TgUser = shedule.TgUser
+
+			return htmlschedule.CreateWeekImg(bot.DB, bot.WkPath, user, shedule, week, bot.Week)
+		}()
 		if err != nil {
 			markup := SummaryKeyboard(
 				Week,
@@ -110,7 +104,7 @@ func (bot *Bot) GetWeekSummary(
 	}
 	// Если всё есть, скидываем, что есть
 	markup := tgbotapi.InlineKeyboardMarkup{}
-	if (caption == "" || (caption != "" && isCompleted)) && shedule.TgUser.TgId > 0 {
+	if (caption == "" || (caption != "" && isCompleted)) && shedule.TgUser.ChatID > 0 {
 		connectButton := !shedule.IsPersonal && !bot.IsThereUserShedule(shedule.TgUser)
 		markup = SummaryKeyboard(
 			Week,
@@ -120,7 +114,7 @@ func (bot *Bot) GetWeekSummary(
 		)
 	}
 
-	return bot.EditOrSend(shedule.TgUser.TgId, caption, image.FileId, markup, editMsg...)
+	return bot.EditOrSend(shedule.TgUser.ChatID, caption, image.FileID, markup, editMsg...)
 }
 
 func (bot *Bot) SendWeekImg(
@@ -135,11 +129,11 @@ func (bot *Bot) SendWeekImg(
 	error,
 ) {
 	user := shedule.TgUser
-	photo := tgbotapi.NewPhoto(user.TgId, img)
+	photo := tgbotapi.NewPhoto(user.ChatID, img)
 	photo.Caption = caption
 	isCompleted := strings.Contains(caption, "На этой неделе больше занятий нет")
 	connectButton := !shedule.IsPersonal && !bot.IsThereUserShedule(user)
-	if (caption == "" || isCompleted) && user.TgId > 0 {
+	if (caption == "" || isCompleted) && user.ChatID > 0 {
 		photo.ReplyMarkup = SummaryKeyboard(
 			Week,
 			shedule,
@@ -152,12 +146,12 @@ func (bot *Bot) SendWeekImg(
 		return bot.SendMsg(shedule.TgUser, "Возникла ошибка при отправке изображения", nil)
 	}
 	file := database.File{
-		FileId:     resp.Photo[0].FileID,
+		FileID:     resp.Photo[0].FileID,
 		FileType:   database.Photo,
-		TgId:       user.TgId,
+		TgID:       user.ChatID,
 		IsPersonal: shedule.IsPersonal,
 		IsGroup:    shedule.IsGroup,
-		SheduleId:  shedule.ScheduleID,
+		SheduleID:  shedule.ScheduleID,
 		Week:       week,
 		LastUpd:    now,
 	}

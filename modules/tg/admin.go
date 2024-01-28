@@ -27,7 +27,7 @@ func (bot *Bot) AdminHandle(msg *tgbotapi.Message) (tgbotapi.Message, error) {
 // Принудительное обновление всех .ics файлов
 func (bot *Bot) Update() (tgbotapi.Message, error) {
 	admin := database.TgUser{
-		TgId: bot.TestUser,
+		ChatID: bot.TestUser,
 	}
 	if err := UpdateICS(bot); err != nil {
 		return bot.SendMsg(&admin, err.Error(), nil)
@@ -41,7 +41,7 @@ func UpdateICS(bot *Bot, tsh ...database.ShedulesInUser) error {
 	if len(tsh) > 0 {
 		q := database.ICalendar{
 			IsGroup:   true,
-			SheduleID: tsh[0].SheduleId,
+			SheduleID: tsh[0].SheduleID,
 		}
 		if err := bot.DB.UseBool("IsGroup").
 			Find(&ics, q); err != nil {
@@ -84,7 +84,7 @@ func (bot *Bot) Scream(msg *tgbotapi.Message) (tgbotapi.Message, error) {
 		strings.TrimPrefix(msg.Text, "/scream"),
 	)
 	for i, u := range users {
-		scream.ChatID = u.TgId
+		scream.ChatID = u.ChatID
 		if _, err := bot.TG.Send(scream); err != nil {
 			bot.CheckBlocked(err, users[i])
 		}
@@ -111,8 +111,8 @@ func (bot *Bot) Stat() (tgbotapi.Message, error) {
 	txt += fmt.Sprintf("Текущая сессия:\nСообщений: %d\nНажатий на кнопки: %d\n\n", bot.Messages, bot.Callbacks)
 	txt += fmt.Sprintf("Всего пользователей: %d\nАктивных пользователей: %d\n\nСтатистика по группам:\n", total, active)
 
-	res, err := bot.DB.Query("SELECT G.GroupName, COUNT(U.L9Id) AS UserCount " +
-		"FROM `Group` G LEFT JOIN ShedulesInUser U ON G.GroupId = U.SheduleId " +
+	res, err := bot.DB.Query("SELECT G.GroupName, COUNT(U.L9ID) AS UserCount " +
+		"FROM `Group` G LEFT JOIN ShedulesInUser U ON G.GroupID = U.SheduleID " +
 		"GROUP BY G.GroupName HAVING UserCount > 0 ORDER BY UserCount DESC;")
 	if err != nil {
 		return nilMsg, err

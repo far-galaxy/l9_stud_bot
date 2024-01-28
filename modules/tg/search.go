@@ -14,13 +14,13 @@ import (
 )
 
 // Поиск расписания в БД и на сайте
-func (bot *Bot) SearchInDB(query string) ([]database.Group, []database.Teacher, error) {
+func (bot *Bot) SearchInDB(query string) ([]database.Group, []database.Staff, error) {
 	var groups []database.Group
 	if err := bot.DB.Where(builder.Like{"GroupName", query}).Find(&groups); err != nil {
 		return nil, nil, err
 	}
 
-	var teachers []database.Teacher
+	var teachers []database.Staff
 	if err := bot.DB.Where(builder.Like{"FirstName", query}).Find(&teachers); err != nil {
 		return nil, nil, err
 	}
@@ -61,10 +61,10 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 		var sheduleID int64
 		var isGroup bool
 		if len(allGroups) == 1 {
-			sheduleID = allGroups[0].GroupId
+			sheduleID = allGroups[0].GroupID
 			isGroup = true
 		} else {
-			sheduleID = allTeachers[0].TeacherId
+			sheduleID = allTeachers[0].StaffID
 			isGroup = false
 		}
 		shedule := ssauparser.WeekShedule{
@@ -114,10 +114,10 @@ func AppendSearchResults(
 	db *xorm.Engine,
 	list ssauparser.SearchResults,
 	groups []database.Group,
-	teachers []database.Teacher,
+	teachers []database.Staff,
 ) (
 	[]database.Group,
-	[]database.Teacher,
+	[]database.Staff,
 ) {
 	allGroups := groups
 	allTeachers := teachers
@@ -137,14 +137,14 @@ func AppendSearchResults(
 }
 
 func appendTeacher(
-	teachers []database.Teacher,
+	teachers []database.Staff,
 	id int64,
 	db *xorm.Engine,
-	allTeachers []database.Teacher,
-) []database.Teacher {
+	allTeachers []database.Staff,
+) []database.Staff {
 	exists := false
 	for _, teacher := range teachers {
-		if id == teacher.TeacherId {
+		if id == teacher.StaffID {
 			exists = true
 
 			break
@@ -160,7 +160,7 @@ func appendTeacher(
 	if _, err := ssauparser.CheckGroupOrTeacher(db, sh); err != nil {
 		log.Println(err)
 	}
-	var teacher database.Teacher
+	var teacher database.Staff
 	if _, err := db.ID(id).Get(&teacher); err != nil {
 		log.Println(err)
 
@@ -179,7 +179,7 @@ func appendGroup(
 ) []database.Group {
 	exists := false
 	for _, group := range groups {
-		if id == group.GroupId {
+		if id == group.GroupID {
 			exists = true
 
 			break

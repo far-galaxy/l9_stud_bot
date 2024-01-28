@@ -13,7 +13,7 @@ var optStr = "Настройки уведомлений\nНажми на кно�
 
 func (bot *Bot) GetOptions(user *database.TgUser) (tgbotapi.Message, error) {
 	options := database.ShedulesInUser{
-		L9Id: user.L9Id,
+		L9ID: user.L9ID,
 	}
 	if _, err := bot.DB.Get(&options); err != nil {
 		return nilMsg, err
@@ -56,7 +56,7 @@ func OptMarkup(options database.ShedulesInUser) tgbotapi.InlineKeyboardMarkup {
 
 func (bot *Bot) HandleOptions(user *database.TgUser, query *tgbotapi.CallbackQuery) error {
 	options := database.ShedulesInUser{
-		L9Id: user.L9Id,
+		L9ID: user.L9ID,
 	}
 	if _, err := bot.DB.Get(&options); err != nil {
 		return err
@@ -66,7 +66,7 @@ func (bot *Bot) HandleOptions(user *database.TgUser, query *tgbotapi.CallbackQue
 		options.First = !options.First
 	case "opt_set":
 		user.PosTag = database.Set
-		if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
+		if _, err := bot.DB.ID(user.L9ID).Update(user); err != nil {
 			return err
 		}
 		txt := fmt.Sprintf(
@@ -75,18 +75,18 @@ func (bot *Bot) HandleOptions(user *database.TgUser, query *tgbotapi.CallbackQue
 				"Сейчас установлено %d минут",
 			options.FirstTime,
 		)
-		_, err := bot.EditOrSend(user.TgId, txt, "", CancelKey(), *query.Message)
+		_, err := bot.EditOrSend(user.ChatID, txt, "", CancelKey(), *query.Message)
 
 		return err
 
 	case "opt_del":
 		user.PosTag = database.Delete
-		if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
+		if _, err := bot.DB.ID(user.L9ID).Update(user); err != nil {
 			return err
 		}
 		txt := "⁉️Ты действительно хочешь отключиться от этой группы?\n" +
 			"Напиши <b>Да</b> для подтверждения, для отмены нажми кнопку или напиши любой другой текст"
-		_, err := bot.EditOrSend(user.TgId, txt, "", CancelKey(), *query.Message)
+		_, err := bot.EditOrSend(user.ChatID, txt, "", CancelKey(), *query.Message)
 
 		return err
 
@@ -102,7 +102,7 @@ func (bot *Bot) HandleOptions(user *database.TgUser, query *tgbotapi.CallbackQue
 	if _, err := bot.DB.UseBool().ID(options.UID).Update(&options); err != nil {
 		return err
 	}
-	_, err := bot.EditOrSend(user.TgId, optStr, "", OptMarkup(options), *query.Message)
+	_, err := bot.EditOrSend(user.ChatID, optStr, "", OptMarkup(options), *query.Message)
 
 	return err
 }

@@ -53,9 +53,9 @@ func (bot *Bot) GetSession(
 	if _, err := bot.ActShedule(&shedule); err != nil {
 		return nilMsg, err
 	}
-	query := "GroupId = ?"
+	query := "GroupID = ?"
 	if !shedule.IsGroup {
-		query = "TeacherId = ?"
+		query = "TeacherID = ?"
 	}
 	var lessons []database.Lesson
 	if err := bot.DB.
@@ -79,7 +79,7 @@ func (bot *Bot) GetSession(
 			false,
 		)
 
-		return bot.EditOrSend(shedule.TgUser.TgId, str, "", markup, editMsg...)
+		return bot.EditOrSend(shedule.TgUser.ChatID, str, "", markup, editMsg...)
 	}
 
 	for i, l := range lessons {
@@ -99,15 +99,15 @@ func (bot *Bot) GetSession(
 		if l.Place != "" {
 			obj += fmt.Sprintf("🧭 %s\n", l.Place)
 		}
-		if l.TeacherId != 0 {
-			staff, err := api.GetStaff(bot.DB, l.TeacherId)
+		if l.StaffID != 0 {
+			staff, err := api.GetStaff(bot.DB, l.StaffID)
 			if err != nil {
 				return nilMsg, err
 			}
 			obj += fmt.Sprintf("👤 %s %s\n", staff.FirstName, staff.ShortName)
 		}
 		if !shedule.IsGroup {
-			group, err := api.GetGroup(bot.DB, l.GroupId)
+			group, err := api.GetGroup(bot.DB, l.GroupID)
 			if err != nil {
 				return nilMsg, err
 			}
@@ -156,12 +156,12 @@ func (bot *Bot) ActShedule(schedule *database.Schedule) (bool, error) {
 	var exists bool
 	var err error
 	if schedule.IsPersonal {
-		exists, err = bot.DB.Where("L9Id = ?", schedule.TgUser.L9Id).Get(&sh)
+		exists, err = bot.DB.Where("L9ID = ?", schedule.TgUser.L9ID).Get(&sh)
 		if err != nil {
 			return false, err
 		}
 		schedule.IsGroup = sh.IsGroup
-		schedule.ScheduleID = sh.SheduleId
+		schedule.ScheduleID = sh.SheduleID
 	}
 
 	return exists, nil
@@ -198,7 +198,7 @@ func (bot *Bot) GetDaySummary(
 		if firstPair.Day() != day.Day() {
 			str = fmt.Sprintf("В %s, занятий нет", dayStr)
 
-			return bot.EditOrSend(schedule.TgUser.TgId, str, "", markup, editMsg...)
+			return bot.EditOrSend(schedule.TgUser.ChatID, str, "", markup, editMsg...)
 		}
 		str = fmt.Sprintf("Расписание на %s\n\n", dayStr)
 
@@ -209,11 +209,11 @@ func (bot *Bot) GetDaySummary(
 		}
 		str += day
 
-		return bot.EditOrSend(schedule.TgUser.TgId, str, "", markup, editMsg...)
+		return bot.EditOrSend(schedule.TgUser.ChatID, str, "", markup, editMsg...)
 	}
 	str := fmt.Sprintf("В %s, занятий нет", dayStr)
 
-	return bot.EditOrSend(schedule.TgUser.TgId, str, "", markup, editMsg...)
+	return bot.EditOrSend(schedule.TgUser.ChatID, str, "", markup, editMsg...)
 	//return bot.SendMsg(schedule.TgUser, "Ой! Пар не обнаружено ):", nil)
 }
 
@@ -347,8 +347,8 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine, isGroup bool) (string, e
 		if !isGroup {
 			break
 		}
-		if sublesson.TeacherId != 0 {
-			staff, err := api.GetStaff(db, sublesson.TeacherId)
+		if sublesson.StaffID != 0 {
+			staff, err := api.GetStaff(db, sublesson.StaffID)
 			if err != nil {
 				return "", err
 			}
@@ -367,7 +367,7 @@ func PairToStr(pair []database.Lesson, db *xorm.Engine, isGroup bool) (string, e
 
 	if !isGroup {
 		for _, gr := range groups {
-			group, err := api.GetGroup(db, gr.GroupId)
+			group, err := api.GetGroup(db, gr.GroupID)
 			if err != nil {
 				return "", err
 			}

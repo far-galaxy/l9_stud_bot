@@ -100,7 +100,7 @@ func (bot *Bot) GetUpdates() {
 }
 
 func (bot *Bot) SendMsg(user *database.TgUser, text string, markup interface{}) (tgbotapi.Message, error) {
-	msg := tgbotapi.NewMessage(user.TgId, text)
+	msg := tgbotapi.NewMessage(user.ChatID, text)
 	msg.ParseMode = tgbotapi.ModeHTML
 	msg.ReplyMarkup = markup
 
@@ -113,7 +113,7 @@ func InitUser(db *xorm.Engine, user *tgbotapi.User) (*database.TgUser, error) {
 	//name := user.FirstName + " " + user.LastName
 
 	var users []database.TgUser
-	err := db.Find(&users, &database.TgUser{TgId: id})
+	err := db.Find(&users, &database.TgUser{ChatID: id})
 	if err != nil {
 		return nil, err
 	}
@@ -126,13 +126,13 @@ func InitUser(db *xorm.Engine, user *tgbotapi.User) (*database.TgUser, error) {
 		}
 
 		user := database.User{
-			L9Id: l9id,
+			L9ID: l9id,
 		}
 
 		tgUser = database.TgUser{
-			L9Id: l9id,
+			L9ID: l9id,
 			//Name:   name,
-			TgId:   id,
+			ChatID: id,
 			PosTag: database.NotStarted,
 		}
 		_, err = db.Insert(user, tgUser)
@@ -150,16 +150,16 @@ func (bot *Bot) DeleteUser(user database.TgUser) error {
 	if _, err := bot.DB.Delete(&user); err != nil {
 		return err
 	}
-	if _, err := bot.DB.Delete(&database.ShedulesInUser{L9Id: user.L9Id}); err != nil {
+	if _, err := bot.DB.Delete(&database.ShedulesInUser{L9ID: user.L9ID}); err != nil {
 		return err
 	}
-	if _, err := bot.DB.Delete(&database.User{L9Id: user.L9Id}); err != nil {
+	if _, err := bot.DB.Delete(&database.User{L9ID: user.L9ID}); err != nil {
 		return err
 	}
-	if _, err := bot.DB.Delete(&database.File{TgId: user.TgId}); err != nil {
+	if _, err := bot.DB.Delete(&database.File{TgID: user.ChatID}); err != nil {
 		return err
 	}
-	if _, err := bot.DB.Delete(&database.ICalendar{L9ID: user.L9Id}); err != nil {
+	if _, err := bot.DB.Delete(&database.ICalendar{L9ID: user.L9ID}); err != nil {
 		return err
 	}
 
@@ -202,7 +202,7 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 		return nilMsg, err
 	}
 
-	bot.Debug.Printf("Message  [%10d:%10d] %s", user.L9Id, user.TgId, msg.Text)
+	bot.Debug.Printf("Message  [%10d:%10d] %s", user.L9ID, user.ChatID, msg.Text)
 	bot.Messages++
 	if msg.Text == "Моё расписание" || msg.Text == "Настройки" {
 		return bot.SendMsg(
@@ -234,7 +234,7 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 	case database.NotStarted:
 		return bot.Start(user)
 	case database.Ready:
-		if KeywordContains(msg.Text, AdminKey) && user.TgId == bot.TestUser {
+		if KeywordContains(msg.Text, AdminKey) && user.ChatID == bot.TestUser {
 			return bot.AdminHandle(msg)
 		} else if strings.Contains(msg.Text, "/schedule") {
 			sch := database.Schedule{
@@ -277,7 +277,7 @@ func (bot *Bot) HandleCallback(query *tgbotapi.CallbackQuery, now time.Time) (tg
 	if err != nil {
 		return nilMsg, err
 	}
-	bot.Debug.Printf("Callback [%10d:%10d] %s", user.L9Id, user.TgId, query.Data)
+	bot.Debug.Printf("Callback [%10d:%10d] %s", user.L9ID, user.ChatID, query.Data)
 	bot.Callbacks++
 	if query.Data == "cancel" {
 		return nilMsg, bot.Cancel(user, query)

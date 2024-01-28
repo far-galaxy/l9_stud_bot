@@ -25,7 +25,7 @@ func (sh *WeekShedule) Download(uri string, week int, uncover bool) error {
 }
 
 // Загрузка, парсинг и раскрытие расписания в одной функции
-// Обязательно наличие IsGroup, SheduleId, Week в объекте
+// Обязательно наличие IsGroup, SheduleID, Week в объекте
 func (sh *WeekShedule) DownloadByID(uncover bool) error {
 	if sh.SheduleID == 0 {
 		return errors.New("schedule id not included")
@@ -63,8 +63,8 @@ func (sh *WeekShedule) UncoverShedule() {
 							Name:         lesson.Name,
 							Begin:        pair.Begin,
 							End:          pair.End,
-							TeacherId:    tID,
-							GroupId:      gID,
+							StaffID:      tID,
+							GroupID:      gID,
 							Place:        lesson.Place,
 							Comment:      lesson.Comment,
 							SubGroup:     int64(lesson.SubGroup[i]),

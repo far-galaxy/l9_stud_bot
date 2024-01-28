@@ -28,7 +28,7 @@ func prepareDB() *xorm.Engine {
 	// Очистка всех данных для теста
 	_, err = db.Where("groupid > 0").Delete(&database.Group{})
 	handleError(err)
-	_, err = db.Where("teacherid > 0").Delete(&database.Teacher{})
+	_, err = db.Where("teacherid > 0").Delete(&database.Staff{})
 	handleError(err)
 	_, err = db.Where("lessonid >= 0").Delete(&database.Lesson{})
 	handleError(err)

@@ -122,6 +122,7 @@ func GetWeekDates(year int, week int) ([]time.Time, time.Time) {
 	for i := range days {
 		dates = append(dates, weekBegin.Add(time.Hour*time.Duration(24*i)))
 	}
+
 	return dates, weekBegin
 }
 
@@ -136,7 +137,7 @@ func CheckWeek(db *xorm.Engine, now time.Time, week *int, schedule database.Sche
 		if err != nil {
 			return false, err
 		}
-		if lesson.LessonId != 0 {
+		if lesson.LessonID != 0 {
 			_, lessonWeek := lesson.Begin.ISOWeek()
 			if lessonWeek > nowWeek {
 				*week++

@@ -59,7 +59,7 @@ func InitTestBot() *Bot {
 	if err != nil {
 		log.Fatal(err)
 	}
-	_, err = bot.DB.Where("teacherid >= 0").Delete(&database.Teacher{})
+	_, err = bot.DB.Where("teacherid >= 0").Delete(&database.Staff{})
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -241,7 +241,7 @@ func TestGetWeekLessons(t *testing.T) {
 	bot.Week = 5
 	bot.WkPath = os.Getenv("WK_PATH")
 	user := database.TgUser{}
-	user.TgId, _ = strconv.ParseInt(os.Getenv("TELEGRAM_TEST_USER"), 0, 64)
+	user.ChatID, _ = strconv.ParseInt(os.Getenv("TELEGRAM_TEST_USER"), 0, 64)
 	shedules := []ssauparser.WeekShedule{
 		{
 			SheduleID: 100000000,
@@ -268,7 +268,11 @@ func TestGetWeekLessons(t *testing.T) {
 			ScheduleID: sh.SheduleID,
 			IsGroup:    sh.IsGroup,
 		}
-		_, err = htmlschedule.CreateWeekImg(bot.DB, bot.WkPath, now, &user, img, sh.Week, bot.Week, "")
+		_, err = func() (tgbotapi.FileBytes, error) {
+			var _ time.Time = now
+
+			return htmlschedule.CreateWeekImg(bot.DB, bot.WkPath, &user, img, sh.Week, bot.Week)
+		}()
 		if err != nil {
 			log.Fatal(err)
 		}

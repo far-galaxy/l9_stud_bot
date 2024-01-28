@@ -18,10 +18,10 @@ func UpdateSchedule(db *xorm.Engine, sh WeekShedule) ([]database.Lesson, []datab
 	}
 	// Проверяем преподавателей и группы в БД
 	for _, l := range sh.Uncovered {
-		if l.TeacherId != 0 {
+		if l.StaffID != 0 {
 			_, err := CheckGroupOrTeacher(db, WeekShedule{
 				IsGroup:   false,
-				SheduleID: l.TeacherId,
+				SheduleID: l.StaffID,
 			})
 			if err != nil {
 				return nil, nil, err
@@ -30,7 +30,7 @@ func UpdateSchedule(db *xorm.Engine, sh WeekShedule) ([]database.Lesson, []datab
 
 		_, err := CheckGroupOrTeacher(db, WeekShedule{
 			IsGroup:   true,
-			SheduleID: l.GroupId,
+			SheduleID: l.GroupID,
 		})
 		if err != nil {
 			return nil, nil, err
@@ -43,8 +43,8 @@ func UpdateSchedule(db *xorm.Engine, sh WeekShedule) ([]database.Lesson, []datab
 	var newLessons []database.Lesson
 	// Удаляем всё, что не относится к данной группе
 	for _, l := range sh.Uncovered {
-		if (sh.IsGroup && l.GroupId == sh.SheduleID) ||
-			(!sh.IsGroup && l.TeacherId == sh.SheduleID) {
+		if (sh.IsGroup && l.GroupID == sh.SheduleID) ||
+			(!sh.IsGroup && l.StaffID == sh.SheduleID) {
 			newLessons = append(newLessons, l)
 		}
 	}
@@ -66,7 +66,7 @@ func UpdateSchedule(db *xorm.Engine, sh WeekShedule) ([]database.Lesson, []datab
 	if len(del) > 0 {
 		var ids []int64
 		for _, d := range del {
-			ids = append(ids, d.LessonId)
+			ids = append(ids, d.LessonID)
 		}
 		if _, err := db.In("lessonid", ids).Delete(&database.Lesson{}); err != nil {
 			return nil, nil, err
@@ -78,7 +78,7 @@ func UpdateSchedule(db *xorm.Engine, sh WeekShedule) ([]database.Lesson, []datab
 
 func isGroupExists(db *xorm.Engine, groupID int64) (database.Group, error) {
 	var groups []database.Group
-	err := db.Find(&groups, database.Group{GroupId: groupID})
+	err := db.Find(&groups, database.Group{GroupID: groupID})
 	if err != nil {
 		return database.Group{}, err
 	}
@@ -105,7 +105,7 @@ func CheckGroupOrTeacher(db *xorm.Engine, sh WeekShedule) (bool, error) {
 				return false, err
 			}
 			group := database.Group{
-				GroupId:   sh.SheduleID,
+				GroupID:   sh.SheduleID,
 				GroupName: sh.FullName,
 				SpecName:  sh.SpecName,
 			}
@@ -120,8 +120,8 @@ func CheckGroupOrTeacher(db *xorm.Engine, sh WeekShedule) (bool, error) {
 	} else {
 		// TODO: Добавить проверку изменений в полях данных
 		// (делать совместно с личным преп. расписанием, иначе бессмысленно)
-		var teachers []database.Teacher
-		tc, err := db.FindAndCount(&teachers, database.Teacher{TeacherId: sh.SheduleID})
+		var teachers []database.Staff
+		tc, err := db.FindAndCount(&teachers, database.Staff{StaffID: sh.SheduleID})
 		if err != nil {
 			return false, err
 		}
@@ -131,7 +131,7 @@ func CheckGroupOrTeacher(db *xorm.Engine, sh WeekShedule) (bool, error) {
 				return false, err
 			}
 			teacher := ParseTeacherName(sh.FullName)
-			teacher.TeacherId = sh.SheduleID
+			teacher.StaffID = sh.SheduleID
 			teacher.SpecName = sh.SpecName
 			if _, err := db.InsertOne(teacher); err != nil {
 				return false, err
@@ -147,13 +147,13 @@ func CheckGroupOrTeacher(db *xorm.Engine, sh WeekShedule) (bool, error) {
 	return false, nil
 }
 
-func ParseTeacherName(fullName string) database.Teacher {
+func ParseTeacherName(fullName string) database.Staff {
 	name := strings.Split(fullName, " ")
 	var shortName []string
 	for _, a := range name[1:] {
 		shortName = append(shortName, a[:2])
 	}
-	teacher := database.Teacher{
+	teacher := database.Staff{
 		FirstName: name[0],
 		LastName:  strings.Join(name[1:], " "),
 		ShortName: strings.Join(shortName, ".") + ".",

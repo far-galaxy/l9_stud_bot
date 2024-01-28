@@ -160,18 +160,18 @@ func ParseData(q Query, d Data) ([]database.Lesson, error) {
 		dates, _ := api.GetWeekDates(year, firstWeek+int(q.Week))
 
 		for _, t := range i.Teachers {
-			l.TeacherId = int64(t.ID)
+			l.StaffID = int64(t.ID)
 
 			// Удаляем коллективных преподавателей
-			if l.TeacherId < 10000 {
-				l.TeacherId = 0
+			if l.StaffID < 10000 {
+				l.StaffID = 0
 			}
 			for _, g := range i.Groups {
 				if g.ID != q.GroupID {
 					continue
 				}
 
-				l.GroupId = g.ID
+				l.GroupID = g.ID
 				l.SubGroup = g.Subgroup
 				for _, w := range i.Weeks {
 					if w.Week != int(q.Week) {

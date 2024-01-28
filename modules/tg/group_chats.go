@@ -33,7 +33,7 @@ func (bot *Bot) HandleGroup(msg *tgbotapi.Message, now time.Time) (tgbotapi.Mess
 				return bot.TG.Send(ans)
 			}
 			fakeUser := database.TgUser{
-				TgId:   group.ChatID,
+				TgID:   group.ChatID,
 				PosTag: database.Ready,
 			}
 
@@ -41,7 +41,7 @@ func (bot *Bot) HandleGroup(msg *tgbotapi.Message, now time.Time) (tgbotapi.Mess
 		}*/
 	if KeywordContains(msg.Text, []string{"/group", "/staff"}) {
 		fakeUser := database.TgUser{
-			TgId:   msg.Chat.ID,
+			ChatID: msg.Chat.ID,
 			PosTag: database.Ready,
 		}
 

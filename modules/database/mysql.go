@@ -44,7 +44,7 @@ func Connect(db DB, logger *rotatelogs.RotateLogs) (*xorm.Engine, error) {
 		&TgUser{},
 		&Group{},
 		&Lesson{},
-		&Teacher{},
+		&Staff{},
 		&ShedulesInUser{},
 		&File{},
 		&TempMsg{},

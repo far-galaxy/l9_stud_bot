@@ -30,25 +30,25 @@ func TestCheckNext(t *testing.T) {
 			Begin:        time.Date(2032, 2, 1, 8, 0, 0, 0, time.Local),
 			End:          time.Date(2032, 2, 1, 9, 35, 0, 0, time.Local),
 			NumInShedule: 1,
-			GroupId:      1,
+			GroupID:      1,
 		},
 		{
 			Begin:        time.Date(2032, 2, 1, 9, 45, 0, 0, time.Local),
 			End:          time.Date(2032, 2, 1, 11, 20, 0, 0, time.Local),
 			NumInShedule: 2,
-			GroupId:      1,
+			GroupID:      1,
 		},
 		{
 			Begin:        time.Date(2032, 2, 2, 8, 0, 0, 0, time.Local),
 			End:          time.Date(2032, 2, 2, 9, 35, 0, 0, time.Local),
 			NumInShedule: 1,
-			GroupId:      1,
+			GroupID:      1,
 		},
 		{
 			Begin:        time.Date(2032, 2, 9, 8, 0, 0, 0, time.Local),
 			End:          time.Date(2032, 2, 9, 9, 35, 0, 0, time.Local),
 			NumInShedule: 1,
-			GroupId:      1,
+			GroupID:      1,
 		},
 	}
 	for _, l := range lessons {

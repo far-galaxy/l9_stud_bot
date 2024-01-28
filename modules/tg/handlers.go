@@ -17,7 +17,7 @@ var nilKey = tgbotapi.InlineKeyboardMarkup{InlineKeyboard: [][]tgbotapi.InlineKe
 // Приветственное сообщение
 func (bot *Bot) Start(user *database.TgUser) (tgbotapi.Message, error) {
 	user.PosTag = database.Ready
-	_, err := bot.DB.ID(user.L9Id).Update(user)
+	_, err := bot.DB.ID(user.L9ID).Update(user)
 	if err != nil {
 		return nilMsg, err
 	}
@@ -40,7 +40,7 @@ func (bot *Bot) ReturnSummary(
 	error,
 ) {
 	if notExists {
-		msg := tgbotapi.NewMessage(user.TgId, "Загружаю расписание...\nЭто займёт некоторое время")
+		msg := tgbotapi.NewMessage(user.ChatID, "Загружаю расписание...\nЭто займёт некоторое время")
 		Smsg, _ := bot.TG.Send(msg)
 		_, _, err := bot.LoadShedule(shedule, now, false)
 		if err != nil {
@@ -130,7 +130,7 @@ func (bot *Bot) ConnectShedule(
 	error,
 ) {
 	shedules := database.ShedulesInUser{
-		L9Id: sh.TgUser.L9Id,
+		L9ID: sh.TgUser.L9ID,
 	}
 	exists, err := bot.DB.Get(&shedules)
 	if err != nil {
@@ -154,9 +154,9 @@ func (bot *Bot) ConnectShedule(
 		)
 	}
 	shedules = database.ShedulesInUser{
-		L9Id:      sh.TgUser.L9Id,
+		L9ID:      sh.TgUser.L9ID,
 		IsGroup:   sh.IsGroup,
-		SheduleId: sh.ScheduleID,
+		SheduleID: sh.ScheduleID,
 		FirstTime: 45,
 		First:     true,
 		NextNote:  true,
@@ -167,12 +167,12 @@ func (bot *Bot) ConnectShedule(
 		return nilMsg, err
 	}
 	sh.TgUser.PosTag = database.Ready
-	if _, err := bot.DB.ID(sh.TgUser.L9Id).Update(sh.TgUser); err != nil {
+	if _, err := bot.DB.ID(sh.TgUser.L9ID).Update(sh.TgUser); err != nil {
 		return nilMsg, err
 	}
 
 	return bot.EditOrSend(
-		sh.TgUser.TgId,
+		sh.TgUser.ChatID,
 		"Расписание успешно подключено!\n"+
 			"Теперь можно смотреть свои занятия по команде <b>/schedule</b>\n\n"+
 			"Также ты будешь получать уведомления о занятиях, "+
@@ -184,14 +184,14 @@ func (bot *Bot) ConnectShedule(
 }
 
 func (bot *Bot) Etc(user *database.TgUser) (tgbotapi.Message, error) {
-	msg := tgbotapi.NewMessage(user.TgId, "Oй!")
+	msg := tgbotapi.NewMessage(user.ChatID, "Oй!")
 
 	return bot.TG.Send(msg)
 }
 
 func (bot *Bot) Cancel(user *database.TgUser, query *tgbotapi.CallbackQuery) error {
 	user.PosTag = database.Ready
-	_, err := bot.DB.ID(user.L9Id).Update(user)
+	_, err := bot.DB.ID(user.L9ID).Update(user)
 	if err != nil {
 		return err
 	}
@@ -210,18 +210,18 @@ func (bot *Bot) Cancel(user *database.TgUser, query *tgbotapi.CallbackQuery) err
 
 func (bot *Bot) DeleteGroup(user *database.TgUser, text string) (tgbotapi.Message, error) {
 	user.PosTag = database.Ready
-	if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
+	if _, err := bot.DB.ID(user.L9ID).Update(user); err != nil {
 		return nilMsg, err
 	}
 	if strings.ToLower(text) == "да" {
 		userInfo := database.ShedulesInUser{
-			L9Id: user.L9Id,
+			L9ID: user.L9ID,
 		}
 		if _, err := bot.DB.Delete(&userInfo); err != nil {
 			return nilMsg, err
 		}
 		files := database.File{
-			TgId:       user.TgId,
+			TgID:       user.ChatID,
 			IsPersonal: true,
 		}
 		if _, err := bot.DB.UseBool("IsPersonal").Delete(&files); err != nil {
@@ -244,7 +244,7 @@ func (bot *Bot) SetFirstTime(msg *tgbotapi.Message, user *database.TgUser) (tgbo
 		)
 	}
 	userInfo := database.ShedulesInUser{
-		L9Id: user.L9Id,
+		L9ID: user.L9ID,
 	}
 	if _, err := bot.DB.Get(&userInfo); err != nil {
 		return nilMsg, err
@@ -267,7 +267,7 @@ func (bot *Bot) SetFirstTime(msg *tgbotapi.Message, user *database.TgUser) (tgbo
 		return nilMsg, err
 	}
 	user.PosTag = database.Ready
-	if _, err := bot.DB.ID(user.L9Id).Update(user); err != nil {
+	if _, err := bot.DB.ID(user.L9ID).Update(user); err != nil {
 		return nilMsg, err
 	}
 

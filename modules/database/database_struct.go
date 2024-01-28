@@ -4,7 +4,7 @@ import "time"
 
 // Пользователь системы (задел под сайт)
 type User struct {
-	L9Id int64 `xorm:"pk"`
+	L9ID int64 `xorm:"pk"`
 }
 
 // Позиция пользователя в чате
@@ -21,8 +21,8 @@ const (
 
 // Пользователь Telegram
 type TgUser struct {
-	L9Id   int64  `xorm:"pk"`
-	TgId   int64  // TODO: переименовать в ChatID в v1
+	L9ID   int64  `xorm:"pk"`
+	ChatID int64  // TODO: переименовать в ChatID в v1
 	Name   string // XXX: должно быть удалено в v1
 	PosTag Position
 }
@@ -32,9 +32,9 @@ type TgUser struct {
 // Подключённое к пользователю расписание
 type ShedulesInUser struct {
 	UID       int64 `xorm:"pk autoincr"` // Не забывать про автоинкремент!!!
-	L9Id      int64
+	L9ID      int64
 	IsGroup   bool
-	SheduleId int64
+	SheduleID int64
 	Subgroup  int64
 	NextNote  bool
 	NextDay   bool
@@ -46,7 +46,7 @@ type ShedulesInUser struct {
 
 // Учебная группа
 type Group struct {
-	GroupId   int64  `xorm:"pk"`
+	GroupID   int64  `xorm:"pk"`
 	GroupName string // Полный номер группы
 	SpecName  string // Шифр и название специальности
 	LastUpd   time.Time
@@ -54,8 +54,8 @@ type Group struct {
 }
 
 // Преподаватель
-type Teacher struct {
-	TeacherId int64  `xorm:"pk"`
+type Staff struct {
+	StaffID   int64  `xorm:"pk"`
 	FirstName string // Фамилия
 	LastName  string // Имя, отчество и прочие окончания
 	ShortName string // Инициалы
@@ -83,14 +83,14 @@ const (
 
 // Занятие
 type Lesson struct {
-	LessonId     int64 `xorm:"pk autoincr"`
+	LessonID     int64 `xorm:"pk autoincr"`
 	NumInShedule int
 	Type         Kind
 	Name         string
-	GroupId      int64
+	GroupID      int64
 	Begin        time.Time
 	End          time.Time
-	TeacherId    int64
+	StaffID      int64
 	Place        string
 	Comment      string
 	SubGroup     int64
@@ -106,13 +106,13 @@ const (
 )
 
 type File struct {
-	Id int64 `xorm:"pk autoincr"`
+	ID int64 `xorm:"pk autoincr"`
 	FileType
-	FileId     string
-	TgId       int64
+	FileID     string
+	TgID       int64
 	IsPersonal bool
 	IsGroup    bool
-	SheduleId  int64
+	SheduleID  int64
 	Week       int
 	LastUpd    time.Time
 }
@@ -120,8 +120,8 @@ type File struct {
 // Самоуничтожающиеся сообщения
 type TempMsg struct {
 	ID        int64 `xorm:"pk autoincr"`
-	TgId      int64
-	MessageId int
+	ChatID    int64
+	MessageID int
 	Destroy   time.Time
 }
 

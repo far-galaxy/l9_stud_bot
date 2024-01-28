@@ -29,12 +29,12 @@ func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 	}
 	log.Printf("check group %s, lastCheck %v", group.GroupName, group.LastCheck)
 	group.LastCheck = now
-	if _, err := bot.DB.ID(group.GroupId).Update(group); err != nil {
+	if _, err := bot.DB.ID(group.GroupID).Update(group); err != nil {
 		log.Println(err)
 	}
 	sh := ssauparser.WeekShedule{
 		IsGroup:   true,
-		SheduleID: group.GroupId,
+		SheduleID: group.GroupID,
 	}
 	add, del, err := bot.LoadShedule(sh, now, false)
 	if err != nil {
@@ -45,7 +45,7 @@ func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 	_, nowWeek := now.ISOWeek()
 	for _, a := range add {
 		_, addWeek := a.Begin.ISOWeek()
-		if a.GroupId == group.GroupId &&
+		if a.GroupID == group.GroupID &&
 			(addWeek == nowWeek ||
 				addWeek == nowWeek+1) {
 			nAdd = append(nAdd, a)
@@ -53,7 +53,7 @@ func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 	}
 	for _, d := range del {
 		_, delWeek := d.Begin.ISOWeek()
-		if d.GroupId == group.GroupId &&
+		if d.GroupID == group.GroupID &&
 			(delWeek == nowWeek || delWeek == nowWeek+1) {
 			nDel = append(nDel, d)
 		}
