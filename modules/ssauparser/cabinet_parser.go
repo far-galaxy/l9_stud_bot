@@ -139,6 +139,7 @@ func ParseData(q Query, d Data) ([]database.Lesson, error) {
 			Type:         types[i.Type.ID-1],
 			Name:         i.Discipline.Name,
 			Comment:      i.Comment,
+			Conference:   i.Conference.URL,
 		}
 		start, err := time.Parse("2006-01-02", d.Year.StartDate)
 		if err != nil {

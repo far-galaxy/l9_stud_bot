@@ -92,9 +92,13 @@ type Lesson struct {
 	End          time.Time
 	StaffID      int64
 	Place        string
+	IsOnline     bool
+	Conference   string
 	Comment      string
 	SubGroup     int64
 	Hash         string
+	Created      time.Time `xorm:"created"`
+	Updated      time.Time `xorm:"updated"`
 }
 
 // Файлы, залитые в Telegram
