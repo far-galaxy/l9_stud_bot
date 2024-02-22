@@ -54,7 +54,10 @@ func UpdateSchedule(db *xorm.Engine, sh WeekShedule) ([]database.Lesson, []datab
 	} else {
 		condition = "teacherid = ?"
 	}
-	if err := db.Where("WEEK(`Begin`) = ? AND "+condition, week, sh.SheduleID).Asc("Begin").Find(&oldLessons); err != nil {
+	// FIXME: Тут пока какой-то костыль с номерами недель
+	if err := db.Where(
+		"WEEK(`Begin`) = ? AND "+condition, week-1, sh.SheduleID,
+	).Asc("Begin").Find(&oldLessons); err != nil {
 		return nil, nil, err
 	}
 	add, del := Compare(newLessons, oldLessons)

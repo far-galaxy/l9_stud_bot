@@ -142,13 +142,15 @@ func SummaryKeyboard(
 		),
 	}
 
-	session := []tgbotapi.InlineKeyboardButton{
-		tgbotapi.NewInlineKeyboardButtonData(
-			"Расписание сессии",
-			SummaryPrefix+string(Session)+
-				GenerateButtonTail(sheduleID, dt, schedule.IsGroup),
-		),
-	}
+	/*
+		session := []tgbotapi.InlineKeyboardButton{
+			tgbotapi.NewInlineKeyboardButtonData(
+				"Расписание сессии",
+				SummaryPrefix+string(Session)+
+					GenerateButtonTail(sheduleID, dt, schedule.IsGroup),
+			),
+		}
+	*/
 
 	var arrows []tgbotapi.InlineKeyboardButton
 	if clickedButton == Day || clickedButton == Week {
@@ -169,11 +171,11 @@ func SummaryKeyboard(
 	switch clickedButton {
 	case Day:
 		markup = [][]tgbotapi.InlineKeyboardButton{
-			arrows, week, session,
+			arrows, week, //session,
 		}
 	case Week:
 		markup = [][]tgbotapi.InlineKeyboardButton{
-			arrows, ics, day, session,
+			arrows, ics, day, //session,
 		}
 	default:
 		markup = [][]tgbotapi.InlineKeyboardButton{

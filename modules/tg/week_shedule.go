@@ -101,7 +101,11 @@ func (bot *Bot) GetWeekSummary(
 				false,
 			)
 			if strings.Contains(err.Error(), "no lessons") {
-				return nilMsg, err
+				return bot.SendMsg(
+					shedule.TgUser,
+					fmt.Sprintf("На %d (%d) неделе занятий нет", week+29, week+52),
+					markup,
+				)
 			}
 			fmt.Println(err)
 
@@ -152,6 +156,7 @@ func (bot *Bot) SendWeekImg(
 	resp, err := bot.TG.Send(photo)
 	if err != nil {
 		fmt.Println(err)
+
 		return bot.SendMsg(shedule.TgUser, "Возникла ошибка при отправке изображения", nil)
 	}
 	file := database.File{

@@ -40,6 +40,7 @@ func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 	if err != nil {
 		log.Println(err)
 	}
+	log.Printf("check group %s end", group.GroupName)
 	// Очищаем от лишних пар
 	/*
 		var nAdd, nDel []database.Lesson

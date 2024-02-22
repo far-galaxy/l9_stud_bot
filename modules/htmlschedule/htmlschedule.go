@@ -38,19 +38,19 @@ func CreateWeekImg(
 
 	var header string
 	if shedule.IsPersonal {
-		header = fmt.Sprintf("Моё расписание, %d неделя", week+29)
+		header = fmt.Sprintf("Моё расписание, %d (%d) неделя", week+29, week+52)
 	} else if shedule.IsGroup {
 		group, err := api.GetGroup(db, shedule.ScheduleID)
 		if err != nil {
 			return photoFileBytes, err
 		}
-		header = fmt.Sprintf("%s, %d неделя", group.GroupName, week+29)
+		header = fmt.Sprintf("%s, %d (%d) неделя", group.GroupName, week+29, week+52)
 	} else {
 		staff, err := api.GetStaff(db, shedule.ScheduleID)
 		if err != nil {
 			return photoFileBytes, err
 		}
-		header = fmt.Sprintf("%s %s, %d неделя", staff.FirstName, staff.LastName, week+29)
+		header = fmt.Sprintf("%s %s, %d (%d) неделя", staff.FirstName, staff.LastName, week+29, week+52)
 	}
 
 	html, err := CreateHTMLShedule(db, shedule.IsGroup, header, table)

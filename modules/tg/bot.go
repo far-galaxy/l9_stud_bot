@@ -28,6 +28,7 @@ type Bot struct {
 	Messages  int64
 	Callbacks int64
 	Build     string
+	IsDebug   bool
 }
 
 const (
@@ -64,6 +65,7 @@ func CheckEnv() error {
 func InitBot(db database.DB, token string, build string) (*Bot, error) {
 	var bot Bot
 	bot.Build = build
+	bot.IsDebug = os.Getenv("DEBUG") == "1"
 	engine, err := database.Connect(db, database.InitLog("sql"))
 	if err != nil {
 		return nil, err
@@ -187,6 +189,9 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 }
 
 func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Message, error) {
+	if bot.IsDebug && msg.From.ID != bot.TestUser {
+		return nilMsg, nil
+	}
 	// Игнорируем "сообщения" о входе в чат
 	if len(msg.NewChatMembers) != 0 || msg.LeftChatMember != nil {
 		return nilMsg, nil
@@ -254,11 +259,18 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 		} else if strings.Contains(msg.Text, "/session") {
 			return bot.SendMsg(
 				user,
-				"Расписание сессии теперь можно посмотреть прямо в карточке с расписанием!",
+				"На данный момент информации о сессии пока нет",
+				//"Расписание сессии теперь можно посмотреть прямо в карточке с расписанием!",
 				nil,
 			)
 		} else if KeywordContains(msg.Text, []string{"/group", "/staff"}) {
 			return bot.GetSheduleFromCmd(now, user, msg.Text)
+		} else if strings.Contains(msg.Text, "/") {
+			return bot.SendMsg(
+				user,
+				"Неопознанная команда\nВсе доступные команды можно посмотреть в разделе Меню\n👇",
+				nil,
+			)
 		}
 
 		return bot.Find(now, user, msg.Text)
