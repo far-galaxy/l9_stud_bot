@@ -42,6 +42,7 @@ type ShedulesInUser struct {
 	First     bool
 	FirstTime int `xorm:"default 45"`
 	Military  bool
+	IsAdmin   bool
 }
 
 // Учебная группа
@@ -95,6 +96,7 @@ type Lesson struct {
 	Comment      string
 	SubGroup     int64
 	Hash         string
+	Note         string
 }
 
 // Файлы, залитые в Telegram

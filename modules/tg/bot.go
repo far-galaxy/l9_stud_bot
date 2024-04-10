@@ -5,11 +5,13 @@ import (
 	"io"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
+	"stud.l9labs.ru/bot/modules/api"
 	"stud.l9labs.ru/bot/modules/database"
 	"xorm.io/xorm"
 )
@@ -301,6 +303,8 @@ func (bot *Bot) HandleCallback(query *tgbotapi.CallbackQuery, now time.Time) (tg
 			err = bot.HandleSummary(user, query, now)
 		} else if strings.Contains(query.Data, "opt") {
 			err = bot.HandleOptions(user, query)
+		} else if strings.Contains(query.Data, "note") {
+			err = bot.AddNote(query, user)
 		} else {
 			err = bot.GetShedule(user, query, now)
 		}
@@ -334,8 +338,107 @@ func (bot *Bot) HandleCallback(query *tgbotapi.CallbackQuery, now time.Time) (tg
 	return nilMsg, nil
 }
 
+// Выбор занятия для добавления заметки
+func (bot *Bot) AddNote(query *tgbotapi.CallbackQuery, user *database.TgUser) error {
+	id, err := strconv.ParseInt(query.Data[5:], 10, 64)
+	if err != nil {
+		return err
+	}
+
+	lesson, err := api.GetLesson(bot.DB, id)
+	if err != nil {
+		return err
+	}
+
+	userInfo := database.ShedulesInUser{
+		L9Id: user.L9Id,
+	}
+	if _, err = bot.DB.Get(&userInfo); err != nil {
+		return err
+	}
+
+	if !(userInfo.IsAdmin && userInfo.SheduleId == lesson.GroupId) {
+		_, err = bot.SendMsg(
+			user,
+			"У вас нет привилегий для добавления заметок в расписании\n"+
+				"Обратитесь к старосте группы или другим привилегированным лицам",
+			nil,
+		)
+
+		return err
+	}
+
+	// Следующая пара того же типа
+	nextLesson := database.Lesson{
+		Type:      lesson.Type,
+		Name:      lesson.Name,
+		GroupId:   lesson.GroupId,
+		TeacherId: lesson.TeacherId,
+	}
+
+	if _, err = bot.DB.
+		Where("DATE(Begin) > ?", lesson.Begin.Format("2006-01-02")).
+		Asc("Begin").
+		Get(&nextLesson); err != nil {
+		return err
+	}
+
+	// Следующая пара с тем же преподавателем (вне зависимости от типа и названия)
+	nextStaff := database.Lesson{
+		GroupId:   lesson.GroupId,
+		TeacherId: lesson.TeacherId,
+	}
+	if _, err = bot.DB.
+		Where("DATE(Begin) > ?", lesson.Begin.Format("2006-01-02")).
+		Asc("Begin").
+		Get(&nextStaff); err != nil {
+		return err
+	}
+
+	var markup [][]tgbotapi.InlineKeyboardButton
+	if nextLesson.LessonId != 0 {
+		str := fmt.Sprintf(
+			"Следующая %s%s (%s)",
+			Icons[nextLesson.Type],
+			Comm[nextLesson.Type],
+			nextLesson.Begin.Format("02.01 15:04"),
+		)
+		q := fmt.Sprintf("add_%d", nextLesson.LessonId)
+		markup = append(
+			markup,
+			[]tgbotapi.InlineKeyboardButton{tgbotapi.NewInlineKeyboardButtonData(str, q)},
+		)
+	}
+
+	if nextStaff.LessonId != 0 {
+		staff, err := api.GetStaff(bot.DB, nextStaff.TeacherId)
+		if err != nil {
+			return err
+		}
+		str := fmt.Sprintf(
+			"Следующее с %s %s (%s)",
+			staff.FirstName,
+			staff.ShortName,
+			nextStaff.Begin.Format("02.01 15:04"),
+		)
+		q := fmt.Sprintf("add_%d", nextStaff.LessonId)
+		markup = append(
+			markup,
+			[]tgbotapi.InlineKeyboardButton{tgbotapi.NewInlineKeyboardButtonData(str, q)},
+		)
+	}
+
+	_, err = bot.SendMsg(
+		user,
+		"Выберите занятие для заметки\n\nЕсли нужного занятия нет в списке, то его можно найти в расписании на день",
+		tgbotapi.InlineKeyboardMarkup{InlineKeyboard: markup},
+	)
+
+	return err
+}
+
 func (bot *Bot) CheckBlocked(err error, user database.TgUser) {
-	if !strings.Contains(err.Error(), "blocked by the user") {
+	if strings.Contains(err.Error(), "blocked by the user") {
 		if err := bot.DeleteUser(user); err != nil {
 			log.Println(err)
 		}

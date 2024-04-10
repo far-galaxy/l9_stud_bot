@@ -78,6 +78,7 @@ func main() {
 	go sheduleCheck()
 	go handleBot()
 	// Для тестирования уведомлений
+	//go notifications()
 	/*
 		go func() {
 			now := time.Now().Truncate(time.Hour)
@@ -121,9 +122,9 @@ func handleBot() {
 }
 
 func notifications() {
-	now := time.Now()
-	now = now.Add(2 * time.Minute)
-	//now := time.Date(2023, 9, 15, 17, 20, 0, 0, time.Local)
+	//now := time.Now()
+	//now = now.Add(2 * time.Minute)
+	now := time.Date(2024, 3, 13, 9, 35, 0, 0, time.Local)
 	log.Println(now)
 	notes, err := notify.CheckNext(mainbot.DB, now)
 	if err != nil {

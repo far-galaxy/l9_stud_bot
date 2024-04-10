@@ -164,7 +164,7 @@ func Mailing(bot *tg.Bot, notes []api.Notify) {
 		switch note.NoteType {
 		case api.NextLesson:
 			txt, err = StrNext(bot.DB, note)
-			tempTime = note.Lesson.Begin.Add(80 * time.Minute)
+			tempTime = note.Lesson.Begin.Add(120 * time.Minute)
 		case api.NextDay:
 			txt, err = StrNextDay(bot, note)
 		}
@@ -181,7 +181,20 @@ func Mailing(bot *tg.Bot, notes []api.Notify) {
 				continue
 			}
 			if note.NoteType != api.NextWeek {
-				m, err := bot.SendMsg(&users[i], txt, nil)
+				var markup tgbotapi.InlineKeyboardMarkup
+				if note.NoteType == api.NextLesson {
+					markup = tgbotapi.InlineKeyboardMarkup{
+						InlineKeyboard: [][]tgbotapi.InlineKeyboardButton{
+							{
+								tgbotapi.NewInlineKeyboardButtonData(
+									"Добавить заметку",
+									fmt.Sprintf("note_%d", note.Lesson.LessonId),
+								),
+							},
+						}}
+
+				}
+				m, err := bot.SendMsg(&users[i], txt, markup)
 				if err != nil {
 					bot.CheckBlocked(err, user)
 				} else {
