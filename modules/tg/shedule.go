@@ -67,11 +67,11 @@ func (bot *Bot) GetSession(
 		Find(&lessons); err != nil {
 		return nilMsg, err
 	}
-	str := "<b>Расписание остатка сессии:</b>\n\n"
+	str := "<b>Расписание сессии:</b>\n\n"
 	if len(lessons) == 0 {
 		str = "Расписания сессии тут пока нет\n"
 		if shedule.IsPersonal {
-			str += "Как только оно появится, я обязательно сообщу!"
+			str += "Как только оно появится, я обязательно сообщу (нет)!"
 		}
 
 		markup := SummaryKeyboard(
@@ -249,7 +249,7 @@ func (bot *Bot) LoadShedule(shedule ssauparser.WeekShedule, now time.Time, fast 
 		end = start + 1
 	} else {
 		start = 24
-		end = 44
+		end = 46
 	}
 	var add, del []database.Lesson
 	for week := start; week < end; week++ {

@@ -45,8 +45,8 @@ func (bot *Bot) Find(now time.Time, user *database.TgUser, query string) (tgbota
 			user,
 			"❗️Неверный формат запроса\n"+
 				"Нужен номер группы или фамилия преподавателя, например:\n"+
-				"<b>2305</b>\n"+
-				"<b>2305-240502D</b>\n"+
+				"<b>2305</b>\nили\n"+
+				"<b>2305-240502D</b>\nили\n"+
 				"<b>Иванов</b>\n\n"+
 				"Либо попробуй новый тип поиска:\n"+
 				"stud.l9labs.ru/bot/about",

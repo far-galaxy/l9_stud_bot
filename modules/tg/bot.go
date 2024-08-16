@@ -259,8 +259,8 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 		} else if strings.Contains(msg.Text, "/session") {
 			return bot.SendMsg(
 				user,
-				"На данный момент информации о сессии пока нет",
-				//"Расписание сессии теперь можно посмотреть прямо в карточке с расписанием!",
+				//"На данный момент информации о сессии пока нет",
+				"Расписание сессии теперь можно посмотреть прямо в карточке с расписанием!",
 				nil,
 			)
 		} else if KeywordContains(msg.Text, []string{"/group", "/staff"}) {
@@ -335,7 +335,7 @@ func (bot *Bot) HandleCallback(query *tgbotapi.CallbackQuery, now time.Time) (tg
 }
 
 func (bot *Bot) CheckBlocked(err error, user database.TgUser) {
-	if !strings.Contains(err.Error(), "blocked by the user") {
+	if strings.Contains(err.Error(), "blocked by the user") {
 		if err := bot.DeleteUser(user); err != nil {
 			log.Println(err)
 		}

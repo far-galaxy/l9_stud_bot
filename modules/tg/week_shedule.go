@@ -51,7 +51,7 @@ func (bot *Bot) GetWeekSummary(
 			IsPersonal: false,
 			IsGroup:    shedule.IsGroup,
 			SheduleId:  shedule.ScheduleID,
-			Week:       week - bot.Week,
+			Week:       week,
 		}
 		cols = []string{"IsPersonal", "IsGroup"}
 	} else {
@@ -59,7 +59,7 @@ func (bot *Bot) GetWeekSummary(
 			TgId:       shedule.TgUser.TgId,
 			FileType:   database.Photo,
 			IsPersonal: true,
-			Week:       week - bot.Week,
+			Week:       week,
 		}
 		cols = []string{"IsPersonal"}
 	}
@@ -82,6 +82,11 @@ func (bot *Bot) GetWeekSummary(
 			}
 		}
 
+		gen, err := bot.SendMsg(shedule.TgUser, "Создание изображения...\n", nil)
+		if err != nil {
+			return nilMsg, err
+		}
+
 		img, err := htmlschedule.CreateWeekImg(
 			bot.DB,
 			bot.WkPath,
@@ -93,6 +98,14 @@ func (bot *Bot) GetWeekSummary(
 			caption,
 			editMsg...,
 		)
+
+		del := tgbotapi.NewDeleteMessage(
+			gen.Chat.ID,
+			gen.MessageID,
+		)
+		if _, err := bot.TG.Request(del); err != nil {
+			return nilMsg, err
+		}
 		if err != nil {
 			markup := SummaryKeyboard(
 				Week,
