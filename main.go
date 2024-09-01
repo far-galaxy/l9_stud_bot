@@ -113,6 +113,7 @@ func main() {
 func handleBot() {
 	for update := range *mainbot.Updates {
 		now := time.Now()
+		//now = now.Add(-1 * 150 * 24 * time.Hour)
 		_, err := mainbot.HandleUpdate(update, now)
 		if err != nil {
 			log.Println(err)
@@ -122,7 +123,7 @@ func handleBot() {
 
 func notifications() {
 	now := time.Now()
-	now = now.Add(2 * time.Minute)
+	now = now.Add(1 * time.Minute)
 	//now := time.Date(2023, 9, 15, 17, 20, 0, 0, time.Local)
 	log.Println(now)
 	notes, err := notify.CheckNext(mainbot.DB, now)
@@ -136,6 +137,7 @@ func notifications() {
 
 func sheduleCheck() {
 	now := time.Now()
+	//now = now.Add(-1 * 150 * 24 * time.Hour)
 
 	if now.Hour() > 8 && now.Hour() < 20 {
 		notify.CheckShedules(mainbot, now)

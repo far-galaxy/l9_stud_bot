@@ -248,8 +248,8 @@ func (bot *Bot) LoadShedule(shedule ssauparser.WeekShedule, now time.Time, fast 
 		start -= bot.Week
 		end = start + 1
 	} else {
-		start = 24
-		end = 46
+		start = 1
+		end = 24
 	}
 	var add, del []database.Lesson
 	for week := start; week < end; week++ {

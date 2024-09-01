@@ -105,6 +105,7 @@ func (bot *Bot) SendMsg(user *database.TgUser, text string, markup interface{}) 
 	msg := tgbotapi.NewMessage(user.TgId, text)
 	msg.ParseMode = tgbotapi.ModeHTML
 	msg.ReplyMarkup = markup
+	msg.DisableWebPagePreview = true
 
 	return bot.TG.Send(msg)
 }
@@ -259,8 +260,8 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 		} else if strings.Contains(msg.Text, "/session") {
 			return bot.SendMsg(
 				user,
-				//"На данный момент информации о сессии пока нет",
-				"Расписание сессии теперь можно посмотреть прямо в карточке с расписанием!",
+				"На данный момент информации о сессии пока нет",
+				//"Расписание сессии теперь можно посмотреть прямо в карточке с расписанием!",
 				nil,
 			)
 		} else if KeywordContains(msg.Text, []string{"/group", "/staff"}) {

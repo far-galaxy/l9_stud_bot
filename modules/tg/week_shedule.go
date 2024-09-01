@@ -116,7 +116,7 @@ func (bot *Bot) GetWeekSummary(
 			if strings.Contains(err.Error(), "no lessons") {
 				return bot.SendMsg(
 					shedule.TgUser,
-					fmt.Sprintf("На %d (%d) неделе занятий нет", week+29, week+52),
+					fmt.Sprintf("На %d неделе занятий нет", week),
 					markup,
 				)
 			}
