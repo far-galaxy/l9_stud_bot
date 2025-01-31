@@ -200,7 +200,10 @@ func ParseLesson(s *goquery.Selection, isGroup bool, sheduleID int64) []Lesson {
 			if err != nil {
 				return
 			}
-			teacherID = append(teacherID, id)
+			// Предотвращаем дублирование
+			if !slices.Contains(teacherID, id) {
+				teacherID = append(teacherID, id)
+			}
 		})
 
 		l.Find("a.schedule__group").Each(func(_ int, gr *goquery.Selection) {
@@ -208,7 +211,9 @@ func ParseLesson(s *goquery.Selection, isGroup bool, sheduleID int64) []Lesson {
 			if err != nil {
 				return
 			}
-			groupID = append(groupID, id)
+			if !slices.Contains(groupID, id) {
+				groupID = append(groupID, id)
+			}
 			lesson.parseTeacherSubgroups(isGroup, gr)
 		})
 
@@ -273,7 +278,7 @@ func (lesson *Lesson) parseSubgroups(isGroup bool, groupID []int64, l *goquery.S
 
 // Определение типа занятия
 func (lesson *Lesson) parseType(name *goquery.Selection) {
-	if strings.ToLower(lesson.Name) == "военная" {
+	if strings.Contains(strings.ToLower(lesson.Name), "военная") {
 		lesson.Type = database.Military
 
 		return
