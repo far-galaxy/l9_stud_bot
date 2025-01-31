@@ -110,6 +110,19 @@ func (bot *Bot) SendMsg(user *database.TgUser, text string, markup interface{}) 
 	return bot.TG.Send(msg)
 }
 
+func (bot *Bot) DelMsg(msg tgbotapi.Message) error {
+	del := tgbotapi.NewDeleteMessage(
+		msg.Chat.ID,
+		msg.MessageID,
+	)
+	_, err := bot.TG.Request(del)
+	if err != nil && strings.Contains(err.Error(), "can't be deleted") {
+		err = nil
+	}
+
+	return err
+}
+
 // Получение данных о пользователе из БД и создание нового при необходимости
 func InitUser(db *xorm.Engine, user *tgbotapi.User) (*database.TgUser, error) {
 	id := user.ID
