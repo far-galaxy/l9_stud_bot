@@ -170,6 +170,12 @@ func (bot *Bot) GenerateICS(
 			teacherName = fmt.Sprintf("%s %s", staff.FirstName, staff.LastName)
 		}
 
+		if lesson.Type == database.Military {
+			dayStr := lesson.Begin.Format("2006-01-02")
+			lesson.Begin, _ = time.Parse("2006-01-02 15:04 -07", dayStr+" 08:30 +04")
+			lesson.End, _ = time.Parse("2006-01-02 15:04 -07", dayStr+" 17:20 +04")
+		}
+
 		l := LessonStr{
 			TypeIcon:    Icons[lesson.Type],
 			TypeStr:     Comm[lesson.Type],
