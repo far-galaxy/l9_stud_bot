@@ -22,15 +22,17 @@ func (bot *Bot) GetSheduleFromCmd(
 	tgbotapi.Message,
 	error,
 ) {
+	note := "\n\n<i>Данная команда служебная и используется для нового поиска расписания</i>\n" +
+		"https://stud.l9labs.ru/bot/about"
 	isGroup := strings.Contains(query, "/group")
 	cmd := strings.Split(query, " ")
 	if len(cmd) == 1 {
-		return bot.SendMsg(user, "Необходимо указать ID расписания",
+		return bot.SendMsg(user, "Не указан ID расписания"+note,
 			nilKey)
 	}
 	sheduleID, err := strconv.ParseInt(cmd[1], 10, 64)
 	if err != nil {
-		return bot.SendMsg(user, "Некорректный ID расписания",
+		return bot.SendMsg(user, "Некорректный ID расписания"+note,
 			nilKey)
 	}
 	shedule := ssauparser.WeekShedule{
@@ -69,7 +71,7 @@ func (bot *Bot) GetSession(
 	if len(lessons) == 0 {
 		str = "Расписания сессии тут пока нет\n"
 		if shedule.IsPersonal {
-			str += "Как только оно появится, я обязательно сообщу!"
+			str += "Как только оно появится, я обязательно сообщу (нет)!"
 		}
 
 		markup := SummaryKeyboard(
@@ -147,6 +149,7 @@ func (bot *Bot) GetPersonal(
 	}
 
 	return bot.GetWeekSummary(now, shedule, -1, "", editMsg...)
+	//return bot.GetSession(shedule, editMsg...)
 
 }
 
@@ -238,6 +241,7 @@ func (bot *Bot) LoadShedule(shedule ssauparser.WeekShedule, now time.Time, fast 
 	sh := ssauparser.WeekShedule{
 		SheduleID: shedule.SheduleID,
 		IsGroup:   shedule.IsGroup,
+		WeekBegin: bot.Week,
 	}
 	var start, end int
 	if fast {
@@ -245,8 +249,9 @@ func (bot *Bot) LoadShedule(shedule ssauparser.WeekShedule, now time.Time, fast 
 		start -= bot.Week
 		end = start + 1
 	} else {
-		start = 1
-		end = 25
+		// TODO: добавить эти значения в переменные окружения
+		start = 19
+		end = 40
 	}
 	var add, del []database.Lesson
 	for week := start; week < end; week++ {

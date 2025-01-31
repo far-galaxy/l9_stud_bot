@@ -67,6 +67,9 @@ th.head {
 	padding: 5px;
 	font-size: 1.05rem
 }
+th.head.month {
+	background-color: #1B60FF;
+}
 
 th.subj,
 th.time {
@@ -81,10 +84,6 @@ th.time {
 .subj h2,
 .subj p {
 	font-size: .85rem
-}
-
-th.subj:not(.lab, .lect, .pract, .other) {
-	background-color: #a9a9a9
 }
 
 .subj div {
@@ -112,21 +111,26 @@ th.subj:not(.lab, .lect, .pract, .other) {
 	font-weight: 400
 }
 
-.lect div {
-	background-color: #7fff00
+.lect div, .types th.lect {
+	background-color: #7fff00;
 }
 
-.pract div {
-	background-color: #dc143c
+.pract div, .types th.pract {
+	background-color: #dc143c;
 }
 
-.lab div {
-	background-color: #8a2be2
+.lab div, .types th.lab {
+	background-color: #8a2be2;
+}
+
+.kurs div, .types th.kurs {
+	background-color:#fd80ef;
 }
 
 .mil div,
-.other div {
-	background-color: #ff8c00
+.other div,
+.types th.other {
+	background-color: #ff8c00;
 }
 
 .window div {
@@ -141,13 +145,31 @@ th.subj:not(.lab, .lect, .pract, .other) {
 	background-color: purple
 }
 
-.kurs div {
-	background-color: orange
+
+.types tr {
+	margin-top: 5px;
+	margin-bottom: 5px;
+}
+.types th {
+	font-family: monospace;
+	font-size: 1.1rem;
+	margin: 5px;
+	border-radius: 10px;
+	padding: 10px;
 }
 </style>
 
 <body>
     <div class="note"><div id="week">{{.Header}}</div></div>
+	<table class="types">
+		<tr>
+		<th class="lect">Лекция</th>
+		<th class="pract">Практика</th>
+		<th class="lab">Лабораторная</th>
+		<th class="other">Прочее</th>
+		<th class="kurs">Курсовая</th>
+		</tr>
+	</div>
     <table class="rasp">
         <tr>
             <th class="head" style="width: 4rem">Время</th>

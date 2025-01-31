@@ -1,6 +1,7 @@
 package tg
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -50,7 +51,7 @@ func (bot *Bot) GetWeekSummary(
 			IsPersonal: false,
 			IsGroup:    shedule.IsGroup,
 			SheduleId:  shedule.ScheduleID,
-			Week:       week - bot.Week,
+			Week:       week,
 		}
 		cols = []string{"IsPersonal", "IsGroup"}
 	} else {
@@ -58,7 +59,7 @@ func (bot *Bot) GetWeekSummary(
 			TgId:       shedule.TgUser.TgId,
 			FileType:   database.Photo,
 			IsPersonal: true,
-			Week:       week - bot.Week,
+			Week:       week,
 		}
 		cols = []string{"IsPersonal"}
 	}
@@ -81,6 +82,11 @@ func (bot *Bot) GetWeekSummary(
 			}
 		}
 
+		gen, err := bot.SendMsg(shedule.TgUser, "Создание изображения...\n", nil)
+		if err != nil {
+			return nilMsg, err
+		}
+
 		img, err := htmlschedule.CreateWeekImg(
 			bot.DB,
 			bot.WkPath,
@@ -92,6 +98,14 @@ func (bot *Bot) GetWeekSummary(
 			caption,
 			editMsg...,
 		)
+
+		del := tgbotapi.NewDeleteMessage(
+			gen.Chat.ID,
+			gen.MessageID,
+		)
+		if _, err := bot.TG.Request(del); err != nil {
+			return nilMsg, err
+		}
 		if err != nil {
 			markup := SummaryKeyboard(
 				Week,
@@ -100,8 +114,13 @@ func (bot *Bot) GetWeekSummary(
 				false,
 			)
 			if strings.Contains(err.Error(), "no lessons") {
-				return nilMsg, err
+				return bot.SendMsg(
+					shedule.TgUser,
+					fmt.Sprintf("На %d неделе занятий нет", week),
+					markup,
+				)
 			}
+			fmt.Println(err)
 
 			return bot.SendMsg(shedule.TgUser, "Возникла ошибка при создании изображения", markup)
 		}
@@ -149,6 +168,8 @@ func (bot *Bot) SendWeekImg(
 	}
 	resp, err := bot.TG.Send(photo)
 	if err != nil {
+		fmt.Println(err)
+
 		return bot.SendMsg(shedule.TgUser, "Возникла ошибка при отправке изображения", nil)
 	}
 	file := database.File{

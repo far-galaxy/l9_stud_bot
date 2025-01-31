@@ -40,12 +40,14 @@ func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 	if err != nil {
 		log.Println(err)
 	}
+	log.Printf("check group %s end", group.GroupName)
 	// Очищаем от лишних пар
 	var nAdd, nDel []database.Lesson
 	_, nowWeek := now.ISOWeek()
 	for _, a := range add {
 		_, addWeek := a.Begin.ISOWeek()
-		if a.GroupId == group.GroupId &&
+		if a.Begin.After(now) &&
+			a.GroupId == group.GroupId &&
 			(addWeek == nowWeek ||
 				addWeek == nowWeek+1) {
 			nAdd = append(nAdd, a)
@@ -53,7 +55,8 @@ func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 	}
 	for _, d := range del {
 		_, delWeek := d.Begin.ISOWeek()
-		if d.GroupId == group.GroupId &&
+		if d.Begin.After(now) &&
+			d.GroupId == group.GroupId &&
 			(delWeek == nowWeek || delWeek == nowWeek+1) {
 			nDel = append(nDel, d)
 		}
@@ -65,7 +68,8 @@ func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 			log.Println(err)
 		}
 		var str string
-		str = "‼ Обнаружены изменения в расписании\n"
+		str = "‼ Обнаружены изменения в расписании\n" +
+			"(показаны на эту и следующую недели)\n\n"
 		str = strChanges(nAdd, str, true)
 		str = strChanges(nDel, str, false)
 		var users []database.TgUser
@@ -87,24 +91,26 @@ func CheckGroup(now time.Time, group database.Group, bot *tg.Bot) {
 
 func strChanges(add []database.Lesson, str string, isAdd bool) string {
 	addLen := len(add)
-	if addLen > 0 {
-		if addLen > 10 {
-			add = add[:10]
-		}
-		if isAdd {
-			str += "➕ Добавлено:\n"
-		} else {
-			str += "➖ Удалено:\n"
-		}
-		for _, a := range add {
-			str += ShortPairStr(a)
-		}
-		/*
-			if add_len > 0 {
-				str += fmt.Sprintf("\nВсего замен: %d\n\n", add_len)
-			}
-		*/
+	if addLen == 0 {
+		return str
 	}
+
+	if addLen > 10 {
+		add = add[:10]
+	}
+	if isAdd {
+		str += "➕ Добавлено:\n"
+	} else {
+		str += "➖ Удалено:\n"
+	}
+	for _, a := range add {
+		str += ShortPairStr(a)
+	}
+	/*
+		if add_len > 0 {
+			str += fmt.Sprintf("\nВсего замен: %d\n\n", add_len)
+		}
+	*/
 
 	return str
 }

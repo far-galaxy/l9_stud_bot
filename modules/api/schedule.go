@@ -179,5 +179,6 @@ func GetLastUpdate(db *xorm.Engine, sh database.Schedule) (time.Time, error) {
 		}
 		lastUpd = staff.LastUpd
 	}
+
 	return lastUpd, nil
 }

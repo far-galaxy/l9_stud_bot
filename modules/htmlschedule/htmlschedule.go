@@ -37,6 +37,13 @@ func CreateWeekImg(
 	}
 
 	var header string
+
+	// Костыль для нумерации недель после нового года
+	needToAdd := false
+	if week < 0 {
+		week += 52
+		needToAdd = true
+	}
 	if shedule.IsPersonal {
 		header = fmt.Sprintf("Моё расписание, %d неделя", week)
 	} else if shedule.IsGroup {
@@ -50,7 +57,10 @@ func CreateWeekImg(
 		if err != nil {
 			return photoFileBytes, err
 		}
-		header = fmt.Sprintf("%s %s, %d неделя", staff.FirstName, staff.LastName, week)
+		header = fmt.Sprintf("%s %s, %d  неделя", staff.FirstName, staff.LastName, week)
+	}
+	if needToAdd {
+		week -= 52
 	}
 
 	html, err := CreateHTMLShedule(db, shedule.IsGroup, header, table)

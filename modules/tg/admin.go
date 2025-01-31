@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"stud.l9labs.ru/bot/modules/api"
@@ -83,14 +84,21 @@ func (bot *Bot) Scream(msg *tgbotapi.Message) (tgbotapi.Message, error) {
 		0,
 		strings.TrimPrefix(msg.Text, "/scream"),
 	)
-	for i, u := range users {
-		scream.ChatID = u.TgId
-		if _, err := bot.TG.Send(scream); err != nil {
-			bot.CheckBlocked(err, users[i])
+	go func() {
+		for i, u := range users {
+			scream.ChatID = u.TgId
+			if _, err := bot.TG.Send(scream); err != nil {
+				bot.CheckBlocked(err, users[i])
+			}
+			if i != 0 && i%75 == 0 {
+				bot.Debug.Printf("Delay %d", i)
+				time.Sleep(5 * time.Minute)
+			}
 		}
-	}
+		bot.Debug.Printf("Scream end")
+	}()
 	scream.ChatID = bot.TestUser
-	scream.Text = "Сообщения отправлены"
+	//scream.Text = "Сообщения отправлены"
 
 	return bot.TG.Send(scream)
 }
@@ -113,14 +121,19 @@ func (bot *Bot) Stat() (tgbotapi.Message, error) {
 
 	res, err := bot.DB.Query("SELECT G.GroupName, COUNT(U.L9Id) AS UserCount " +
 		"FROM `Group` G LEFT JOIN ShedulesInUser U ON G.GroupId = U.SheduleId " +
-		"GROUP BY G.GroupName HAVING UserCount > 0 ORDER BY UserCount DESC;")
+		"GROUP BY G.GroupName HAVING UserCount > 0 ORDER BY UserCount DESC")
 	if err != nil {
 		return nilMsg, err
 	}
 
-	for _, r := range res {
+	for i, r := range res {
 		txt += fmt.Sprintf("%s | %s\n", r["GroupName"], r["UserCount"])
+		if i >= 30 {
+			break
+		}
 	}
+
+	txt += fmt.Sprintf("\n Всего групп: %d", len(res))
 	stat := tgbotapi.NewMessage(bot.TestUser, txt)
 
 	return bot.TG.Send(stat)

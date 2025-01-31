@@ -57,19 +57,19 @@ func (sh *WeekShedule) Parse(p Page, uncover bool) error {
 	GetSheduleInfo(doc, sh)
 
 	var rawDates []string
-	doc.Find(".schedule__head-date").Each(func(i int, s *goquery.Selection) {
+	doc.Find(".schedule__head-date").Each(func(_ int, s *goquery.Selection) {
 		shDate := s.Text()
 		rawDates = append(rawDates, shDate)
 	})
 
 	var rawTimes []string
-	doc.Find(".schedule__time-item").Each(func(i int, s *goquery.Selection) {
+	doc.Find(".schedule__time-item").Each(func(_ int, s *goquery.Selection) {
 		shTime := s.Text() + "+04"
 		rawTimes = append(rawTimes, shTime)
 	})
 
 	var lessons [][]Lesson
-	doc.Find(".schedule__item:not(.schedule__head)").Each(func(i int, s *goquery.Selection) {
+	doc.Find(".schedule__item:not(.schedule__head)").Each(func(_ int, s *goquery.Selection) {
 		sl := ParseLesson(s, p.IsGroup, p.ID)
 		lessons = append(lessons, sl)
 	})
@@ -185,30 +185,35 @@ var types = []database.Kind{
 // Парсинг занятия
 func ParseLesson(s *goquery.Selection, isGroup bool, sheduleID int64) []Lesson {
 	var lessons []Lesson
-	s.Find(".schedule__lesson").Each(func(j int, l *goquery.Selection) {
+	s.Find(".schedule__lesson").Each(func(_ int, l *goquery.Selection) {
 		var lesson Lesson
 
 		name := l.Find("div.schedule__discipline").First()
 		lesson.Name = strings.TrimSpace(name.Text())
-		lesson.parseType(name)
+		lesson.parseType(l.Find("div.schedule__lesson-type-color").First())
 
 		var teacherID []int64
 		var groupID []int64
 
-		l.Find(".schedule__teacher a").Each(func(k int, gr *goquery.Selection) {
+		l.Find(".schedule__teacher a").Each(func(_ int, gr *goquery.Selection) {
 			id, err := strconv.ParseInt(gr.AttrOr("href", "/rasp?staffId=")[14:], 0, 64)
 			if err != nil {
 				return
 			}
-			teacherID = append(teacherID, id)
+			// Предотвращаем дублирование
+			if !slices.Contains(teacherID, id) {
+				teacherID = append(teacherID, id)
+			}
 		})
 
-		l.Find("a.schedule__group").Each(func(k int, gr *goquery.Selection) {
+		l.Find("a.schedule__group").Each(func(_ int, gr *goquery.Selection) {
 			id, err := strconv.ParseInt(gr.AttrOr("href", "/rasp?groupId=")[14:], 0, 64)
 			if err != nil {
 				return
 			}
-			groupID = append(groupID, id)
+			if !slices.Contains(groupID, id) {
+				groupID = append(groupID, id)
+			}
 			lesson.parseTeacherSubgroups(isGroup, gr)
 		})
 
@@ -273,15 +278,13 @@ func (lesson *Lesson) parseSubgroups(isGroup bool, groupID []int64, l *goquery.S
 
 // Определение типа занятия
 func (lesson *Lesson) parseType(name *goquery.Selection) {
-	if strings.ToLower(lesson.Name) == "военная подготовка" {
+	if strings.Contains(strings.ToLower(lesson.Name), "военная") {
 		lesson.Type = database.Military
 
 		return
 	}
-	lType := name.AttrOr("class", "lesson-color-type-4")
-	t := strings.Split(lType, " ")
-	lType = t[len(t)-1]
-	typeIdx, err := strconv.ParseInt(lType[len(lType)-1:], 0, 8)
+	lType := name.AttrOr("class", "schedule__lesson-type-color lesson-type-4__color")
+	typeIdx, err := strconv.ParseInt(string(lType[40]), 0, 8)
 	if err != nil {
 		lesson.Type = database.Other
 
