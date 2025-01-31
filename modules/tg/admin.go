@@ -121,14 +121,19 @@ func (bot *Bot) Stat() (tgbotapi.Message, error) {
 
 	res, err := bot.DB.Query("SELECT G.GroupName, COUNT(U.L9Id) AS UserCount " +
 		"FROM `Group` G LEFT JOIN ShedulesInUser U ON G.GroupId = U.SheduleId " +
-		"GROUP BY G.GroupName HAVING UserCount > 0 ORDER BY UserCount DESC;")
+		"GROUP BY G.GroupName HAVING UserCount > 0 ORDER BY UserCount DESC")
 	if err != nil {
 		return nilMsg, err
 	}
 
-	for _, r := range res {
+	for i, r := range res {
 		txt += fmt.Sprintf("%s | %s\n", r["GroupName"], r["UserCount"])
+		if i >= 30 {
+			break
+		}
 	}
+
+	txt += fmt.Sprintf("\n Всего групп: %d", len(res))
 	stat := tgbotapi.NewMessage(bot.TestUser, txt)
 
 	return bot.TG.Send(stat)

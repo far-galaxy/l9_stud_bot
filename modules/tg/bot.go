@@ -191,7 +191,11 @@ func (bot *Bot) HandleUpdate(update tgbotapi.Update, now ...time.Time) (tgbotapi
 
 func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Message, error) {
 	if bot.IsDebug && msg.From.ID != bot.TestUser {
-		return nilMsg, nil
+		return bot.SendMsg(
+			&database.TgUser{TgId: msg.From.ID},
+			"Бот на техническом обслуживании, но скоро вернётся в работу",
+			nilKey,
+		)
 	}
 	// Игнорируем "сообщения" о входе в чат
 	if len(msg.NewChatMembers) != 0 || msg.LeftChatMember != nil {
@@ -260,8 +264,8 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 		} else if strings.Contains(msg.Text, "/session") {
 			return bot.SendMsg(
 				user,
-				"На данный момент информации о сессии пока нет",
-				//"Расписание сессии теперь можно посмотреть прямо в карточке с расписанием!",
+				//"На данный момент информации о сессии пока нет",
+				"Расписание сессии теперь можно посмотреть прямо в карточке с расписанием!",
 				nil,
 			)
 		} else if KeywordContains(msg.Text, []string{"/group", "/staff"}) {
@@ -286,10 +290,19 @@ func (bot *Bot) HandleMessage(msg *tgbotapi.Message, now time.Time) (tgbotapi.Me
 }
 
 func (bot *Bot) HandleCallback(query *tgbotapi.CallbackQuery, now time.Time) (tgbotapi.Message, error) {
+	if bot.IsDebug && query.From.ID != bot.TestUser {
+		return bot.SendMsg(
+			&database.TgUser{TgId: query.From.ID},
+			"Бот на техническом обслуживании, но скоро вернётся в работу",
+			nilKey,
+		)
+	}
+
 	user, err := InitUser(bot.DB, query.From)
 	if err != nil {
 		return nilMsg, err
 	}
+
 	bot.Debug.Printf("Callback [%10d:%10d] %s", user.L9Id, user.TgId, query.Data)
 	bot.Callbacks++
 	if query.Data == "cancel" {

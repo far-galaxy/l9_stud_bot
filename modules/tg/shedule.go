@@ -149,6 +149,7 @@ func (bot *Bot) GetPersonal(
 	}
 
 	return bot.GetWeekSummary(now, shedule, -1, "", editMsg...)
+	//return bot.GetSession(shedule, editMsg...)
 
 }
 
@@ -248,8 +249,9 @@ func (bot *Bot) LoadShedule(shedule ssauparser.WeekShedule, now time.Time, fast 
 		start -= bot.Week
 		end = start + 1
 	} else {
-		start = 1
-		end = 24
+		// TODO: добавить эти значения в переменные окружения
+		start = 19
+		end = 40
 	}
 	var add, del []database.Lesson
 	for week := start; week < end; week++ {
