@@ -149,6 +149,7 @@ func (bot *Bot) GetPersonal(
 	}
 
 	return bot.GetWeekSummary(now, shedule, -1, "", editMsg...)
+	//return bot.GetSession(shedule, editMsg...)
 
 }
 
