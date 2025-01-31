@@ -95,6 +95,8 @@ type Lesson struct {
 	Comment      string
 	SubGroup     int64
 	Hash         string
+	Created      time.Time `xorm:"created"`
+	Updated      time.Time `xorm:"updated"`
 }
 
 // Файлы, залитые в Telegram
