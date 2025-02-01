@@ -66,7 +66,7 @@ func InitBot(db database.DB, token string, build string) (*Bot, error) {
 	var bot Bot
 	bot.Build = build
 	bot.IsDebug = os.Getenv("DEBUG") == "1"
-	engine, err := database.Connect(db, database.InitLog("sql"))
+	engine, err := database.Connect(db, database.InitLog("sql", time.Hour*24))
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func InitBot(db database.DB, token string, build string) (*Bot, error) {
 	}
 	bot.TG.Debug = true
 	//logger := log.New(io.MultiWriter(os.Stdout, database.CreateLog("tg")), "", log.LstdFlags)
-	logger := log.New(database.InitLog("tg"), "", log.LstdFlags)
+	logger := log.New(database.InitLog("tg", time.Hour*24*14), "", log.LstdFlags)
 	err = tgbotapi.SetLogger(logger)
 	if err != nil {
 		return nil, err
@@ -88,7 +88,7 @@ func InitBot(db database.DB, token string, build string) (*Bot, error) {
 
 	bot.Name = bot.TG.Self.UserName
 	log.Printf("Authorized on account %s", bot.Name)
-	bot.Debug = log.New(io.MultiWriter(os.Stderr, database.InitLog("messages")), "", log.LstdFlags)
+	bot.Debug = log.New(io.MultiWriter(os.Stderr, database.InitLog("messages", time.Hour*24*14)), "", log.LstdFlags)
 
 	return &bot, nil
 }
@@ -108,6 +108,19 @@ func (bot *Bot) SendMsg(user *database.TgUser, text string, markup interface{}) 
 	msg.DisableWebPagePreview = true
 
 	return bot.TG.Send(msg)
+}
+
+func (bot *Bot) DelMsg(msg tgbotapi.Message) error {
+	del := tgbotapi.NewDeleteMessage(
+		msg.Chat.ID,
+		msg.MessageID,
+	)
+	_, err := bot.TG.Request(del)
+	if err != nil && strings.Contains(err.Error(), "can't be deleted") {
+		err = nil
+	}
+
+	return err
 }
 
 // Получение данных о пользователе из БД и создание нового при необходимости

@@ -99,11 +99,7 @@ func (bot *Bot) GetWeekSummary(
 			editMsg...,
 		)
 
-		del := tgbotapi.NewDeleteMessage(
-			gen.Chat.ID,
-			gen.MessageID,
-		)
-		if _, err := bot.TG.Request(del); err != nil {
+		if err := bot.DelMsg(gen); err != nil {
 			return nilMsg, err
 		}
 		if err != nil {
@@ -185,13 +181,7 @@ func (bot *Bot) SendWeekImg(
 	_, err = bot.DB.InsertOne(file)
 
 	if len(editMsg) != 0 {
-		del := tgbotapi.NewDeleteMessage(
-			editMsg[0].Chat.ID,
-			editMsg[0].MessageID,
-		)
-		if _, err := bot.TG.Request(del); err != nil {
-			return nilMsg, err
-		}
+		err = bot.DelMsg(editMsg[0])
 	}
 
 	return nilMsg, err

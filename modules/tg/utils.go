@@ -202,8 +202,40 @@ func GenerateButtonTail(sheduleID int64, dt int, isGroup bool) string {
 	return tail
 }
 
+func (bot *Bot) EditImg(
+	msg tgbotapi.Message,
+	imageID string,
+	markup tgbotapi.InlineKeyboardMarkup,
+) error {
+	params := make(tgbotapi.Params)
+
+	if err := params.AddFirstValid("chat_id", msg.Chat.ID); err != nil {
+		return err
+	}
+	params.AddNonZero("message_id", msg.MessageID)
+	err := params.AddInterface(
+		"media",
+		tgbotapi.InputMediaPhoto{
+			BaseInputMedia: tgbotapi.BaseInputMedia{
+				Type:  "photo",
+				Media: tgbotapi.FileID(imageID),
+			},
+		},
+	)
+	if len(markup.InlineKeyboard) != 0 {
+		err = params.AddInterface("reply_markup", markup)
+	}
+
+	if err != nil {
+		return err
+	}
+
+	_, err = bot.TG.MakeRequest("editMessageMedia", params)
+
+	return err
+}
+
 // Отправка сообщения или его редактирование, если в editMsg указано сообщение
-// TODO: Обрабатывать старые сообщения, которые уже нельзя редактировать (message can't be deleted for everyone)
 func (bot *Bot) EditOrSend(
 	id int64,
 	str string,
@@ -219,25 +251,7 @@ func (bot *Bot) EditOrSend(
 		// Редактируем
 		if imageID != "" {
 			// Обновляем фото, если есть
-			// TODO: реализовать нормальное обновление фото, когда нужный метод появится в tgbotapi
-			del := tgbotapi.NewDeleteMessage(
-				editMsg[0].Chat.ID,
-				editMsg[0].MessageID,
-			)
-			if _, err := bot.TG.Request(del); err != nil {
-				return nilMsg, err
-			}
-			newMsg := tgbotapi.NewPhoto(
-				editMsg[0].Chat.ID,
-				tgbotapi.FileID(imageID),
-			)
-			newMsg.Caption = str
-			newMsg.ParseMode = tgbotapi.ModeHTML
-			if len(markup.InlineKeyboard) != 0 {
-				newMsg.ReplyMarkup = &markup
-			}
-
-			return bot.TG.Send(newMsg)
+			return nilMsg, bot.EditImg(editMsg[0], imageID, markup)
 		} else if len(editMsg[0].Photo) == 0 {
 			// Фото нет и не было, только текст
 			msg := tgbotapi.NewEditMessageText(
@@ -256,11 +270,7 @@ func (bot *Bot) EditOrSend(
 			return nilMsg, nil
 		}
 		// Фото было, но теперь его не будет
-		del := tgbotapi.NewDeleteMessage(
-			editMsg[0].Chat.ID,
-			editMsg[0].MessageID,
-		)
-		if _, err := bot.TG.Request(del); err != nil {
+		if err := bot.DelMsg(editMsg[0]); err != nil {
 			return nilMsg, err
 		}
 

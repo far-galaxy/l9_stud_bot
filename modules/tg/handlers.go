@@ -46,8 +46,7 @@ func (bot *Bot) ReturnSummary(
 		if err != nil {
 			return nilMsg, err
 		}
-		del := tgbotapi.NewDeleteMessage(Smsg.Chat.ID, Smsg.MessageID)
-		if _, err := bot.TG.Request(del); err != nil {
+		if err := bot.DelMsg(Smsg); err != nil {
 			return nilMsg, err
 		}
 	}

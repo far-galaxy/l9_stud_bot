@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/joho/godotenv"
 	"stud.l9labs.ru/bot/modules/database"
@@ -19,7 +20,7 @@ func prepareDB() *xorm.Engine {
 		Pass:   os.Getenv("MYSQL_PASS"),
 		Schema: os.Getenv("MYSQL_DB"),
 	}
-	db, err := database.Connect(DB, database.InitLog("sql"))
+	db, err := database.Connect(DB, database.InitLog("sql", time.Hour*24*14))
 	if err != nil {
 		log.Println(err)
 
