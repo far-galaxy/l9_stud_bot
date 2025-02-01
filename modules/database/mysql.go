@@ -78,7 +78,7 @@ func GenerateID(engine *xorm.Engine, table any) (int64, error) {
 //
 // Каждые 24 часа будет создаваться новый файл, логи старше 14 дней удаляются.
 // Также создаётся симлинк актуального лога "name.log"
-func InitLog(name string) *rotatelogs.RotateLogs {
+func InitLog(name string, liveTime time.Duration) *rotatelogs.RotateLogs {
 	// Создание папки с логами
 	if _, err := os.Stat("logs"); os.IsNotExist(err) {
 		err = os.Mkdir("logs", os.ModePerm)
@@ -100,7 +100,7 @@ func InitLog(name string) *rotatelogs.RotateLogs {
 	writer, err := rotatelogs.New(
 		fmt.Sprintf("%s.%s", path, "%Y-%m-%d.%H%M%S"),
 		rotatelogs.WithLinkName(fmt.Sprintf("%s/logs/%s.log", abspath, name)),
-		rotatelogs.WithMaxAge(time.Hour*24*14),
+		rotatelogs.WithMaxAge(liveTime),
 		rotatelogs.WithRotationTime(time.Hour*24),
 	)
 	if err != nil {

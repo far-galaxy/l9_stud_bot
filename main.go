@@ -26,7 +26,7 @@ func main() {
 		log.Fatal(err)
 	}
 	ssauparser.HeadURL = os.Getenv("RASP_URL")
-	log.SetOutput(io.MultiWriter(os.Stderr, database.InitLog("error")))
+	log.SetOutput(io.MultiWriter(os.Stderr, database.InitLog("error", time.Hour*24*14)))
 	help, err := os.ReadFile("templates/help.txt")
 	if err != nil {
 		log.Fatal("help.txt not found! please create one in \"templates\" folder")

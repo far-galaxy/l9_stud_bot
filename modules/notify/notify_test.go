@@ -18,7 +18,7 @@ var TestDB = database.DB{
 }
 
 func TestCheckNext(t *testing.T) {
-	db, err := database.Connect(TestDB, database.InitLog("sql"))
+	db, err := database.Connect(TestDB, database.InitLog("sql", time.Hour*24*14))
 	if err != nil {
 		t.Fatal(err)
 	}
