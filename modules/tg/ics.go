@@ -124,9 +124,12 @@ func (bot *Bot) SendICS(user *database.TgUser, id int64, query []tgbotapi.Callba
 	if _, err := bot.SendMsg(
 		user,
 		fmt.Sprintf(
-			"📖 Инструкция по установке: https://stud.l9labs.ru/bot/ics\n\n"+
+			"📖 Инструкция по установке: "+
+				os.Getenv("L9_ICS_HELP_LINK")+
+				"\n\n"+
 				"Ссылка для Календаря:\n"+
-				"https://stud.l9labs.ru/ics/%d.ics\n\n"+
+				os.Getenv("L9_ICS_LINK_FORMAT")+
+				"\n\n"+
 				"‼️ Файл по данной ссылке <b>не для скачивания</b> ‼️\n"+
 				"Иначе не будет синхронизации\n\n ",
 			id,
