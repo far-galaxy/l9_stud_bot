@@ -17,6 +17,8 @@ var TestDB = database.DB{
 	User:   "root",
 	Pass:   "18064",
 	Schema: "l9_db_test",
+	Host:   "localhost",
+	Port:   "3306",
 }
 
 var TestUser = tgbotapi.User{
@@ -44,9 +46,11 @@ func InitTestBot() *Bot {
 		log.Fatal(err)
 	}
 	DB := database.DB{
-		User:   os.Getenv("MYSQL_USER"),
-		Pass:   os.Getenv("MYSQL_PASS"),
-		Schema: os.Getenv("MYSQL_DB"),
+		User:   os.Getenv("L9_MYSQL_USER"),
+		Pass:   os.Getenv("L9_MYSQL_PASS"),
+		Schema: os.Getenv("L9_MYSQL_DATABASE"),
+		Host:   os.Getenv("L9_MYSQL_HOST"),
+		Port:   os.Getenv("L9_MYSQL_PORT"),
 	}
 	bot, err := InitBot(DB, os.Getenv("TELEGRAM_APITOKEN"), "test")
 	bot.StartTxt = "Привет!"

@@ -69,9 +69,11 @@ func TestFirstMailing(t *testing.T) {
 	}
 	bot, err := tg.InitBot(
 		database.DB{
-			User:   os.Getenv("MYSQL_USER"),
-			Pass:   os.Getenv("MYSQL_PASS"),
-			Schema: os.Getenv("MYSQL_DB"),
+			User:   os.Getenv("L9_MYSQL_USER"),
+			Pass:   os.Getenv("L9_MYSQL_PASS"),
+			Schema: os.Getenv("L9_MYSQL_DATABASE"),
+			Host:   os.Getenv("L9_MYSQL_HOST"),
+			Port:   os.Getenv("L9_MYSQL_PORT"),
 		},
 		os.Getenv("TELEGRAM_APITOKEN"),
 		"test",
