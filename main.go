@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -65,17 +64,17 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	shedulePeriod, err := strconv.Atoi(os.Getenv("SHEDULES_CHECK_PERIOD"))
-	if err != nil {
-		log.Fatal(err)
-	}
-	_, err = c.AddFunc(fmt.Sprintf("@every %dm", shedulePeriod), sheduleCheck)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// shedulePeriod, err := strconv.Atoi(os.Getenv("SHEDULES_CHECK_PERIOD"))
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// _, err = c.AddFunc(fmt.Sprintf("@every %dm", shedulePeriod), sheduleCheck)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 	c.Start()
 	log.Println("Started")
-	go sheduleCheck()
+	//	go sheduleCheck()
 	go handleBot()
 	// Для тестирования уведомлений
 	/*
@@ -123,7 +122,7 @@ func handleBot() {
 
 func notifications() {
 	now := time.Now()
-	now = now.Add(1 * time.Minute)
+	now = now.Add(2 * time.Minute)
 	//now := time.Date(2023, 9, 15, 17, 20, 0, 0, time.Local)
 	log.Println(now)
 	notes, err := notify.CheckNext(mainbot.DB, now)

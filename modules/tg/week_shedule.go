@@ -134,6 +134,7 @@ func (bot *Bot) GetWeekSummary(
 			connectButton,
 		)
 	}
+	caption += "\n‼️Внимание! Расписание может быть неактуальным!\nПроблема в процессе решения, приносим извинения за непредоставленные удобства..."
 
 	return bot.EditOrSend(shedule.TgUser.TgId, caption, image.FileId, markup, editMsg...)
 }
@@ -162,6 +163,8 @@ func (bot *Bot) SendWeekImg(
 			connectButton,
 		)
 	}
+
+	photo.Caption += "\n‼️Внимание! Расписание может быть неактуальным!\nПроблема в процессе решения, приносим извинения за непредоставленные удобства..."
 	resp, err := bot.TG.Send(photo)
 	if err != nil {
 		fmt.Println(err)

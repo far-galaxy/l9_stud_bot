@@ -204,6 +204,7 @@ func (bot *Bot) GetDaySummary(
 			return bot.EditOrSend(schedule.TgUser.TgId, str, "", markup, editMsg...)
 		}
 		str = fmt.Sprintf("Расписание на %s\n\n", dayStr)
+		str += "‼️ Внимание! Расписание может быть неактуальным!\nПроблема в процессе решения, приносим извинения за непредоставленные удобства...\n"
 
 		// TODO: придумать скачки для пустых дней
 		day, err := bot.StrDayShedule(pairs, schedule.IsGroup)

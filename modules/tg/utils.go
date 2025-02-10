@@ -206,6 +206,7 @@ func (bot *Bot) EditImg(
 	msg tgbotapi.Message,
 	imageID string,
 	markup tgbotapi.InlineKeyboardMarkup,
+	caption string,
 ) error {
 	params := make(tgbotapi.Params)
 
@@ -217,8 +218,9 @@ func (bot *Bot) EditImg(
 		"media",
 		tgbotapi.InputMediaPhoto{
 			BaseInputMedia: tgbotapi.BaseInputMedia{
-				Type:  "photo",
-				Media: tgbotapi.FileID(imageID),
+				Type:    "photo",
+				Media:   tgbotapi.FileID(imageID),
+				Caption: caption,
 			},
 		},
 	)
@@ -251,7 +253,9 @@ func (bot *Bot) EditOrSend(
 		// Редактируем
 		if imageID != "" {
 			// Обновляем фото, если есть
-			return nilMsg, bot.EditImg(editMsg[0], imageID, markup)
+			caption := "‼️ Внимание! Расписание может быть неактуальным!\nПроблема в процессе решения, приносим извинения за непредоставленные удобства..."
+
+			return nilMsg, bot.EditImg(editMsg[0], imageID, markup, caption)
 		} else if len(editMsg[0].Photo) == 0 {
 			// Фото нет и не было, только текст
 			msg := tgbotapi.NewEditMessageText(
