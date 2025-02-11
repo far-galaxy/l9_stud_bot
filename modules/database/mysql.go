@@ -19,6 +19,8 @@ type DB struct {
 	User   string
 	Pass   string
 	Schema string
+	Host   string
+	Port   string
 }
 
 // Подключение к базе данных
@@ -28,8 +30,8 @@ func Connect(db DB, logger *rotatelogs.RotateLogs) (*xorm.Engine, error) {
 	engine, err := xorm.NewEngine(
 		"mysql",
 		fmt.Sprintf(
-			"%s:%s@tcp(localhost:3306)/%s?charset=utf8",
-			db.User, db.Pass, db.Schema),
+			"%s:%s@tcp(%s:%s)/%s?charset=utf8",
+			db.User, db.Pass, db.Host, db.Port, db.Schema),
 	)
 	if err != nil {
 		return nil, err

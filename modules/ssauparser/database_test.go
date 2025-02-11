@@ -16,9 +16,11 @@ func prepareDB() *xorm.Engine {
 		log.Print("No .env file found")
 	}
 	DB := database.DB{
-		User:   os.Getenv("MYSQL_USER"),
-		Pass:   os.Getenv("MYSQL_PASS"),
-		Schema: os.Getenv("MYSQL_DB"),
+		User:   os.Getenv("L9_MYSQL_USER"),
+		Pass:   os.Getenv("L9_MYSQL_PASS"),
+		Schema: os.Getenv("L9_MYSQL_DATABASE"),
+		Host:   os.Getenv("L9_MYSQL_HOST"),
+		Port:   os.Getenv("L9_MYSQL_PORT"),
 	}
 	db, err := database.Connect(DB, database.InitLog("sql", time.Hour*24*14))
 	if err != nil {
